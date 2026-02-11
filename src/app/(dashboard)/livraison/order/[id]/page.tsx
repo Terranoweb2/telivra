@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Loader2, ArrowLeft, Clock, CheckCircle, Truck, ShoppingBag, MapPin,
-  Gauge, Ruler, User, Phone, XCircle, Navigation,
+  User, Navigation, Ruler, Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,29 +28,63 @@ function getStepIndex(status: string) {
   return i >= 0 ? i : 0;
 }
 
+function fmt(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`; }
+function fmtTime(s: number) { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${m}min` : `${m} min`; }
+function fmtHour(d: Date) { return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [driverPos, setDriverPos] = useState<{ lat: number; lng: number } | null>(null);
-  const [eta, setEta] = useState<number | null>(null);
+  const [routeDistance, setRouteDistance] = useState<number | null>(null);
+  const [routeTime, setRouteTime] = useState<number | null>(null);
+  const [driverSpeed, setDriverSpeed] = useState<number>(0);
   const pollRef = useRef<any>(null);
 
   useEffect(() => {
     loadOrder();
-    pollRef.current = setInterval(loadOrder, 5000);
+    // Polling rapide (3s) quand livraison active
+    pollRef.current = setInterval(loadOrder, 3000);
     return () => clearInterval(pollRef.current);
   }, [id]);
 
   async function loadOrder() {
-    const res = await fetch(`/api/orders/${id}`);
-    const data = await res.json();
-    setOrder(data);
-    if (data.delivery?.currentLat && data.delivery?.currentLng) {
-      setDriverPos({ lat: data.delivery.currentLat, lng: data.delivery.currentLng });
+    try {
+      const res = await fetch(`/api/orders/${id}`);
+      const data = await res.json();
+      setOrder(data);
+
+      if (data.delivery?.currentLat && data.delivery?.currentLng) {
+        const newPos = { lat: data.delivery.currentLat, lng: data.delivery.currentLng };
+        setDriverPos(newPos);
+
+        // Derniere vitesse connue
+        const lastPos = data.delivery?.positions?.[0];
+        if (lastPos?.speed) setDriverSpeed(Math.round(lastPos.speed));
+
+        // Calculer distance/temps via OSRM
+        if (data.deliveryLat && data.deliveryLng) {
+          calcRoute(newPos, { lat: data.deliveryLat, lng: data.deliveryLng });
+        }
+      }
+      setLoading(false);
+    } catch {
+      setLoading(false);
     }
-    if (data.delivery?.estimatedMinutes) setEta(data.delivery.estimatedMinutes);
-    setLoading(false);
+  }
+
+  async function calcRoute(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+    try {
+      const res = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`
+      );
+      const data = await res.json();
+      if (data.routes?.[0]) {
+        setRouteDistance(data.routes[0].distance);
+        setRouteTime(data.routes[0].duration);
+      }
+    } catch {}
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
@@ -58,6 +92,8 @@ export default function OrderDetailPage() {
 
   const currentStep = getStepIndex(order.status);
   const isActive = ["ACCEPTED", "PICKED_UP", "DELIVERING"].includes(order.status);
+  const departTime = order.delivery?.startTime ? new Date(order.delivery.startTime) : null;
+  const etaDate = routeTime ? new Date(Date.now() + routeTime * 1000) : null;
 
   return (
     <div className="space-y-4">
@@ -95,56 +131,117 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Carte suivi en direct */}
+      {/* Carte suivi en direct + stats */}
       {isActive && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-semibold text-white flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-blue-400" /> Suivi en direct
-            </p>
-            {eta && <span className="text-xs text-green-400">~{eta} min restantes</span>}
+          <div className="px-4 py-3 border-b border-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-white flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-blue-400 animate-pulse" /> Suivi en direct
+              </p>
+              {routeTime && (
+                <span className="text-xs font-semibold text-green-400">
+                  Arrivee ~{etaDate ? fmtHour(etaDate) : "--"}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="h-64 sm:h-80">
+
+          {/* Stats temps reel */}
+          <div className="grid grid-cols-3 gap-0 border-b border-gray-800">
+            <div className="p-3 text-center border-r border-gray-800">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Clock className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-[10px] text-gray-500 uppercase">Temps restant</span>
+              </div>
+              <p className="text-lg font-bold text-white">{routeTime ? fmtTime(routeTime) : "--"}</p>
+            </div>
+            <div className="p-3 text-center border-r border-gray-800">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Ruler className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-[10px] text-gray-500 uppercase">Distance</span>
+              </div>
+              <p className="text-lg font-bold text-white">{routeDistance ? fmt(routeDistance) : "--"}</p>
+            </div>
+            <div className="p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Gauge className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-[10px] text-gray-500 uppercase">Vitesse</span>
+              </div>
+              <p className="text-lg font-bold text-white">{driverSpeed} <span className="text-xs font-normal text-gray-500">km/h</span></p>
+            </div>
+          </div>
+
+          {/* Carte */}
+          <div className="h-72 sm:h-96">
             <TrackMap
               driverPos={driverPos}
               clientPos={{ lat: order.deliveryLat, lng: order.deliveryLng }}
               positions={order.delivery?.positions || []}
             />
           </div>
+
+          {/* Depart */}
+          {departTime && (
+            <div className="px-4 py-2 border-t border-gray-800 flex items-center justify-between text-xs text-gray-500">
+              <span>Depart a {fmtHour(departTime)}</span>
+              <span>Mis a jour toutes les 3s</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Livree - resume */}
+      {order.status === "DELIVERED" && order.delivery && (
+        <div className="bg-green-600/10 border border-green-500/30 rounded-xl p-4 text-center">
+          <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-green-400">Commande livree !</p>
+          {order.delivery.startTime && order.delivery.endTime && (
+            <p className="text-xs text-gray-400 mt-1">
+              Livree en {Math.round((new Date(order.delivery.endTime).getTime() - new Date(order.delivery.startTime).getTime()) / 60000)} min
+              (de {fmtHour(new Date(order.delivery.startTime))} a {fmtHour(new Date(order.delivery.endTime))})
+            </p>
+          )}
         </div>
       )}
 
       {/* Livreur */}
       {order.delivery && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-2">Livreur</p>
+          <p className="text-xs text-gray-500 mb-2">Votre livreur</p>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
               <User className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold text-white">{order.delivery.driver?.name}</p>
               <p className="text-xs text-gray-500">
                 {order.delivery.status === "PICKING_UP" ? "Se dirige vers le restaurant" :
                  order.delivery.status === "DELIVERING" ? "En route vers vous" :
-                 order.delivery.status === "DELIVERED" ? "Livree" : ""}
+                 order.delivery.status === "DELIVERED" ? "Livree avec succes" : ""}
               </p>
             </div>
+            {isActive && routeTime && (
+              <div className="text-right">
+                <p className="text-sm font-bold text-green-400">~{fmtTime(routeTime)}</p>
+                <p className="text-[10px] text-gray-500">restant</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Historique mouvements livreur */}
+      {/* Historique mouvements */}
       {order.delivery?.positions?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-sm font-semibold text-white mb-2">Historique mouvements du livreur</p>
+          <p className="text-sm font-semibold text-white mb-2">Historique mouvements ({order.delivery.positions.length})</p>
           <div className="max-h-40 overflow-y-auto space-y-1">
             {order.delivery.positions.map((pos: any, i: number) => (
               <div key={pos.id} className="flex items-center gap-3 text-xs py-1 border-b border-gray-800/50 last:border-0">
                 <span className="text-gray-600 w-5">{i + 1}</span>
                 <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
                 <span className="text-gray-400">{pos.latitude.toFixed(5)}, {pos.longitude.toFixed(5)}</span>
-                {pos.speed && <span className="text-gray-500">{pos.speed} km/h</span>}
+                {pos.speed != null && <span className="text-gray-500">{Math.round(pos.speed)} km/h</span>}
                 <span className="text-gray-600 ml-auto">{new Date(pos.timestamp).toLocaleTimeString("fr-FR")}</span>
               </div>
             ))}
