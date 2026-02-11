@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarProvider, useSidebar } from "@/lib/sidebar-context";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
@@ -13,8 +14,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <Sidebar open={open} onClose={close} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar onMenuToggle={toggle} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 pb-20 lg:pb-6">{children}</main>
       </div>
+      <MobileNav />
     </div>
   );
 }
