@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  Loader2, CheckCircle, Truck, MapPin, Clock, User, Navigation, Ruler, Gauge, ArrowLeft, X, XCircle,
+  Loader2, CheckCircle, Truck, MapPin, Clock, User, Navigation, Ruler, Gauge, ArrowLeft, X, XCircle, Phone,
 } from "lucide-react";
 
 const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
@@ -15,6 +15,14 @@ const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
     </div>
   ),
 });
+
+const cancelReasons = [
+  "Client injoignable",
+  "Adresse introuvable",
+  "Produit indisponible",
+  "Probleme de vehicule",
+  "Autre",
+];
 
 function fmt(m: number) {
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
@@ -38,6 +46,8 @@ export default function DriverDeliveryDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
 
   const watchRef = useRef<number | null>(null);
   const sendRef = useRef<any>(null);
@@ -169,11 +179,21 @@ export default function DriverDeliveryDetail() {
 
   async function cancelOrder() {
     if (!delivery?.order?.id) return;
+    if (!cancelReason) {
+      setCancelError("Veuillez selectionner une raison");
+      return;
+    }
+    if (cancelReason === "Autre" && !customReason.trim()) {
+      setCancelError("Veuillez preciser la raison");
+      return;
+    }
     setCancelling(true);
     setCancelError("");
+    const reason = cancelReason === "Autre" ? customReason : cancelReason;
     const res = await fetch(`/api/orders/${delivery.order.id}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
     });
     if (res.ok) {
       setShowCancel(false);
@@ -224,6 +244,7 @@ export default function DriverDeliveryDetail() {
           </span>
         </div>
 
+        {/* Client info */}
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
             <User className="w-5 h-5 text-white" />
@@ -233,6 +254,11 @@ export default function DriverDeliveryDetail() {
             <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
               <MapPin className="w-3 h-3" /> {order?.deliveryAddress}
             </p>
+            {order?.guestPhone && !order?.client && (
+              <a href={`tel:${order.guestPhone}`} className="text-xs text-blue-400 flex items-center gap-1 mt-0.5">
+                <Phone className="w-3 h-3" /> {order.guestPhone}
+              </a>
+            )}
           </div>
         </div>
 
@@ -267,11 +293,13 @@ export default function DriverDeliveryDetail() {
 
       {/* Carte */}
       {clientPos && (
-        <div className="rounded-xl overflow-hidden border border-gray-800" style={{ height: "45vh" }}>
+        <div className="rounded-xl overflow-hidden border border-gray-800 h-[40vh] sm:h-[55vh]">
           <DriverMap
             driverPos={myPos}
             clientPos={clientPos}
             positions={delivery.positions || []}
+            driverLabel="Ma position"
+            clientLabel="Le client"
           />
         </div>
       )}
@@ -300,7 +328,7 @@ export default function DriverDeliveryDetail() {
       {canCancel() && (
         <div>
           {!showCancel ? (
-            <button onClick={() => setShowCancel(true)}
+            <button onClick={() => { setShowCancel(true); setCancelReason(""); setCustomReason(""); setCancelError(""); }}
               className="w-full py-3 bg-red-600/10 border border-red-500/30 hover:bg-red-600/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
               <X className="w-4 h-4" /> Annuler la livraison
             </button>
@@ -308,6 +336,28 @@ export default function DriverDeliveryDetail() {
             <div className="bg-gray-900 border border-red-500/30 rounded-xl p-4 space-y-3">
               <p className="text-sm text-white font-medium">Confirmer l&apos;annulation ?</p>
               <p className="text-xs text-gray-400">La commande sera annulee et le client sera notifie.</p>
+
+              <select
+                value={cancelReason}
+                onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-red-500"
+              >
+                <option value="">Selectionnez une raison</option>
+                {cancelReasons.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+
+              {cancelReason === "Autre" && (
+                <textarea
+                  value={customReason}
+                  onChange={(e) => { setCustomReason(e.target.value); setCancelError(""); }}
+                  placeholder="Preciser la raison..."
+                  rows={3}
+                  className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-red-500 resize-none"
+                />
+              )}
+
               {cancelError && <p className="text-xs text-red-400">{cancelError}</p>}
               <div className="flex gap-2">
                 <button onClick={() => setShowCancel(false)}

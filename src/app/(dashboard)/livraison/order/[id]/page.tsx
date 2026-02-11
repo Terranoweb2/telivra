@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Loader2, ArrowLeft, Clock, CheckCircle, Truck, ShoppingBag, MapPin,
-  User, Navigation, Ruler, Gauge, Wifi, X, XCircle,
+  User, Navigation, Ruler, Gauge, Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
@@ -44,12 +44,9 @@ export default function OrderDetailPage() {
   const [routeTime, setRouteTime] = useState<number | null>(null);
   const [driverSpeed, setDriverSpeed] = useState<number>(0);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [showCancel, setShowCancel] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState("");
   const routeThrottle = useRef<any>(null);
-  const orderRef = useRef<any>(null);
 
+  // Calcul route OSRM (throttled)
   const calcRoute = useCallback((from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
     if (routeThrottle.current) clearTimeout(routeThrottle.current);
     routeThrottle.current = setTimeout(async () => {
@@ -63,9 +60,10 @@ export default function OrderDetailPage() {
           setRouteTime(data.routes[0].duration);
         }
       } catch {}
-    }, 3000);
+    }, 3000); // Max 1 appel OSRM toutes les 3s
   }, []);
 
+  // Socket.IO temps reel
   useDeliverySocket({
     orderId,
     onPosition: useCallback((data: any) => {
@@ -73,18 +71,18 @@ export default function OrderDetailPage() {
       setDriverPos(newPos);
       if (data.speed != null) setDriverSpeed(Math.round(data.speed));
       setLastUpdate(new Date());
+      // Ajouter a l'historique
       setPositions((prev) => [...prev, { ...data, id: Date.now() }]);
-      const o = orderRef.current;
-      if (o?.deliveryLat && o?.deliveryLng) {
-        calcRoute(newPos, { lat: o.deliveryLat, lng: o.deliveryLng });
+      // Recalculer route
+      if (order?.deliveryLat && order?.deliveryLng) {
+        calcRoute(newPos, { lat: order.deliveryLat, lng: order.deliveryLng });
       }
-    }, [calcRoute]),
-    onStatusChange: useCallback(() => { loadOrderFn(); }, []),
+    }, [order?.deliveryLat, order?.deliveryLng, calcRoute]),
+    onStatusChange: useCallback((data: any) => {
+      // Recharger la commande pour avoir le nouveau statut
+      loadOrderFn();
+    }, []),
     onAccepted: useCallback((data: any) => {
-      if (data.latitude && data.longitude) {
-        setDriverPos({ lat: data.latitude, lng: data.longitude });
-        setLastUpdate(new Date());
-      }
       loadOrderFn();
     }, []),
   });
@@ -94,17 +92,13 @@ export default function OrderDetailPage() {
       const res = await fetch(`/api/orders/${orderId}`);
       const data = await res.json();
       setOrder(data);
-      orderRef.current = data;
       if (data.delivery?.currentLat && data.delivery?.currentLng) {
         setDriverPos({ lat: data.delivery.currentLat, lng: data.delivery.currentLng });
       }
-      if (data.delivery?.positions?.length) {
+      if (data.delivery?.positions) {
         setPositions(data.delivery.positions);
-        const lastPos = data.delivery.positions[data.delivery.positions.length - 1];
+        const lastPos = data.delivery.positions[0];
         if (lastPos?.speed != null) setDriverSpeed(Math.round(lastPos.speed));
-        if (lastPos?.latitude && lastPos?.longitude) {
-          setDriverPos({ lat: lastPos.latitude, lng: lastPos.longitude });
-        }
       }
       setLoading(false);
     } catch {
@@ -112,44 +106,17 @@ export default function OrderDetailPage() {
     }
   }, [orderId]);
 
-  useEffect(() => { loadOrderFn(); }, [loadOrderFn]);
+  // Charger les donnees initiales
+  useEffect(() => {
+    loadOrderFn();
+  }, [loadOrderFn]);
 
+  // Calcul route initial
   useEffect(() => {
     if (driverPos && order?.deliveryLat && order?.deliveryLng) {
       calcRoute(driverPos, { lat: order.deliveryLat, lng: order.deliveryLng });
     }
-  }, [driverPos?.lat, driverPos?.lng, order?.deliveryLat]);
-
-  // Logique annulation client
-  function canCancel() {
-    if (!order) return false;
-    if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
-    if (order.status === "PENDING") return true;
-    const acceptedAt = order.delivery?.startTime || order.updatedAt;
-    const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
-    return minutes <= 5;
-  }
-
-  const cancelMinutes = order?.delivery?.startTime
-    ? Math.max(0, Math.ceil(5 - (Date.now() - new Date(order.delivery.startTime).getTime()) / 60000))
-    : null;
-
-  async function cancelOrder() {
-    setCancelling(true);
-    setCancelError("");
-    const res = await fetch(`/api/orders/${order.id}/cancel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (res.ok) {
-      setShowCancel(false);
-      loadOrderFn();
-    } else {
-      const data = await res.json();
-      setCancelError(data.error || "Erreur lors de l'annulation");
-    }
-    setCancelling(false);
-  }
+  }, [driverPos?.lat, order?.deliveryLat]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
   if (!order) return <p className="text-gray-400">Commande introuvable</p>;
@@ -174,14 +141,6 @@ export default function OrderDetailPage() {
           </div>
         )}
       </div>
-
-      {/* Annulee */}
-      {order.status === "CANCELLED" && (
-        <div className="bg-red-600/10 border border-red-500/30 rounded-xl p-4 text-center">
-          <XCircle className="w-10 h-10 text-red-400 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-red-400">Commande annulee</p>
-        </div>
-      )}
 
       {/* Progress bar */}
       {order.status !== "CANCELLED" && (
@@ -225,6 +184,7 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
+          {/* Stats temps reel */}
           <div className="grid grid-cols-3 gap-0 border-b border-gray-800">
             <div className="p-3 text-center border-r border-gray-800">
               <div className="flex items-center justify-center gap-1 mb-1">
@@ -249,6 +209,7 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
+          {/* Carte */}
           <div className="h-72 sm:h-96">
             <TrackMap
               driverPos={driverPos}
@@ -257,9 +218,10 @@ export default function OrderDetailPage() {
             />
           </div>
 
+          {/* Depart + last update */}
           <div className="px-4 py-2 border-t border-gray-800 flex items-center justify-between text-xs text-gray-500">
             <span>{departTime ? `Depart a ${fmtHour(departTime)}` : ""}</span>
-            <span>{lastUpdate ? `Maj ${fmtHour(lastUpdate)}` : "En attente de position..."}</span>
+            <span>{lastUpdate ? `Maj ${fmtHour(lastUpdate)}` : "Temps reel via WebSocket"}</span>
           </div>
         </div>
       )}
@@ -304,6 +266,24 @@ export default function OrderDetailPage() {
         </div>
       )}
 
+      {/* Historique mouvements */}
+      {positions.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <p className="text-sm font-semibold text-white mb-2">Historique mouvements ({positions.length})</p>
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {positions.map((pos: any, i: number) => (
+              <div key={pos.id || i} className="flex items-center gap-3 text-xs py-1 border-b border-gray-800/50 last:border-0">
+                <span className="text-gray-600 w-5">{i + 1}</span>
+                <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+                <span className="text-gray-400">{pos.latitude.toFixed(5)}, {pos.longitude.toFixed(5)}</span>
+                {pos.speed != null && <span className="text-gray-500">{Math.round(pos.speed)} km/h</span>}
+                <span className="text-gray-600 ml-auto">{new Date(pos.timestamp).toLocaleTimeString("fr-FR")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Articles */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <p className="text-sm font-semibold text-white mb-2">Articles</p>
@@ -325,38 +305,6 @@ export default function OrderDetailPage() {
         <p className="text-xs text-gray-500 mb-1">Adresse de livraison</p>
         <p className="text-sm text-white flex items-center gap-2"><MapPin className="w-4 h-4 text-red-400" /> {order.deliveryAddress}</p>
       </div>
-
-      {/* Bouton annuler */}
-      {canCancel() && (
-        <div>
-          {!showCancel ? (
-            <button onClick={() => setShowCancel(true)}
-              className="w-full py-3 bg-red-600/10 border border-red-500/30 hover:bg-red-600/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
-              <X className="w-4 h-4" /> Annuler la commande
-              {cancelMinutes !== null && cancelMinutes > 0 && order.status !== "PENDING" && (
-                <span className="text-xs text-red-400/60">({cancelMinutes} min restantes)</span>
-              )}
-            </button>
-          ) : (
-            <div className="bg-gray-900 border border-red-500/30 rounded-xl p-4 space-y-3">
-              <p className="text-sm text-white font-medium">Confirmer l&apos;annulation ?</p>
-              <p className="text-xs text-gray-400">Cette action est irreversible.</p>
-              {cancelError && <p className="text-xs text-red-400">{cancelError}</p>}
-              <div className="flex gap-2">
-                <button onClick={() => setShowCancel(false)}
-                  className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-lg text-sm font-medium">
-                  Non, garder
-                </button>
-                <button onClick={cancelOrder} disabled={cancelling}
-                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
-                  {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                  Oui, annuler
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

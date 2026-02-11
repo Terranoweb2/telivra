@@ -19,6 +19,12 @@ export async function POST(
   if (order.status === "DELIVERED") return NextResponse.json({ error: "Commande deja livree" }, { status: 400 });
   if (order.status === "CANCELLED") return NextResponse.json({ error: "Commande deja annulee" }, { status: 400 });
 
+  // Raison obligatoire
+  const reason = body.reason?.trim();
+  if (!reason) {
+    return NextResponse.json({ error: "Veuillez preciser la raison de l'annulation" }, { status: 400 });
+  }
+
   const userId = (session?.user as any)?.id;
   const userRole = (session?.user as any)?.role;
   const isClient = order.clientId && order.clientId === userId;
@@ -27,12 +33,10 @@ export async function POST(
   const isAdmin = userRole === "ADMIN";
 
   if (order.status === "PENDING") {
-    // Commande en attente: client, guest ou admin peuvent annuler
     if (!isClient && !isGuest && !isAdmin) {
       return NextResponse.json({ error: "Non autorise" }, { status: 403 });
     }
   } else {
-    // ACCEPTED, PICKING_UP, DELIVERING
     const acceptedAt = order.delivery?.startTime || order.updatedAt;
     const minutesSinceAccepted = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
 
@@ -48,8 +52,11 @@ export async function POST(
     }
   }
 
-  // Annuler la commande
-  await prisma.order.update({ where: { id }, data: { status: "CANCELLED" } });
+  // Annuler la commande avec raison
+  await prisma.order.update({
+    where: { id },
+    data: { status: "CANCELLED", cancelReason: reason },
+  });
 
   if (order.delivery) {
     await prisma.delivery.update({
@@ -61,11 +68,11 @@ export async function POST(
   // Notifier via Socket.IO
   const io = (global as any).io;
   if (io) {
-    io.to(`order:${id}`).emit("delivery:status", { orderId: id, status: "CANCELLED" });
+    io.to(`order:${id}`).emit("delivery:status", { orderId: id, status: "CANCELLED", reason });
     if (order.delivery) {
-      io.to("drivers").emit("order:cancelled", { orderId: id });
+      io.to("drivers").emit("order:cancelled", { orderId: id, reason });
     }
   }
 
-  return NextResponse.json({ ok: true, status: "CANCELLED" });
+  return NextResponse.json({ ok: true, status: "CANCELLED", reason });
 }

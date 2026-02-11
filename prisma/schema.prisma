@@ -298,6 +298,7 @@ model Order {
   deliveryLat     Float
   deliveryLng     Float
   note            String?
+  cancelReason    String?
   guestName       String?
   guestPhone      String?
   createdAt       DateTime    @default(now())

@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
-import { LogOut, Menu, Settings, ChevronDown } from "lucide-react";
+import { LogOut, Menu, Settings, ChevronDown, Sun, Moon } from "lucide-react";
 import { AlertBell } from "./alert-bell";
 
 interface TopBarProps {
@@ -12,8 +13,12 @@ interface TopBarProps {
 
 export function TopBar({ onMenuToggle }: TopBarProps) {
   const { data: session } = useSession();
+  const { resolvedTheme, setTheme } = useTheme();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -34,24 +39,29 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   return (
     <header className="h-14 bg-gray-900/80 backdrop-blur-lg border-b border-gray-800/50 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-3">
-        <button
-          onClick={onMenuToggle}
-          className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg hidden lg:block"
-        >
+        <button onClick={onMenuToggle}
+          className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg hidden lg:block">
           <Menu className="w-5 h-5" />
         </button>
         <span className="text-white font-semibold text-sm lg:hidden">Terrano</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        {/* Theme toggle */}
+        {mounted && (
+          <button onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            title={resolvedTheme === "dark" ? "Mode clair" : "Mode sombre"}>
+            {resolvedTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+        )}
+
         <AlertBell />
 
-        {/* Avatar dropdown - desktop uniquement */}
+        {/* Avatar dropdown - desktop */}
         <div className="relative hidden lg:block" ref={dropdownRef}>
-          <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-gray-800/60 transition-colors"
-          >
+          <button onClick={() => setShowDropdown(!showDropdown)}
+            className="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-gray-800/60 transition-colors">
             <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
               {initials}
             </div>

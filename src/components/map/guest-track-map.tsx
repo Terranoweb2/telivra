@@ -1,23 +1,27 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
-import { useEffect } from "react";
+import { useTheme } from "next-themes";
 import "leaflet/dist/leaflet.css";
+
+const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 const driverIcon = L.divIcon({
   className: "",
-  html: `<div style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
+  html: `<div style="position:relative"><div style="width:40px;height:40px;border-radius:50%;background:rgba(59,130,246,0.15);position:absolute;top:-11px;left:-11px;animation:dp 1.5s infinite"></div><div style="width:20px;height:20px;border-radius:50%;background:#3B82F6;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);position:relative;z-index:2"></div></div>`,
+  iconSize: [20, 20], iconAnchor: [10, 10],
 });
 
 const clientIcon = L.divIcon({
   className: "",
-  html: `<div style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
+  html: `<div style="width:32px;height:32px;border-radius:50% 50% 50% 0;background:#10B981;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(16,185,129,0.4);display:flex;align-items:center;justify-content:center"><div style="width:12px;height:12px;border-radius:50%;background:white;transform:rotate(45deg)"></div></div>`,
+  iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32],
 });
+
+const css = `@keyframes dp{0%{transform:scale(.5);opacity:1}100%{transform:scale(1.8);opacity:0}}`;
 
 function FitBounds({ driverPos, clientPos }: { driverPos: { lat: number; lng: number } | null; clientPos: { lat: number; lng: number } }) {
   const map = useMap();
@@ -35,25 +39,36 @@ interface Props {
   driverPos: { lat: number; lng: number } | null;
   clientPos: { lat: number; lng: number };
   positions?: { latitude: number; longitude: number }[];
+  driverLabel?: string;
+  clientLabel?: string;
 }
 
-export default function GuestTrackMap({ driverPos, clientPos, positions = [] }: Props) {
+export default function GuestTrackMap({ driverPos, clientPos, positions = [], driverLabel = "Le livreur", clientLabel = "Ma position" }: Props) {
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme } = useTheme();
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
   const center = driverPos || clientPos;
   const trail: [number, number][] = positions.map((p) => [p.latitude, p.longitude]);
+  const tiles = resolvedTheme === "dark" ? DARK_TILES : LIGHT_TILES;
 
   return (
-    <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="" />
-      <FitBounds driverPos={driverPos} clientPos={clientPos} />
-      <Marker position={[clientPos.lat, clientPos.lng]} icon={clientIcon}>
-        <Popup>Adresse de livraison</Popup>
-      </Marker>
-      {driverPos && (
-        <Marker position={[driverPos.lat, driverPos.lng]} icon={driverIcon}>
-          <Popup>Votre livreur</Popup>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "100%", width: "100%" }} zoomControl={true} scrollWheelZoom={true}>
+        <TileLayer url={tiles} attribution="&copy; OSM" />
+        <FitBounds driverPos={driverPos} clientPos={clientPos} />
+        <Marker position={[clientPos.lat, clientPos.lng]} icon={clientIcon}>
+          <Popup><div className="text-sm"><p className="font-semibold text-green-600">{clientLabel}</p></div></Popup>
         </Marker>
-      )}
-      {trail.length > 1 && <Polyline positions={trail} color="#3b82f6" weight={3} opacity={0.6} />}
-    </MapContainer>
+        {driverPos && (
+          <Marker position={[driverPos.lat, driverPos.lng]} icon={driverIcon}>
+            <Popup><div className="text-sm"><p className="font-semibold text-blue-600">{driverLabel}</p><p className="text-xs text-gray-500">{driverPos.lat.toFixed(5)}, {driverPos.lng.toFixed(5)}</p></div></Popup>
+          </Marker>
+        )}
+        {trail.length > 1 && <Polyline positions={trail} color="#3b82f6" weight={3} opacity={0.6} />}
+      </MapContainer>
+    </>
   );
 }

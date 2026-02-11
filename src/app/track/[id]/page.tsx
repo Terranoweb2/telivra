@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle,
   MapPin, ArrowLeft, Phone, User, RefreshCw, Navigation, Wifi,
-  ClipboardList, LogIn, X,
+  ClipboardList, LogIn, X, Ruler, Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,13 +33,34 @@ const steps = [
   { label: "Livree", key: "DELIVERED" },
 ];
 
+const cancelReasons = [
+  "Changement d'avis",
+  "Delai trop long",
+  "Commande en double",
+  "Adresse incorrecte",
+  "Autre",
+];
+
+function fmtDist(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`; }
+function fmtTime(s: number) { const min = Math.ceil(s / 60); return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}min` : `${min} min`; }
+
 export default function TrackDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
+
+  // Cancel state
   const [showCancel, setShowCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+
+  // OSRM state
+  const [routeDistance, setRouteDistance] = useState<number | null>(null);
+  const [routeTime, setRouteTime] = useState<number | null>(null);
+  const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
+  const routeThrottle = useRef(0);
 
   const loadOrder = useCallback(async () => {
     const res = await fetch(`/api/orders/track/${id}`);
@@ -53,31 +74,64 @@ export default function TrackDetailPage() {
     return () => clearInterval(interval);
   }, [loadOrder]);
 
-  async function cancelOrder() {
+  // OSRM route calculation
+  const calcRoute = useCallback(async (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
+    const now = Date.now();
+    if (now - routeThrottle.current < 10000) return;
+    routeThrottle.current = now;
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.routes?.[0]) {
+        setRouteDistance(data.routes[0].distance);
+        setRouteTime(data.routes[0].duration);
+      }
+    } catch {}
+  }, []);
+
+  // Recalculate route when driver moves
+  useEffect(() => {
     if (!order) return;
+    const lastPos = order.delivery?.positions?.[0];
+    if (!lastPos) return;
+    const driverPos = { lat: lastPos.latitude, lng: lastPos.longitude };
+    const clientPos = { lat: order.deliveryLat, lng: order.deliveryLng };
+    if (lastPos.speed != null) setDriverSpeed(lastPos.speed * 3.6);
+    if (["ACCEPTED", "PICKING_UP", "DELIVERING"].includes(order.status)) {
+      calcRoute(driverPos, clientPos);
+    }
+  }, [order?.delivery?.positions?.[0]?.latitude, order?.delivery?.positions?.[0]?.longitude, order?.status, calcRoute]);
+
+  // Cancel
+  async function handleCancel() {
+    if (!order) return;
+    const finalReason = cancelReason === "Autre" ? customReason.trim() : cancelReason;
+    if (!finalReason) { setCancelError("Veuillez choisir une raison"); return; }
     setCancelling(true);
     setCancelError("");
     const res = await fetch(`/api/orders/${order.id}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ guestPhone: order.guestPhone }),
+      body: JSON.stringify({ reason: finalReason, guestPhone: order.guestPhone }),
     });
     if (res.ok) {
       setShowCancel(false);
+      setCancelReason("");
+      setCustomReason("");
       loadOrder();
     } else {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setCancelError(data.error || "Erreur lors de l'annulation");
     }
     setCancelling(false);
   }
 
-  // Peut annuler ?
   function canCancel() {
     if (!order) return false;
     if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
     if (order.status === "PENDING") return true;
-    // Apres acceptation: 5 minutes
     const acceptedAt = order.delivery?.startTime || order.updatedAt;
     const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
     return minutes <= 5;
@@ -96,6 +150,7 @@ export default function TrackDetailPage() {
   const st = statusConfig[order.status] || statusConfig.PENDING;
   const currentStep = st.step;
   const driverName = order.delivery?.driver?.name;
+  const driverPhone = order.delivery?.driver?.phone;
   const lastPos = order.delivery?.positions?.[0];
   const driverPos = lastPos ? { lat: lastPos.latitude, lng: lastPos.longitude } : null;
   const clientPos = { lat: order.deliveryLat, lng: order.deliveryLng };
@@ -136,7 +191,12 @@ export default function TrackDetailPage() {
           )}
           {order.status === "PENDING" && <p className="text-sm text-gray-400">Recherche d&apos;un livreur...</p>}
           {order.status === "DELIVERED" && <p className="text-sm text-green-400">Votre commande a ete livree !</p>}
-          {order.status === "CANCELLED" && <p className="text-sm text-red-400">Cette commande a ete annulee</p>}
+          {order.status === "CANCELLED" && (
+            <div>
+              <p className="text-sm text-red-400">Cette commande a ete annulee</p>
+              {order.cancelReason && <p className="text-xs text-gray-500 mt-1">Raison : {order.cancelReason}</p>}
+            </div>
+          )}
         </div>
 
         {/* Carte temps reel */}
@@ -146,19 +206,45 @@ export default function TrackDetailPage() {
               <Navigation className="w-4 h-4 text-blue-400 animate-pulse" />
               <span className="text-sm font-semibold text-white">Suivi en direct</span>
             </div>
-            <div className="h-64 sm:h-80">
+            <div className="h-52 sm:h-72">
               <GuestMap
                 driverPos={driverPos}
                 clientPos={clientPos}
                 positions={order.delivery?.positions || []}
+                driverLabel="Le livreur"
+                clientLabel="Ma position"
               />
             </div>
             {driverName && (
               <div className="px-4 py-2 border-t border-gray-800 flex items-center gap-2 text-xs text-gray-500">
                 <User className="w-3 h-3" /> {driverName}
+                {driverPhone && (
+                  <a href={`tel:${driverPhone}`} className="ml-2 text-green-400 hover:text-green-300"><Phone className="w-3 h-3 inline" /></a>
+                )}
                 {lastPos && <span className="ml-auto">Maj {new Date(lastPos.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Stats OSRM */}
+        {isActive && (routeTime != null || routeDistance != null || driverSpeed != null) && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+              <p className="text-xs text-gray-500">Temps restant</p>
+              <p className="text-sm font-semibold text-white">{routeTime != null ? fmtTime(routeTime) : "--"}</p>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <Ruler className="w-4 h-4 text-purple-400 mx-auto mb-1" />
+              <p className="text-xs text-gray-500">Distance</p>
+              <p className="text-sm font-semibold text-white">{routeDistance != null ? fmtDist(routeDistance) : "--"}</p>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <Gauge className="w-4 h-4 text-green-400 mx-auto mb-1" />
+              <p className="text-xs text-gray-500">Vitesse</p>
+              <p className="text-sm font-semibold text-white">{driverSpeed != null ? `${Math.round(driverSpeed)} km/h` : "--"}</p>
+            </div>
           </div>
         )}
 
@@ -225,18 +311,27 @@ export default function TrackDetailPage() {
               </button>
             ) : (
               <div className="bg-gray-900 border border-red-500/30 rounded-xl p-4 space-y-3">
-                <p className="text-sm text-white font-medium">Confirmer l&apos;annulation ?</p>
-                <p className="text-xs text-gray-400">Cette action est irreversible.</p>
+                <p className="text-sm text-white font-medium">Pourquoi annuler ?</p>
+                <select value={cancelReason} onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white">
+                  <option value="">Choisir une raison...</option>
+                  {cancelReasons.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {cancelReason === "Autre" && (
+                  <textarea value={customReason} onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="Decrivez la raison..." rows={2}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 resize-none" />
+                )}
                 {cancelError && <p className="text-xs text-red-400">{cancelError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setShowCancel(false)}
+                  <button onClick={() => { setShowCancel(false); setCancelReason(""); setCustomReason(""); }}
                     className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-lg text-sm font-medium">
                     Non, garder
                   </button>
-                  <button onClick={cancelOrder} disabled={cancelling}
+                  <button onClick={handleCancel} disabled={cancelling || !cancelReason}
                     className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                     {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                    Oui, annuler
+                    Confirmer
                   </button>
                 </div>
               </div>

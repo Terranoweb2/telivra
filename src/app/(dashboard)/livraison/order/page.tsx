@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Eye, Wifi,
-  MapPin, User, Bell, X,
+  MapPin, User, Bell, X, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
@@ -19,6 +19,22 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
   CANCELLED: { label: "Annulee", color: "bg-red-500/20 text-red-400", icon: XCircle },
 };
+
+const cancelReasons = [
+  "Changement d'avis",
+  "Delai trop long",
+  "Commande en double",
+  "Adresse incorrecte",
+  "Autre",
+];
+
+const driverCancelReasons = [
+  "Client injoignable",
+  "Adresse introuvable",
+  "Produit indisponible",
+  "Probleme de vehicule",
+  "Autre",
+];
 
 function playSound(type: "new-order" | "accepted") {
   try {
@@ -65,6 +81,9 @@ export default function CommandesPage() {
   const [loading, setLoading] = useState(true);
   const [newAlert, setNewAlert] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelFormId, setCancelFormId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Obtenir position GPS pour l'acceptation
@@ -136,10 +155,14 @@ export default function CommandesPage() {
   }
 
   async function cancelOrder(orderId: string) {
+    const reason = cancelReason === "Autre" ? (customReason.trim() || "Autre") : cancelReason;
+    if (!reason) return;
+
     setCancellingId(orderId);
     const res = await fetch(`/api/orders/${orderId}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
     });
     if (res.ok) {
       await loadData();
@@ -147,6 +170,28 @@ export default function CommandesPage() {
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
     }
     setCancellingId(null);
+    setCancelFormId(null);
+    setCancelReason("");
+    setCustomReason("");
+  }
+
+  function openCancelForm(orderId: string) {
+    if (cancelFormId === orderId) {
+      // Toggle off
+      setCancelFormId(null);
+      setCancelReason("");
+      setCustomReason("");
+    } else {
+      setCancelFormId(orderId);
+      setCancelReason("");
+      setCustomReason("");
+    }
+  }
+
+  function closeCancelForm() {
+    setCancelFormId(null);
+    setCancelReason("");
+    setCustomReason("");
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
@@ -181,6 +226,8 @@ export default function CommandesPage() {
     const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
     return minutes <= 5;
   }
+
+  const reasonsList = isDriver ? driverCancelReasons : cancelReasons;
 
   return (
     <div className="space-y-4">
@@ -258,7 +305,12 @@ export default function CommandesPage() {
                         <User className="w-4 h-4 text-green-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-white">{order.client?.name || order.guestName || "Client"}</p>
+                        <p className="text-sm font-medium text-white">
+                          {order.client?.name || order.guestName || "Client"}
+                        </p>
+                        {order.guestPhone && !order.client?.name && (
+                          <p className="text-xs text-gray-400">{order.guestPhone}</p>
+                        )}
                         <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
                         </p>
@@ -287,6 +339,9 @@ export default function CommandesPage() {
                       <p className="text-sm font-semibold text-white">
                         {isDriver ? (order.client?.name || order.guestName || `Commande #${order.id.slice(-6)}`) : `Commande #${order.id.slice(-6)}`}
                       </p>
+                      {isDriver && order.guestPhone && !order.client?.name && (
+                        <p className="text-xs text-gray-400">{order.guestPhone}</p>
+                      )}
                       <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
                     </div>
                     <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", st.color)}>
@@ -303,6 +358,9 @@ export default function CommandesPage() {
                       <p key={item.id}>{item.quantity}x {item.product?.name}</p>
                     ))}
                   </div>
+                  {order.cancelReason && (
+                    <p className="text-xs text-red-400 mt-1">Raison: {order.cancelReason}</p>
+                  )}
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
                     <p className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</p>
                     {tab === "active" && (
@@ -313,20 +371,73 @@ export default function CommandesPage() {
                   </div>
                 </Link>
 
-                {/* Bouton annuler inline */}
+                {/* Bouton annuler avec formulaire expandable */}
                 {canCancelOrder(order) && tab !== "delivered" && (
-                  <button
-                    onClick={() => cancelOrder(order.id)}
-                    disabled={cancellingId === order.id}
-                    className="w-full mt-2 py-2 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {cancellingId === order.id ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => openCancelForm(order.id)}
+                      className="w-full py-2 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                    >
                       <X className="w-3 h-3" />
+                      Annuler
+                      <ChevronDown className={cn(
+                        "w-3 h-3 transition-transform",
+                        cancelFormId === order.id && "rotate-180"
+                      )} />
+                    </button>
+
+                    {/* Formulaire d'annulation inline */}
+                    {cancelFormId === order.id && (
+                      <div className="mt-2 p-3 bg-red-950/30 border border-red-500/20 rounded-lg space-y-3 animate-in slide-in-from-top-2 duration-200">
+                        <p className="text-xs font-medium text-red-300">Raison de l&apos;annulation</p>
+
+                        <select
+                          value={cancelReason}
+                          onChange={(e) => {
+                            setCancelReason(e.target.value);
+                            if (e.target.value !== "Autre") setCustomReason("");
+                          }}
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-red-500 appearance-none"
+                        >
+                          <option value="" disabled>Selectionnez une raison...</option>
+                          {reasonsList.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+
+                        {cancelReason === "Autre" && (
+                          <textarea
+                            value={customReason}
+                            onChange={(e) => setCustomReason(e.target.value)}
+                            placeholder="Precisez la raison..."
+                            rows={2}
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500 resize-none"
+                          />
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => cancelOrder(order.id)}
+                            disabled={!cancelReason || cancellingId === order.id}
+                            className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            {cancellingId === order.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <XCircle className="w-3 h-3" />
+                            )}
+                            Confirmer l&apos;annulation
+                          </button>
+                          <button
+                            onClick={closeCancelForm}
+                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            Retour
+                          </button>
+                        </div>
+                      </div>
                     )}
-                    Annuler
-                  </button>
+                  </div>
                 )}
               </div>
             );
