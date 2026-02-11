@@ -58,7 +58,7 @@ export default function DriverPage() {
   async function loadDataStatic() {
     const [pending, orders] = await Promise.all([
       fetch("/api/orders/pending").then((r) => r.json()),
-      fetch("/api/orders").then((r) => r.json()),
+      fetch("/api/orders?as=driver").then((r) => r.json()),
     ]);
     setPendingOrders(Array.isArray(pending) ? pending : []);
     const allWithDelivery = Array.isArray(orders) ? orders.filter((o: any) => o.delivery) : [];

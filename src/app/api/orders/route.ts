@@ -9,9 +9,11 @@ export async function GET(request: NextRequest) {
   const role = (session.user as any).role;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const asDriver = searchParams.get("as") === "driver";
 
   let where: any = {};
-  if (role === "DRIVER") {
+  if (asDriver || role === "DRIVER") {
+    // Mode livreur: afficher les commandes assignees a ce livreur
     where = { delivery: { driverId: userId } };
   } else {
     where = { clientId: userId };
@@ -74,7 +76,6 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Notifier les livreurs en temps reel
   const io = (global as any).io;
   if (io) {
     io.to("drivers").emit("order:new", {
