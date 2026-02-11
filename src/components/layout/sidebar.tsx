@@ -16,18 +16,26 @@ import {
   X,
   ShoppingBag,
   ClipboardList,
+  Users,
+  Truck,
+  Package,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
   { label: "Carte", href: "/map", icon: Map, roles: null },
-  { label: "Appareils", href: "/devices", icon: Cpu, roles: ["ADMIN", "MANAGER", "VIEWER"] },
-  { label: "Trajets", href: "/trips", icon: Route, roles: ["ADMIN", "MANAGER", "VIEWER"] },
-  { label: "Geofences", href: "/geofences", icon: Shield, roles: ["ADMIN", "MANAGER", "VIEWER"] },
-  { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER"] },
   { label: "Commander", href: "/livraison", icon: ShoppingBag, roles: ["ADMIN", "CLIENT"] },
   { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER"] },
-  { label: "Parametres", href: "/settings", icon: Settings, roles: null },
+  { label: "Trajets", href: "/trips", icon: Route, roles: ["ADMIN", "DRIVER"] },
+  { label: "Appareils", href: "/devices", icon: Cpu, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+];
+
+const adminItems = [
+  { label: "Utilisateurs", href: "/users", icon: Users },
+  { label: "Livreurs", href: "/drivers", icon: Truck },
+  { label: "Produits", href: "/products", icon: Package },
+  { label: "Geofences", href: "/geofences", icon: Shield },
 ];
 
 interface SidebarProps {
@@ -44,21 +52,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     (item) => item.roles === null || item.roles.includes(role)
   );
 
+  const isAdmin = role === "ADMIN";
+
   return (
     <>
       {open && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={onClose} />
       )}
 
-      <aside
-        className={cn(
-          "fixed top-0 left-0 z-50 h-screen w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 ease-in-out lg:sticky lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
+      <aside className={cn(
+        "fixed top-0 left-0 z-50 h-screen w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 ease-in-out lg:sticky lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             <div className="bg-blue-600 p-2 rounded-lg">
@@ -66,10 +71,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <span className="text-lg font-bold text-white">Terrano GPS</span>
           </Link>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg lg:hidden"
-          >
+          <button onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg lg:hidden">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -80,22 +83,50 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               ? pathname === "/livraison"
               : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
+              <Link key={item.href} href={item.href} onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-blue-600/20 text-blue-400"
-                    : "text-gray-400 hover:text-white hover:bg-gray-800"
-                )}
-              >
+                  isActive ? "bg-blue-600/20 text-blue-400" : "text-gray-400 hover:text-white hover:bg-gray-800"
+                )}>
                 <item.icon className="w-5 h-5 shrink-0" />
                 {item.label}
               </Link>
             );
           })}
+
+          {/* Section Admin */}
+          {isAdmin && (
+            <>
+              <div className="pt-4 pb-2 px-3">
+                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Administration</p>
+              </div>
+              {adminItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <Link key={item.href} href={item.href} onClick={onClose}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActive ? "bg-blue-600/20 text-blue-400" : "text-gray-400 hover:text-white hover:bg-gray-800"
+                    )}>
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {/* Parametres */}
+          <div className="pt-4">
+            <Link href="/settings" onClick={onClose}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                pathname === "/settings" ? "bg-blue-600/20 text-blue-400" : "text-gray-400 hover:text-white hover:bg-gray-800"
+              )}>
+              <Settings className="w-5 h-5 shrink-0" />
+              Parametres
+            </Link>
+          </div>
         </nav>
       </aside>
     </>

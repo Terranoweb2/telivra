@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -11,11 +11,17 @@ import {
   Bell,
   Cpu,
   Map,
-  MoreHorizontal,
+  Route,
   Settings,
+  LogOut,
+  Users,
+  Truck,
+  Package,
+  Shield,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
+// Items principaux par role (4 items + avatar = 5)
 const mobileItems: Record<string, { label: string; href: string; icon: any; accent?: boolean }[]> = {
   CLIENT: [
     { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
@@ -26,39 +32,56 @@ const mobileItems: Record<string, { label: string; href: string; icon: any; acce
   DRIVER: [
     { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
     { label: "Carte", href: "/map", icon: Map },
-    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
+    { label: "Commandes", href: "/livraison/order", icon: ClipboardList, accent: true },
+    { label: "Trajets", href: "/trips", icon: Route },
   ],
   DEFAULT: [
-    { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
     { label: "Carte", href: "/map", icon: Map },
     { label: "Appareils", href: "/devices", icon: Cpu },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, accent: true },
     { label: "Alertes", href: "/alerts", icon: Bell },
-    { label: "Plus", href: "#more", icon: MoreHorizontal },
   ],
 };
 
-const moreItems = [
-  { label: "Trajets", href: "/trips", icon: Map },
-  { label: "Geofences", href: "/geofences", icon: Map },
-  { label: "Commander", href: "/livraison", icon: ShoppingBag },
-  { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
-  { label: "Parametres", href: "/settings", icon: Settings },
-];
+// Items secondaires dans le dropdown avatar par role
+const dropdownItems: Record<string, { label: string; href: string; icon: any }[]> = {
+  CLIENT: [
+    { label: "Parametres", href: "/settings", icon: Settings },
+  ],
+  DRIVER: [
+    { label: "Parametres", href: "/settings", icon: Settings },
+  ],
+  DEFAULT: [
+    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
+    { label: "Commander", href: "/livraison", icon: ShoppingBag },
+    { label: "Trajets", href: "/trips", icon: Route },
+    { label: "Geofences", href: "/geofences", icon: Shield },
+    { label: "Utilisateurs", href: "/users", icon: Users },
+    { label: "Livreurs", href: "/drivers", icon: Truck },
+    { label: "Produits", href: "/products", icon: Package },
+    { label: "Parametres", href: "/settings", icon: Settings },
+  ],
+};
 
 export function MobileNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = (session?.user as any)?.role || "VIEWER";
-  const [showMore, setShowMore] = useState(false);
+  const [showAvatar, setShowAvatar] = useState(false);
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const userName = session?.user?.name || "Utilisateur";
+  const userEmail = session?.user?.email || "";
+  const initials = userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 
   useEffect(() => {
     function handleScroll() {
       const currentY = window.scrollY;
       if (currentY > lastScrollY.current && currentY > 60) {
         setVisible(false);
-        setShowMore(false);
+        setShowAvatar(false);
       } else {
         setVisible(true);
       }
@@ -68,36 +91,80 @@ export function MobileNav() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowAvatar(false);
+      }
+    }
+    if (showAvatar) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showAvatar]);
+
   const items = mobileItems[role] || mobileItems.DEFAULT;
+  const extraItems = dropdownItems[role] || dropdownItems.DEFAULT;
 
   return (
     <>
-      {showMore && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowMore(false)} />
-          <div className="fixed bottom-[4.5rem] left-3 right-3 z-50 bg-gray-900 border border-gray-800 rounded-2xl p-2 lg:hidden shadow-2xl shadow-black/40">
-            {moreItems.map((item) => {
+      {/* Overlay */}
+      {showAvatar && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowAvatar(false)} />
+      )}
+
+      {/* Dropdown avatar (ouvre vers le haut) */}
+      {showAvatar && (
+        <div ref={dropdownRef} className="fixed bottom-[4.5rem] right-2 z-50 w-64 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden lg:hidden">
+          {/* Info utilisateur */}
+          <div className="px-4 py-3 border-b border-gray-800/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{userName}</p>
+                <p className="text-xs text-gray-500 truncate">{userEmail}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Liens secondaires */}
+          <div className="p-1.5 max-h-64 overflow-y-auto">
+            {extraItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setShowMore(false)}
+                  onClick={() => setShowAvatar(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                    isActive ? "bg-blue-600/20 text-blue-400" : "text-gray-400 active:bg-gray-800"
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                    isActive ? "bg-blue-600/20 text-blue-400" : "text-gray-300 hover:text-white active:bg-gray-800"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4" />
                   {item.label}
                 </Link>
               );
             })}
           </div>
-        </>
+
+          {/* Deconnexion */}
+          <div className="p-1.5 border-t border-gray-800/50">
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full"
+            >
+              <LogOut className="w-4 h-4" />
+              Deconnexion
+            </button>
+          </div>
+        </div>
       )}
 
+      {/* Barre de navigation */}
       <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-30 lg:hidden safe-bottom transition-transform duration-300",
         visible ? "translate-y-0" : "translate-y-full"
@@ -106,38 +173,17 @@ export function MobileNav() {
           <div className="flex items-center justify-around h-[4.5rem] px-2">
             {items.map((item) => {
               const Icon = item.icon;
-              const isMore = item.href === "#more";
-              const isActive = isMore
-                ? showMore
-                : item.href === "/livraison"
-                  ? pathname === "/livraison"
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = item.href === "/livraison"
+                ? pathname === "/livraison"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
 
-              if (isMore) {
-                return (
-                  <button
-                    key="more"
-                    onClick={() => setShowMore(!showMore)}
-                    className="flex flex-col items-center justify-center flex-1 py-1 group"
-                  >
-                    <div className={cn(
-                      "p-2 rounded-2xl transition-all",
-                      showMore ? "bg-blue-600/20" : ""
-                    )}>
-                      <Icon className={cn("w-5 h-5 transition-colors", showMore ? "text-blue-400" : "text-gray-500 group-active:text-gray-300")} />
-                    </div>
-                    <span className={cn("text-[10px] mt-0.5 font-medium", showMore ? "text-blue-400" : "text-gray-500")}>{item.label}</span>
-                  </button>
-                );
-              }
-
-              // Bouton accent (Commander)
+              // Bouton accent (central)
               if (item.accent) {
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setShowMore(false)}
+                    onClick={() => setShowAvatar(false)}
                     className="flex flex-col items-center justify-center flex-1 py-1 group"
                   >
                     <div className={cn(
@@ -157,7 +203,7 @@ export function MobileNav() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setShowMore(false)}
+                  onClick={() => setShowAvatar(false)}
                   className="flex flex-col items-center justify-center flex-1 py-1 group"
                 >
                   <div className={cn(
@@ -170,6 +216,20 @@ export function MobileNav() {
                 </Link>
               );
             })}
+
+            {/* Avatar */}
+            <button
+              onClick={() => setShowAvatar(!showAvatar)}
+              className="flex flex-col items-center justify-center flex-1 py-1 group"
+            >
+              <div className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                showAvatar ? "bg-blue-600 text-white ring-2 ring-blue-400/30" : "bg-gray-700 text-gray-300 group-active:bg-gray-600"
+              )}>
+                {initials}
+              </div>
+              <span className={cn("text-[10px] mt-0.5 font-medium", showAvatar ? "text-blue-400" : "text-gray-500")}>Profil</span>
+            </button>
           </div>
         </div>
       </nav>
