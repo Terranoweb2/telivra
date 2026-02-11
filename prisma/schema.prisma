@@ -1,8 +1,259 @@
+datasource db {
+  provider = "postgresql"
+}
+
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
 }
 
-datasource db {
-  provider = "postgresql"
+// ========== AUTHENTIFICATION ==========
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  hashedPassword String
+  role           UserRole  @default(VIEWER)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  devices   Device[]
+  alerts    Alert[]
+  trips     Trip[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+// ========== APPAREILS DE TRACKING ==========
+
+model Device {
+  id           String       @id @default(cuid())
+  name         String
+  serialNumber String       @unique
+  type         DeviceType
+  status       DeviceStatus @default(INACTIVE)
+  lastSeen     DateTime?
+  batteryLevel Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  vehicle   Vehicle?
+  person    Person?
+  asset     Asset?
+
+  positions Position[]
+  trips     Trip[]
+  alerts    Alert[]
+
+  @@index([userId])
+  @@index([type, status])
+  @@map("devices")
+}
+
+enum DeviceType {
+  VEHICLE
+  PERSON
+  ASSET
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  LOST
+}
+
+// ========== ENTITES TRACKEES ==========
+
+model Vehicle {
+  id           String   @id @default(cuid())
+  brand        String
+  model        String
+  year         Int?
+  licensePlate String   @unique
+  color        String?
+  fuelType     FuelType @default(GASOLINE)
+  odometerKm   Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deviceId String @unique
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("vehicles")
+}
+
+enum FuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String?
+  email     String?
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deviceId String @unique
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("persons")
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  description String?
+  value       Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deviceId String @unique
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("assets")
+}
+
+// ========== POSITIONS GPS ==========
+
+model Position {
+  id        String   @id @default(cuid())
+  latitude  Float
+  longitude Float
+  altitude  Float?
+  speed     Float?
+  heading   Float?
+  accuracy  Float?
+  timestamp DateTime @default(now())
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  tripId String?
+  trip   Trip?  @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId, timestamp])
+  @@index([timestamp])
+  @@map("positions")
+}
+
+// ========== TRAJETS ==========
+
+model Trip {
+  id              String     @id @default(cuid())
+  name            String?
+  status          TripStatus @default(IN_PROGRESS)
+  startTime       DateTime   @default(now())
+  endTime         DateTime?
+  distanceKm      Float      @default(0)
+  durationMinutes Int        @default(0)
+  maxSpeedKmh     Float      @default(0)
+  avgSpeedKmh     Float      @default(0)
+  startAddress    String?
+  endAddress      String?
+  createdAt       DateTime   @default(now())
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  positions Position[]
+
+  @@index([deviceId, startTime])
+  @@index([userId])
+  @@map("trips")
+}
+
+enum TripStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ========== GEOFENCING ==========
+
+model Geofence {
+  id           String       @id @default(cuid())
+  name         String
+  description  String?
+  type         GeofenceType
+  centerLat    Float?
+  centerLng    Float?
+  radiusMeters Float?
+  coordinates  Json?
+  color        String       @default("#3B82F6")
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  alerts Alert[]
+
+  @@map("geofences")
+}
+
+enum GeofenceType {
+  CIRCLE
+  POLYGON
+}
+
+// ========== ALERTES ==========
+
+model Alert {
+  id        String        @id @default(cuid())
+  type      AlertType
+  severity  AlertSeverity @default(INFO)
+  title     String
+  message   String
+  isRead    Boolean       @default(false)
+  data      Json?
+  createdAt DateTime      @default(now())
+
+  deviceId   String?
+  device     Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  geofenceId String?
+  geofence   Geofence? @relation(fields: [geofenceId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("alerts")
+}
+
+enum AlertType {
+  GEOFENCE_ENTER
+  GEOFENCE_EXIT
+  SPEED_LIMIT
+  LOW_BATTERY
+  DEVICE_OFFLINE
+  SOS
+  MAINTENANCE
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }
