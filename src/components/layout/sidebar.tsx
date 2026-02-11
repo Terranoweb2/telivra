@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -10,7 +11,6 @@ import {
   Route,
   Shield,
   Bell,
-  Navigation,
   Settings,
   MapPin,
   X,
@@ -19,16 +19,15 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Carte", href: "/map", icon: Map },
-  { label: "Appareils", href: "/devices", icon: Cpu },
-  { label: "Trajets", href: "/trips", icon: Route },
-  { label: "Geofences", href: "/geofences", icon: Shield },
-  { label: "Alertes", href: "/alerts", icon: Bell },
-  { label: "Navigation", href: "/navigate", icon: Navigation },
-  { label: "Livraison", href: "/livraison", icon: ShoppingBag },
-  { label: "Espace Livreur", href: "/livraison/driver", icon: Truck },
-  { label: "Parametres", href: "/settings", icon: Settings },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
+  { label: "Carte", href: "/map", icon: Map, roles: null },
+  { label: "Appareils", href: "/devices", icon: Cpu, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Trajets", href: "/trips", icon: Route, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Geofences", href: "/geofences", icon: Shield, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Livraison", href: "/livraison", icon: ShoppingBag, roles: ["ADMIN", "MANAGER", "VIEWER", "CLIENT"] },
+  { label: "Espace Livreur", href: "/livraison/driver", icon: Truck, roles: ["ADMIN", "DRIVER"] },
+  { label: "Parametres", href: "/settings", icon: Settings, roles: null },
 ];
 
 interface SidebarProps {
@@ -38,6 +37,12 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role || "VIEWER";
+
+  const filteredItems = navItems.filter(
+    (item) => item.roles === null || item.roles.includes(role)
+  );
 
   return (
     <>
@@ -70,7 +75,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
+          {filteredItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link

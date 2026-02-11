@@ -3,7 +3,8 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -71,11 +72,18 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
+          className="w-full py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors text-sm sm:text-base flex items-center justify-center gap-2"
         >
-          {loading ? "Connexion..." : "Se connecter"}
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Connexion...</> : "Se connecter"}
         </button>
       </form>
+
+      <p className="text-center text-gray-500 text-sm mt-5">
+        Pas encore de compte ?{" "}
+        <Link href="/register" className="text-blue-400 hover:text-blue-300">
+          S'inscrire
+        </Link>
+      </p>
     </div>
   );
 }
