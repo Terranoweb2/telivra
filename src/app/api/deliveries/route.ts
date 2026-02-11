@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
-  const { orderId } = await request.json();
+  const { orderId, latitude, longitude } = await request.json();
   if (!orderId) return NextResponse.json({ error: "orderId requis" }, { status: 400 });
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { delivery: true } });
@@ -17,28 +17,47 @@ export async function POST(request: NextRequest) {
       orderId,
       driverId: (session.user as any).id,
       status: "PICKING_UP",
+      currentLat: latitude || null,
+      currentLng: longitude || null,
     },
   });
 
   await prisma.order.update({ where: { id: orderId }, data: { status: "ACCEPTED" } });
 
+  // Creer la premiere position si disponible
+  if (latitude && longitude) {
+    await prisma.deliveryPosition.create({
+      data: { deliveryId: delivery.id, latitude, longitude, speed: 0 },
+    });
+  }
+
   const io = (global as any).io;
   if (io) {
     const driverName = (session.user as any).name;
-    // Notifier le client qui suit cette commande
     io.to(`order:${orderId}`).emit("delivery:accepted", {
       deliveryId: delivery.id,
       driverName,
+      latitude,
+      longitude,
     });
-    // Notifier la liste de commandes du client
     io.to(`client:${order.clientId}`).emit("delivery:accepted", {
       orderId,
       deliveryId: delivery.id,
       driverName,
       status: "ACCEPTED",
     });
-    // Retirer la commande de la liste des livreurs
     io.to("drivers").emit("order:taken", { orderId });
+
+    // Envoyer la position initiale du livreur au client
+    if (latitude && longitude) {
+      io.to(`order:${orderId}`).emit("delivery:position", {
+        deliveryId: delivery.id,
+        latitude,
+        longitude,
+        speed: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   return NextResponse.json(delivery, { status: 201 });

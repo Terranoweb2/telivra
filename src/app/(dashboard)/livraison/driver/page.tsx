@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2, CheckCircle, Truck, MapPin, Clock, User, Package, Wifi, Bell, ChevronRight,
@@ -19,6 +19,12 @@ export default function DriverPage() {
   const [loading, setLoading] = useState(true);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
 
+  // Position GPS du livreur (tracking en arriere-plan)
+  const myPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const watchRef = useRef<number | null>(null);
+  const sendRef = useRef<any>(null);
+  const activeIdsRef = useRef<string[]>([]);
+
   useDeliverySocket({
     asDriver: true,
     onNewOrder: useCallback((data: any) => {
@@ -36,6 +42,17 @@ export default function DriverPage() {
 
   useEffect(() => {
     loadDataStatic();
+
+    // Obtenir la position GPS initiale
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          myPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        },
+        () => {},
+        { enableHighAccuracy: true }
+      );
+    }
   }, []);
 
   async function loadDataStatic() {
@@ -44,18 +61,83 @@ export default function DriverPage() {
       fetch("/api/orders").then((r) => r.json()),
     ]);
     setPendingOrders(Array.isArray(pending) ? pending : []);
-    setMyDeliveries(Array.isArray(orders) ? orders.filter((o: any) => o.delivery) : []);
+    const allWithDelivery = Array.isArray(orders) ? orders.filter((o: any) => o.delivery) : [];
+    setMyDeliveries(allWithDelivery);
+
+    // Mettre a jour la liste des livraisons actives pour le tracking
+    const activeIds = allWithDelivery
+      .filter((o: any) => ["PICKING_UP", "DELIVERING"].includes(o.delivery?.status))
+      .map((o: any) => o.delivery.id);
+    activeIdsRef.current = activeIds;
+
+    // Demarrer/arreter le tracking selon les livraisons actives
+    if (activeIds.length > 0) {
+      startBackgroundTracking();
+    } else {
+      stopBackgroundTracking();
+    }
+
     setLoading(false);
   }
+
+  function startBackgroundTracking() {
+    if (watchRef.current !== null) return; // Deja en cours
+
+    if (!navigator.geolocation) return;
+
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        myPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000 }
+    );
+
+    sendRef.current = setInterval(async () => {
+      const pos = myPosRef.current;
+      const ids = activeIdsRef.current;
+      if (!pos || ids.length === 0) return;
+
+      // Envoyer la position pour chaque livraison active
+      await Promise.all(
+        ids.map((deliveryId) =>
+          fetch(`/api/deliveries/${deliveryId}/position`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ latitude: pos.lat, longitude: pos.lng, speed: 0 }),
+          }).catch(() => {})
+        )
+      );
+    }, 8000);
+  }
+
+  function stopBackgroundTracking() {
+    if (watchRef.current !== null) {
+      navigator.geolocation.clearWatch(watchRef.current);
+      watchRef.current = null;
+    }
+    if (sendRef.current) {
+      clearInterval(sendRef.current);
+      sendRef.current = null;
+    }
+  }
+
+  // Cleanup au demontage
+  useEffect(() => {
+    return () => stopBackgroundTracking();
+  }, []);
 
   async function acceptOrder(orderId: string) {
     const res = await fetch("/api/deliveries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId }),
+      body: JSON.stringify({
+        orderId,
+        latitude: myPosRef.current?.lat,
+        longitude: myPosRef.current?.lng,
+      }),
     });
     if (res.ok) {
-      // Retirer de la liste pending et recharger
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
       await loadDataStatic();
     }
