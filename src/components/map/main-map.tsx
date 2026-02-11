@@ -8,8 +8,6 @@ import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 
 // === ICONES ===
-
-// Position utilisateur (point bleu pulse)
 const myPosIcon = L.divIcon({
   className: "my-pos-marker",
   html: `<div style="position:relative;">
@@ -20,7 +18,6 @@ const myPosIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
-// Destination (pin rouge)
 const destIcon = L.divIcon({
   className: "dest-marker",
   html: `<div style="position:relative;width:30px;height:42px;">
@@ -32,7 +29,6 @@ const destIcon = L.divIcon({
   popupAnchor: [0, -42],
 });
 
-// Marqueur manuel
 const manualIcon = L.divIcon({
   className: "manual-marker",
   html: `<div style="width:28px;height:28px;border-radius:50%;background:#F59E0B;border:3px solid white;box-shadow:0 2px 8px rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;">
@@ -43,7 +39,6 @@ const manualIcon = L.divIcon({
   popupAnchor: [0, -16],
 });
 
-// Device markers
 const createDeviceIcon = (color: string) =>
   L.divIcon({
     className: "device-marker",
@@ -61,33 +56,35 @@ const statusLabels: Record<string, string> = { ACTIVE: "Actif", INACTIVE: "Inact
 const globalStyles = `
 @keyframes gps-pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
 .leaflet-routing-container { display: none !important; }
+.setting-pos-cursor { cursor: crosshair !important; }
 `;
 
-// === TILES ===
 const tiles = {
   street: { url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attr: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>' },
   satellite: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: '&copy; Esri' },
 };
 
 // === SUB-COMPONENTS ===
-
 function MapController({ myPos, isNavigating }: { myPos: [number, number] | null; isNavigating: boolean }) {
   const map = useMap();
   const init = useRef(false);
-
   useEffect(() => {
-    if (myPos && !init.current) {
-      map.setView(myPos, 15);
-      init.current = true;
-    }
+    if (myPos && !init.current) { map.setView(myPos, 15); init.current = true; }
   }, [myPos, map]);
-
   useEffect(() => {
-    if (isNavigating && myPos) {
-      map.setView(myPos, 17, { animate: true, duration: 0.5 });
-    }
+    if (isNavigating && myPos) map.setView(myPos, 17, { animate: true, duration: 0.5 });
   }, [isNavigating, myPos, map]);
+  return null;
+}
 
+function CursorMode({ settingPos }: { settingPos: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    if (settingPos) el.classList.add("setting-pos-cursor");
+    else el.classList.remove("setting-pos-cursor");
+    return () => el.classList.remove("setting-pos-cursor");
+  }, [settingPos, map]);
   return null;
 }
 
@@ -104,37 +101,28 @@ function RoutingEngine({ from, to, onRouteFound }: {
 }) {
   const map = useMap();
   const ref = useRef<any>(null);
-
   useEffect(() => {
     if (ref.current) { try { map.removeControl(ref.current); } catch {} ref.current = null; }
-
     const ctrl = (L as any).Routing.control({
       waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
       routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: false,
       createMarker: () => null,
       lineOptions: { styles: [{ color: "#4285F4", weight: 6, opacity: 0.85 }], extendToWaypoints: true, missingRouteTolerance: 0 },
     });
-
     ctrl.on("routesfound", (e: any) => {
       const r = e.routes[0];
       onRouteFound({
-        distance: r.summary.totalDistance,
-        time: r.summary.totalTime,
+        distance: r.summary.totalDistance, time: r.summary.totalTime,
         steps: (r.instructions || []).map((i: any) => ({ instruction: i.text, distance: i.distance, time: i.time })),
       });
     });
-
-    ctrl.addTo(map);
-    ref.current = ctrl;
-
+    ctrl.addTo(map); ref.current = ctrl;
     return () => { if (ref.current) { try { map.removeControl(ref.current); } catch {} ref.current = null; } };
   }, [from, to, map, onRouteFound]);
-
   return null;
 }
 
-// === MAIN MAP ===
-
+// === TYPES ===
 interface DeviceWithPosition {
   id: string; name: string; type: string; status: string; batteryLevel: number | null;
   vehicle?: { brand: string; model: string; licensePlate: string } | null;
@@ -157,11 +145,13 @@ interface Props {
   geofences: GeofenceData[];
   isNavigating: boolean;
   tileLayer: "street" | "satellite";
+  accuracy: number | null;
+  settingPos: boolean;
   onMapClick: (lat: number, lng: number) => void;
   onRouteFound: (info: { distance: number; time: number; steps: RouteStep[] }) => void;
 }
 
-export default function MainMap({ myPos, devices, destination, manualMarker, geofences, isNavigating, tileLayer, onMapClick, onRouteFound }: Props) {
+export default function MainMap({ myPos, devices, destination, manualMarker, geofences, isNavigating, tileLayer, accuracy, settingPos, onMapClick, onRouteFound }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
@@ -175,12 +165,25 @@ export default function MainMap({ myPos, devices, destination, manualMarker, geo
       <MapContainer center={center} zoom={15} className="h-full w-full" zoomControl={false} style={{ background: "#1a1a2e" }}>
         <TileLayer attribution={tile.attr} url={tile.url} />
         <MapController myPos={myPos} isNavigating={isNavigating} />
+        <CursorMode settingPos={settingPos} />
         <ClickHandler onClick={onMapClick} />
+
+        {/* Cercle de precision */}
+        {myPos && accuracy && accuracy > 10 && (
+          <Circle center={myPos} radius={accuracy}
+            pathOptions={{ color: "#4285F4", fillColor: "#4285F4", fillOpacity: 0.08, weight: 1, dashArray: "4,4" }} />
+        )}
 
         {/* Position utilisateur */}
         {myPos && (
           <Marker position={myPos} icon={myPosIcon} zIndexOffset={1000}>
-            <Popup><div className="text-sm"><p className="font-semibold text-blue-600">Ma position</p><p className="text-gray-500 text-xs">{myPos[0].toFixed(6)}, {myPos[1].toFixed(6)}</p></div></Popup>
+            <Popup>
+              <div className="text-sm">
+                <p className="font-semibold text-blue-600">Ma position</p>
+                <p className="text-gray-500 text-xs">{myPos[0].toFixed(6)}, {myPos[1].toFixed(6)}</p>
+                {accuracy !== null && accuracy > 0 && <p className="text-gray-400 text-xs">Precision: ±{accuracy}m</p>}
+              </div>
+            </Popup>
           </Marker>
         )}
 
