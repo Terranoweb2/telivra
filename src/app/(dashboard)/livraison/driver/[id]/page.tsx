@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  Loader2, CheckCircle, Truck, MapPin, Clock, User, Navigation, Ruler, Gauge, ArrowLeft,
+  Loader2, CheckCircle, Truck, MapPin, Clock, User, Navigation, Ruler, Gauge, ArrowLeft, X, XCircle,
 } from "lucide-react";
 
 const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
@@ -35,6 +35,9 @@ export default function DriverDeliveryDetail() {
   const [speed, setSpeed] = useState(0);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const [routeTime, setRouteTime] = useState<number | null>(null);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const watchRef = useRef<number | null>(null);
   const sendRef = useRef<any>(null);
@@ -42,7 +45,6 @@ export default function DriverDeliveryDetail() {
   const speedRef = useRef(0);
   const routeThrottle = useRef<any>(null);
 
-  // Charger les donnees de la livraison
   useEffect(() => {
     fetchDelivery();
   }, [id]);
@@ -51,19 +53,18 @@ export default function DriverDeliveryDetail() {
     try {
       const res = await fetch(`/api/deliveries/${id}`);
       if (!res.ok) {
-        router.push("/livraison/driver");
+        router.push("/livraison/order");
         return;
       }
       const data = await res.json();
       setDelivery(data);
     } catch {
-      router.push("/livraison/driver");
+      router.push("/livraison/order");
     } finally {
       setLoading(false);
     }
   }
 
-  // Calcul de route OSRM
   const calcRoute = useCallback(
     (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
       if (routeThrottle.current) clearTimeout(routeThrottle.current);
@@ -85,11 +86,10 @@ export default function DriverDeliveryDetail() {
 
   // GPS tracking
   useEffect(() => {
-    if (!delivery || delivery.status === "DELIVERED") return;
+    if (!delivery || delivery.status === "DELIVERED" || delivery.status === "CANCELLED") return;
 
     if (!navigator.geolocation) return;
 
-    // Obtenir position initiale
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -100,7 +100,6 @@ export default function DriverDeliveryDetail() {
       { enableHighAccuracy: true }
     );
 
-    // Suivre la position
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -114,7 +113,6 @@ export default function DriverDeliveryDetail() {
       { enableHighAccuracy: true, maximumAge: 2000 }
     );
 
-    // Envoyer position toutes les 5s
     sendRef.current = setInterval(async () => {
       const pos = myPosRef.current;
       if (!pos) return;
@@ -137,13 +135,11 @@ export default function DriverDeliveryDetail() {
     };
   }, [delivery?.id, delivery?.status]);
 
-  // Calcul route quand position change
   useEffect(() => {
     if (!myPos || !delivery?.order) return;
     calcRoute(myPos, { lat: delivery.order.deliveryLat, lng: delivery.order.deliveryLng });
   }, [myPos?.lat, myPos?.lng, delivery?.order?.id]);
 
-  // Changer le statut
   async function updateStatus(status: string) {
     const estMin = routeTime ? Math.round(routeTime / 60) : undefined;
     await fetch(`/api/deliveries/${id}`, {
@@ -158,10 +154,35 @@ export default function DriverDeliveryDetail() {
     });
 
     if (status === "DELIVERED") {
-      router.push("/livraison/driver");
+      router.push("/livraison/order");
     } else {
       await fetchDelivery();
     }
+  }
+
+  // Annulation livreur - peut annuler a tout moment sauf DELIVERED
+  function canCancel() {
+    if (!delivery) return false;
+    if (delivery.status === "DELIVERED" || delivery.status === "CANCELLED") return false;
+    return true;
+  }
+
+  async function cancelOrder() {
+    if (!delivery?.order?.id) return;
+    setCancelling(true);
+    setCancelError("");
+    const res = await fetch(`/api/orders/${delivery.order.id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.ok) {
+      setShowCancel(false);
+      router.push("/livraison/order");
+    } else {
+      const data = await res.json();
+      setCancelError(data.error || "Erreur lors de l'annulation");
+    }
+    setCancelling(false);
   }
 
   if (loading) {
@@ -184,11 +205,11 @@ export default function DriverDeliveryDetail() {
     <div className="space-y-3">
       {/* Header avec retour */}
       <button
-        onClick={() => router.push("/livraison/driver")}
+        onClick={() => router.push("/livraison/order")}
         className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
       >
         <ArrowLeft className="w-4 h-4" />
-        Retour aux livraisons
+        Retour aux commandes
       </button>
 
       {/* Info livraison */}
@@ -208,7 +229,7 @@ export default function DriverDeliveryDetail() {
             <User className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-white font-medium">{order?.client?.name}</p>
+            <p className="text-sm text-white font-medium">{order?.client?.name || order?.guestName || "Client"}</p>
             <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
               <MapPin className="w-3 h-3" /> {order?.deliveryAddress}
             </p>
@@ -274,6 +295,35 @@ export default function DriverDeliveryDetail() {
           </button>
         )}
       </div>
+
+      {/* Bouton annuler livreur */}
+      {canCancel() && (
+        <div>
+          {!showCancel ? (
+            <button onClick={() => setShowCancel(true)}
+              className="w-full py-3 bg-red-600/10 border border-red-500/30 hover:bg-red-600/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+              <X className="w-4 h-4" /> Annuler la livraison
+            </button>
+          ) : (
+            <div className="bg-gray-900 border border-red-500/30 rounded-xl p-4 space-y-3">
+              <p className="text-sm text-white font-medium">Confirmer l&apos;annulation ?</p>
+              <p className="text-xs text-gray-400">La commande sera annulee et le client sera notifie.</p>
+              {cancelError && <p className="text-xs text-red-400">{cancelError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => setShowCancel(false)}
+                  className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-lg text-sm font-medium">
+                  Non, continuer
+                </button>
+                <button onClick={cancelOrder} disabled={cancelling}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+                  {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  Oui, annuler
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Eye, Wifi,
-  MapPin, User, Bell,
+  MapPin, User, Bell, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
@@ -64,6 +64,7 @@ export default function CommandesPage() {
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newAlert, setNewAlert] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Obtenir position GPS pour l'acceptation
@@ -134,6 +135,20 @@ export default function CommandesPage() {
     }
   }
 
+  async function cancelOrder(orderId: string) {
+    setCancellingId(orderId);
+    const res = await fetch(`/api/orders/${orderId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.ok) {
+      await loadData();
+      // Retirer aussi des pending si present
+      setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+    }
+    setCancellingId(null);
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
 
   // Filtrage par onglet
@@ -156,6 +171,16 @@ export default function CommandesPage() {
   ];
 
   const currentList = tab === "pending" ? pendingList : tab === "active" ? activeList : deliveredList;
+
+  // Peut annuler? (client: PENDING ou 5min apres acceptation; livreur: tout sauf DELIVERED)
+  function canCancelOrder(order: any) {
+    if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
+    if (isDriver) return true; // livreur peut annuler a tout moment
+    if (order.status === "PENDING") return true;
+    const acceptedAt = order.delivery?.startTime || order.updatedAt;
+    const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
+    return minutes <= 5;
+  }
 
   return (
     <div className="space-y-4">
@@ -208,7 +233,7 @@ export default function CommandesPage() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
           <ShoppingBag className="w-12 h-12 text-gray-700 mx-auto mb-3" />
           <p className="text-gray-400 text-sm">
-            {tab === "pending" ? (isDriver ? "Aucune commande en attente" : "Aucune commande en attente") :
+            {tab === "pending" ? "Aucune commande en attente" :
              tab === "active" ? "Aucune commande en cours" : "Aucune commande livree"}
           </p>
         </div>
@@ -219,7 +244,6 @@ export default function CommandesPage() {
             const st = statusConfig[orderStatus] || statusConfig.PENDING;
             const Icon = st.icon;
 
-            // Lien de destination
             const href = isDriver && order.delivery
               ? `/livraison/driver/${order.delivery.id}`
               : `/livraison/order/${order.id}`;
@@ -234,7 +258,7 @@ export default function CommandesPage() {
                         <User className="w-4 h-4 text-green-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-white">{order.client?.name}</p>
+                        <p className="text-sm font-medium text-white">{order.client?.name || order.guestName || "Client"}</p>
                         <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
                         </p>
@@ -256,38 +280,55 @@ export default function CommandesPage() {
             }
 
             return (
-              <Link key={order.id} href={href}
-                className="block bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      {isDriver ? (order.client?.name || `Commande #${order.id.slice(-6)}`) : `Commande #${order.id.slice(-6)}`}
-                    </p>
-                    <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
-                  </div>
-                  <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", st.color)}>
-                    <Icon className="w-3 h-3" /> {st.label}
-                  </span>
-                </div>
-                {isDriver && order.deliveryAddress && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1 mb-2 truncate">
-                    <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
-                  </p>
-                )}
-                <div className="text-xs text-gray-400 space-y-0.5">
-                  {order.items?.map((item: any) => (
-                    <p key={item.id}>{item.quantity}x {item.product?.name}</p>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
-                  <p className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</p>
-                  {tab === "active" && (
-                    <span className="flex items-center gap-1 text-xs text-green-400">
-                      <Eye className="w-3 h-3" /> {isDriver ? "Voir la carte" : "Suivre en direct"}
+              <div key={order.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
+                <Link href={href} className="block">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {isDriver ? (order.client?.name || order.guestName || `Commande #${order.id.slice(-6)}`) : `Commande #${order.id.slice(-6)}`}
+                      </p>
+                      <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
+                    </div>
+                    <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", st.color)}>
+                      <Icon className="w-3 h-3" /> {st.label}
                     </span>
+                  </div>
+                  {isDriver && order.deliveryAddress && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mb-2 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
+                    </p>
                   )}
-                </div>
-              </Link>
+                  <div className="text-xs text-gray-400 space-y-0.5">
+                    {order.items?.map((item: any) => (
+                      <p key={item.id}>{item.quantity}x {item.product?.name}</p>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
+                    <p className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                    {tab === "active" && (
+                      <span className="flex items-center gap-1 text-xs text-green-400">
+                        <Eye className="w-3 h-3" /> {isDriver ? "Voir la carte" : "Suivre en direct"}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Bouton annuler inline */}
+                {canCancelOrder(order) && tab !== "delivered" && (
+                  <button
+                    onClick={() => cancelOrder(order.id)}
+                    disabled={cancellingId === order.id}
+                    className="w-full mt-2 py-2 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {cancellingId === order.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <X className="w-3 h-3" />
+                    )}
+                    Annuler
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
