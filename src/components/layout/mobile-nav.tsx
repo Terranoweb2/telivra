@@ -33,10 +33,9 @@ const mobileItems: Record<string, { label: string; href: string; icon: any; acce
     { label: "Produits", href: "/products", icon: Package },
   ],
   COOK: [
-    { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Cuisine", href: "/cuisine", icon: ChefHat, accent: true },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
-    { label: "Carte", href: "/map", icon: Map },
+    { label: "Cuisine", href: "/cuisine", icon: ChefHat, accent: true },
   ],
   DEFAULT: [
     { label: "Carte", href: "/map", icon: Map },
@@ -54,6 +53,7 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
     { label: "Parametres", href: "/settings", icon: Settings },
   ],
   COOK: [
+    { label: "Carte", href: "/map", icon: Map },
     { label: "Parametres", href: "/settings", icon: Settings },
   ],
   DEFAULT: [
@@ -119,7 +119,7 @@ export function MobileNav() {
         <div ref={dropdownRef} className="fixed bottom-[4.5rem] right-2 z-50 w-64 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden lg:hidden">
           <div className="px-4 py-3 border-b border-gray-800/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">
+              <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">
                 {initials}
               </div>
               <div className="min-w-0">
@@ -136,7 +136,7 @@ export function MobileNav() {
                 <Link key={item.href} href={item.href} onClick={() => setShowAvatar(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                    isActive ? "bg-blue-600/20 text-blue-400" : "text-gray-300 active:bg-gray-800"
+                    isActive ? "bg-orange-600/20 text-orange-400" : "text-gray-300 active:bg-gray-800"
                   )}>
                   <Icon className="w-4 h-4" /> {item.label}
                 </Link>
@@ -170,11 +170,11 @@ export function MobileNav() {
                     className="flex flex-col items-center justify-center flex-1 py-1 group">
                     <div className={cn(
                       "p-2.5 rounded-2xl transition-all -mt-3 shadow-lg",
-                      isActive ? "bg-blue-600 shadow-blue-600/30" : "bg-blue-600/80 group-active:bg-blue-700 shadow-blue-600/20"
+                      isActive ? "bg-orange-600 shadow-orange-600/30" : "bg-orange-600/80 group-active:bg-orange-700 shadow-orange-600/20"
                     )}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
-                    <span className={cn("text-[10px] mt-1 font-semibold", isActive ? "text-blue-400" : "text-gray-400")}>{item.label}</span>
+                    <span className={cn("text-[10px] mt-1 font-semibold", isActive ? "text-orange-400" : "text-gray-400")}>{item.label}</span>
                   </Link>
                 );
               }
@@ -182,10 +182,10 @@ export function MobileNav() {
               return (
                 <Link key={item.href} href={item.href} onClick={() => setShowAvatar(false)}
                   className="flex flex-col items-center justify-center flex-1 py-1 group">
-                  <div className={cn("p-2 rounded-2xl transition-all", isActive ? "bg-blue-600/15" : "")}>
-                    <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-blue-400" : "text-gray-500 group-active:text-gray-300")} />
+                  <div className={cn("p-2 rounded-2xl transition-all", isActive ? "bg-orange-600/15" : "")}>
+                    <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-orange-400" : "text-gray-500 group-active:text-gray-300")} />
                   </div>
-                  <span className={cn("text-[10px] mt-0.5 font-medium", isActive ? "text-blue-400" : "text-gray-500")}>{item.label}</span>
+                  <span className={cn("text-[10px] mt-0.5 font-medium", isActive ? "text-orange-400" : "text-gray-500")}>{item.label}</span>
                 </Link>
               );
             })}
@@ -194,11 +194,11 @@ export function MobileNav() {
               className="flex flex-col items-center justify-center flex-1 py-1 group">
               <div className={cn(
                 "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                showAvatar ? "bg-blue-600 text-white ring-2 ring-blue-400/30" : "bg-gray-700 text-gray-300 group-active:bg-gray-600"
+                showAvatar ? "bg-orange-600 text-white ring-2 ring-orange-400/30" : "bg-gray-700 text-gray-300 group-active:bg-gray-600"
               )}>
                 {initials}
               </div>
-              <span className={cn("text-[10px] mt-0.5 font-medium", showAvatar ? "text-blue-400" : "text-gray-500")}>Profil</span>
+              <span className={cn("text-[10px] mt-0.5 font-medium", showAvatar ? "text-orange-400" : "text-gray-500")}>Profil</span>
             </button>
           </div>
         </div>

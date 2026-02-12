@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Loader2, Clock, CheckCircle, ChefHat, Bell, Wifi,
   User, MapPin, Timer,
@@ -53,7 +53,7 @@ function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: 
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Timer className={cn("w-4 h-4", isOverdue ? "text-red-400" : "text-blue-400")} />
+          <Timer className={cn("w-4 h-4", isOverdue ? "text-red-400" : "text-orange-400")} />
           <span className={cn("text-sm font-semibold", isOverdue ? "text-red-400" : "text-white")}>
             {isOverdue ? "Temps ecoule !" : `${min}:${sec.toString().padStart(2, "0")}`}
           </span>
@@ -64,7 +64,7 @@ function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: 
         <div
           className={cn(
             "h-2 rounded-full transition-all duration-1000",
-            isOverdue ? "bg-red-500" : progress > 75 ? "bg-yellow-500" : "bg-blue-500"
+            isOverdue ? "bg-red-500" : progress > 75 ? "bg-yellow-500" : "bg-orange-500"
           )}
           style={{ width: `${Math.min(progress, 100)}%` }}
         />
@@ -80,28 +80,40 @@ export default function CuisinePage() {
   const [accepting, setAccepting] = useState<string | null>(null);
   const [readying, setReadying] = useState<string | null>(null);
   const [newAlert, setNewAlert] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadOrders = useCallback(async () => {
-    const res = await fetch("/api/orders/cook");
-    if (res.ok) setOrders(await res.json());
+    try {
+      const res = await fetch("/api/orders/cook");
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data);
+      }
+    } catch {}
     setLoading(false);
   }, []);
 
+  // Chargement initial
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
-  // Socket.IO via le hook unifie
+  // Polling toutes les 8 secondes en fallback
+  useEffect(() => {
+    pollRef.current = setInterval(loadOrders, 8000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadOrders]);
+
+  // Socket.IO temps reel — on recharge toujours les donnees completes
   useDeliverySocket({
     asCook: true,
-    onNewOrder: useCallback((data: any) => {
-      setOrders((prev) => {
-        if (prev.find((o) => o.id === data.id)) return prev;
-        return [data, ...prev];
-      });
+    onNewOrder: useCallback(() => {
+      loadOrders();
       setNewAlert(true);
       playSound();
       setTimeout(() => setNewAlert(false), 5000);
-    }, []),
+    }, [loadOrders]),
     onStatusChange: useCallback(() => { loadOrders(); }, [loadOrders]),
+    onCookAccepted: useCallback(() => { loadOrders(); }, [loadOrders]),
+    onOrderReady: useCallback(() => { loadOrders(); }, [loadOrders]),
   });
 
   async function acceptOrder(orderId: string) {
@@ -121,7 +133,7 @@ export default function CuisinePage() {
     setReadying(null);
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   const pending = orders.filter((o) => o.status === "PENDING");
   const preparing = orders.filter((o) => ["ACCEPTED", "PREPARING"].includes(o.status));
@@ -164,11 +176,11 @@ export default function CuisinePage() {
           return (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
-                tab === t.key ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>
+                tab === t.key ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white")}>
               <Icon className="w-4 h-4" /> {t.label}
               {t.count > 0 && (
                 <span className={cn("px-1.5 py-0.5 rounded-full text-[10px] font-bold",
-                  tab === t.key ? "bg-white/20 text-white" : "bg-gray-800 text-gray-500")}>
+                  tab === t.key ? "bg-white/20 text-white" : "bg-orange-600/20 text-orange-400")}>
                   {t.count}
                 </span>
               )}
@@ -206,7 +218,7 @@ export default function CuisinePage() {
                     <span className="text-xs text-gray-500 flex items-center gap-1">
                       <Timer className="w-3 h-3" /> ~{maxCookTime} min
                     </span>
-                    <span className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} F</span>
+                    <span className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} F</span>
                   </div>
                 </div>
 
@@ -244,7 +256,7 @@ export default function CuisinePage() {
                   </p>
                 )}
 
-                {/* Countdown (pour les commandes en preparation) */}
+                {/* Countdown */}
                 {tab === "preparing" && order.cookAcceptedAt && (
                   <CookingCountdown cookAcceptedAt={order.cookAcceptedAt} cookingTimeMin={maxCookTime} />
                 )}
