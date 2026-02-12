@@ -20,6 +20,7 @@ import { Dialog } from "@/components/ui/dialog";
 type Tab = "products" | "orders" | "revenue";
 type ProductFilter = "all" | "meals" | "extras";
 type ImageMode = "link" | "upload";
+type DialogMode = "add" | "edit";
 
 const categoryConfig: Record<string, { label: string; icon: any }> = {
   RESTAURANT: { label: "Restaurant", icon: UtensilsCrossed },
@@ -56,21 +57,19 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
 
-  // Dialog ajout
-  const [showAdd, setShowAdd] = useState(false);
+  // Dialog ajout/édition
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode>("add");
+  const [editProductId, setEditProductId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    name: "", description: "", price: "", category: "RESTAURANT",
-    shopName: "", image: "", cookingTimeMin: "15", isExtra: false, paymentMethod: "BOTH",
+    name: "", description: "", price: "", image: "",
+    cookingTimeMin: "15", isExtra: false, paymentMethod: "BOTH",
   });
   const [saving, setSaving] = useState(false);
   const [imageMode, setImageMode] = useState<ImageMode>("upload");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Edition inline
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
@@ -86,9 +85,38 @@ export default function ProductsPage() {
   }, []);
 
   function resetForm() {
-    setForm({ name: "", description: "", price: "", category: "RESTAURANT", shopName: "", image: "", cookingTimeMin: "15", isExtra: false, paymentMethod: "BOTH" });
+    setForm({ name: "", description: "", price: "", image: "", cookingTimeMin: "15", isExtra: false, paymentMethod: "BOTH" });
     setImagePreview(null);
     setImageMode("upload");
+    setEditProductId(null);
+    setDialogMode("add");
+  }
+
+  function openAddDialog() {
+    resetForm();
+    setShowDialog(true);
+  }
+
+  function openEditDialog(product: any) {
+    setDialogMode("edit");
+    setEditProductId(product.id);
+    setForm({
+      name: product.name || "",
+      description: product.description || "",
+      price: String(product.price || ""),
+      image: product.image || "",
+      cookingTimeMin: String(product.cookingTimeMin || 15),
+      isExtra: product.isExtra || false,
+      paymentMethod: product.paymentMethod || "BOTH",
+    });
+    if (product.image) {
+      setImagePreview(product.image);
+      setImageMode(product.image.startsWith("/uploads/") ? "upload" : "link");
+    } else {
+      setImagePreview(null);
+      setImageMode("upload");
+    }
+    setShowDialog(true);
   }
 
   async function handleFileUpload(file: File) {
@@ -115,7 +143,6 @@ export default function ProductsPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Preview locale immédiate
     const localUrl = URL.createObjectURL(file);
     setImagePreview(localUrl);
     handleFileUpload(file);
@@ -131,15 +158,21 @@ export default function ProductsPage() {
   }
 
   async function addProduct() {
-    if (!form.name || !form.price || !form.shopName) return;
+    if (!form.name || !form.price) return;
     setSaving(true);
     const res = await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...form,
+        name: form.name,
+        description: form.description,
         price: parseFloat(form.price),
+        image: form.image,
         cookingTimeMin: parseInt(form.cookingTimeMin) || 15,
+        isExtra: form.isExtra,
+        paymentMethod: form.paymentMethod,
+        category: "RESTAURANT",
+        shopName: "Restaurant",
         isAvailable: true,
       }),
     });
@@ -147,7 +180,7 @@ export default function ProductsPage() {
       const p = await res.json();
       setProducts((prev) => [p, ...prev]);
       resetForm();
-      setShowAdd(false);
+      setShowDialog(false);
       toast.success("Repas ajouté");
     } else {
       toast.error("Erreur lors de l'ajout");
@@ -155,27 +188,39 @@ export default function ProductsPage() {
     setSaving(false);
   }
 
-  async function saveEdit(id: string) {
-    if (!editForm) return;
-    const res = await fetch(`/api/products/${id}`, {
+  async function saveEdit() {
+    if (!editProductId || !form.name || !form.price) return;
+    setSaving(true);
+    const res = await fetch(`/api/products/${editProductId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        cookingTimeMin: parseInt(editForm.cookingTimeMin) || 15,
-        isExtra: editForm.isExtra,
-        paymentMethod: editForm.paymentMethod,
-        price: parseFloat(editForm.price) || 0,
-        name: editForm.name,
+        name: form.name,
+        description: form.description,
+        price: parseFloat(form.price) || 0,
+        image: form.image,
+        cookingTimeMin: parseInt(form.cookingTimeMin) || 15,
+        isExtra: form.isExtra,
+        paymentMethod: form.paymentMethod,
       }),
     });
     if (res.ok) {
       const updated = await res.json();
-      setProducts((prev) => prev.map((p) => p.id === id ? updated : p));
-      setEditingId(null);
-      setEditForm(null);
+      setProducts((prev) => prev.map((p) => p.id === editProductId ? updated : p));
+      resetForm();
+      setShowDialog(false);
       toast.success("Repas modifié");
     } else {
       toast.error("Erreur lors de la modification");
+    }
+    setSaving(false);
+  }
+
+  function handleDialogSubmit() {
+    if (dialogMode === "edit") {
+      saveEdit();
+    } else {
+      addProduct();
     }
   }
 
@@ -213,7 +258,7 @@ export default function ProductsPage() {
     <div className="space-y-4">
       <PageHeader title="Repas" subtitle="Gérez vos repas, commandes et recettes">
         {tab === "products" && (
-          <button onClick={() => { resetForm(); setShowAdd(true); }}
+          <button onClick={openAddDialog}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-xl text-sm font-medium text-white transition-colors">
             <Plus className="w-4 h-4" /> Ajouter
           </button>
@@ -263,50 +308,6 @@ export default function ProductsPage() {
                   {shopProducts.map((p) => {
                     const cat = categoryConfig[p.category] || categoryConfig.OTHER;
                     const CatIcon = cat.icon;
-                    const isEditing = editingId === p.id;
-
-                    if (isEditing && editForm) {
-                      return (
-                        <Card key={p.id} className="border-orange-500/30">
-                          <CardContent className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
-                              <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
-                                className="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" placeholder="Prix" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <Timer className="w-3.5 h-3.5 text-gray-500" />
-                                <input type="number" min="1" value={editForm.cookingTimeMin}
-                                  onChange={(e) => setEditForm({ ...editForm, cookingTimeMin: e.target.value })}
-                                  className="w-16 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs" />
-                                <span className="text-xs text-gray-500">min</span>
-                              </div>
-                              <select value={editForm.paymentMethod} onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })}
-                                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs">
-                                <option value="BOTH">Les deux</option>
-                                <option value="CASH">Especes</option>
-                                <option value="ONLINE">En ligne</option>
-                              </select>
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" checked={editForm.isExtra}
-                                  onChange={(e) => setEditForm({ ...editForm, isExtra: e.target.checked })}
-                                  className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-orange-500" />
-                                <span className="text-xs text-gray-300">Extra</span>
-                              </label>
-                              <div className="flex-1" />
-                              <button onClick={() => saveEdit(p.id)} className="p-1.5 text-green-400 hover:bg-green-500/10 rounded-lg">
-                                <Save className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => { setEditingId(null); setEditForm(null); }} className="p-1.5 text-gray-400 hover:bg-gray-700 rounded-lg">
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    }
 
                     return (
                       <Card key={p.id}>
@@ -324,7 +325,7 @@ export default function ProductsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500">
-                              <span>{cat.label} - {p.price?.toLocaleString()} FCFA</span>
+                              <span>{p.price?.toLocaleString()} FCFA</span>
                               {!p.isExtra && (
                                 <span className="flex items-center gap-0.5 text-orange-400/70">
                                   <Timer className="w-3 h-3" /> {p.cookingTimeMin || 15}min
@@ -335,7 +336,7 @@ export default function ProductsPage() {
                               </span>
                             </div>
                           </div>
-                          <button onClick={() => { setEditingId(p.id); setEditForm({ name: p.name, price: p.price, cookingTimeMin: p.cookingTimeMin || 15, isExtra: p.isExtra || false, paymentMethod: p.paymentMethod || "BOTH" }); }}
+                          <button onClick={() => openEditDialog(p)}
                             className="p-2 text-gray-500 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors">
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -549,9 +550,9 @@ export default function ProductsPage() {
       )}
 
       {/* ============================================ */}
-      {/* Dialog Ajout de repas                        */}
+      {/* Dialog Ajout / Édition de repas              */}
       {/* ============================================ */}
-      <Dialog open={showAdd} onClose={() => setShowAdd(false)} title="Nouveau repas">
+      <Dialog open={showDialog} onClose={() => { setShowDialog(false); resetForm(); }} title={dialogMode === "edit" ? "Modifier le repas" : "Nouveau repas"}>
         <div className="space-y-4">
           {/* Nom et Prix */}
           <div className="grid grid-cols-2 gap-3">
@@ -564,22 +565,6 @@ export default function ProductsPage() {
               <label className="text-xs text-gray-400 mb-1 block">Prix (FCFA) *</label>
               <input type="number" placeholder="2500" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
                 className={inputClass + " w-full"} />
-            </div>
-          </div>
-
-          {/* Restaurant et Catégorie */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Restaurant *</label>
-              <input type="text" placeholder="Nom du restaurant" value={form.shopName} onChange={(e) => setForm({ ...form, shopName: e.target.value })}
-                className={inputClass + " w-full"} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Catégorie</label>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className={inputClass + " w-full"}>
-                {Object.entries(categoryConfig).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
             </div>
           </div>
 
@@ -685,10 +670,10 @@ export default function ProductsPage() {
           </div>
 
           {/* Bouton soumettre */}
-          <button onClick={addProduct} disabled={saving || !form.name || !form.price || !form.shopName}
+          <button onClick={handleDialogSubmit} disabled={saving || !form.name || !form.price}
             className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Ajouter le repas
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : dialogMode === "edit" ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {dialogMode === "edit" ? "Enregistrer les modifications" : "Ajouter le repas"}
           </button>
         </div>
       </Dialog>
