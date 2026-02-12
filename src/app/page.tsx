@@ -183,10 +183,10 @@ export default function LandingPage() {
         <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-white">
           Savourez nos plats,
           <br />
-          livres chez vous
+          livrés chez vous
         </h1>
         <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
-          Decouvrez notre menu et commandez vos repas preferes. Livraison rapide, paiement flexible.
+          Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible.
         </p>
         <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full text-white text-sm font-semibold transition-colors">
           Voir le menu <ArrowDown className="w-4 h-4" />
@@ -236,7 +236,7 @@ export default function LandingPage() {
         ) : filteredMeals.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-500">
             <UtensilsCrossed className="w-10 h-10 mb-2 opacity-40" />
-            <p className="text-sm">Aucun plat trouve</p>
+            <p className="text-sm">Aucun plat trouvé</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -375,7 +375,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Telephone *</label>
+                    <label className="text-xs text-gray-500 mb-1 block">Téléphone *</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="+229 00 00 00 00"
@@ -402,7 +402,7 @@ export default function LandingPage() {
                         <button onClick={() => setPaymentChoice("CASH")}
                           className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border",
                             paymentChoice === "CASH" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
-                          A la livraison
+                          À la livraison
                         </button>
                       )}
                       {canPayOnline && (

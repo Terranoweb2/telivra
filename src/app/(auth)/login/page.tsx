@@ -38,7 +38,7 @@ export default function LoginPage() {
           <UtensilsCrossed className="w-7 h-7 text-white" />
         </div>
         <h1 className="text-xl font-bold text-white">Terrano</h1>
-        <p className="text-[13px] text-gray-500 mt-1">Connectez-vous a votre compte</p>
+        <p className="text-[13px] text-gray-500 mt-1">Connectez-vous à votre compte</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,7 +63,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[13px] text-gray-400">Mot de passe</label>
             <Link href="/forgot-password" className="text-[12px] text-orange-400 hover:text-orange-300 transition-colors">
-              Mot de passe oublie ?
+              Mot de passe oublié ?
             </Link>
           </div>
           <input

@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
         setError(data.error || "Erreur lors de l'envoi");
       }
     } catch {
-      setError("Erreur reseau");
+      setError("Erreur réseau");
     }
     setLoading(false);
   }
@@ -62,10 +62,10 @@ export default function ForgotPasswordPage() {
       if (res.ok) {
         setStep("done");
       } else {
-        setError(data.error || "Erreur lors de la reinitialisation");
+        setError(data.error || "Erreur lors de la réinitialisation");
       }
     } catch {
-      setError("Erreur reseau");
+      setError("Erreur réseau");
     }
     setLoading(false);
   }
@@ -78,9 +78,9 @@ export default function ForgotPasswordPage() {
         </div>
         <h1 className="text-xl font-bold text-white">Terrano</h1>
         <p className="text-[13px] text-gray-500 mt-1">
-          {step === "email" && "Reinitialiser votre mot de passe"}
-          {step === "code" && "Entrez le code recu"}
-          {step === "done" && "Mot de passe reinitialise !"}
+          {step === "email" && "Réinitialiser votre mot de passe"}
+          {step === "code" && "Entrez le code reçu"}
+          {step === "done" && "Mot de passe réinitialisé !"}
         </p>
       </div>
 
@@ -109,7 +109,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           <p className="text-[12px] text-gray-600">
-            Un code de verification sera envoye a cette adresse.
+            Un code de vérification sera envoyé à cette adresse.
           </p>
 
           <button
@@ -127,12 +127,12 @@ export default function ForgotPasswordPage() {
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 mb-2">
             <p className="text-[13px] text-orange-400">
-              Un code a 6 chiffres a ete envoye a <span className="font-semibold">{email}</span>
+              Un code à 6 chiffres a été envoyé à <span className="font-semibold">{email}</span>
             </p>
           </div>
 
           <div>
-            <label className="block text-[13px] text-gray-400 mb-1.5">Code de verification</label>
+            <label className="block text-[13px] text-gray-400 mb-1.5">Code de vérification</label>
             <div className="relative">
               <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
@@ -156,7 +156,7 @@ export default function ForgotPasswordPage() {
               required
               minLength={6}
               className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
-              placeholder="6 caracteres minimum"
+              placeholder="6 caractères minimum"
             />
           </div>
 
@@ -178,7 +178,7 @@ export default function ForgotPasswordPage() {
             disabled={loading || code.length !== 6}
             className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-2"
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verification...</> : "Reinitialiser le mot de passe"}
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Vérification...</> : "Réinitialiser le mot de passe"}
           </button>
 
           <button
@@ -200,7 +200,7 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
           <p className="text-[14px] text-gray-300">
-            Votre mot de passe a ete reinitialise avec succes.
+            Votre mot de passe a été réinitialisé avec succès.
           </p>
           <Link
             href="/login"
@@ -214,7 +214,7 @@ export default function ForgotPasswordPage() {
       {step !== "done" && (
         <p className="text-center text-gray-600 text-[13px] mt-6">
           <Link href="/login" className="text-orange-400 hover:text-orange-300">
-            Retour a la connexion
+            Retour à la connexion
           </Link>
         </p>
       )}

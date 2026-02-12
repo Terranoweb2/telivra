@@ -53,7 +53,7 @@ export default function RegisterPage() {
         router.push("/dashboard");
       }
     } catch {
-      setError("Erreur reseau");
+      setError("Erreur réseau");
       setLoading(false);
     }
   }
@@ -65,7 +65,7 @@ export default function RegisterPage() {
           <UtensilsCrossed className="w-7 h-7 text-white" />
         </div>
         <h1 className="text-xl font-bold text-white">Terrano</h1>
-        <p className="text-[13px] text-gray-500 mt-1">Creer un compte</p>
+        <p className="text-[13px] text-gray-500 mt-1">Créer un compte</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -98,7 +98,7 @@ export default function RegisterPage() {
           <input
             name="password" type="password" required minLength={6}
             className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
-            placeholder="6 caracteres minimum"
+            placeholder="6 caractères minimum"
           />
         </div>
 
@@ -120,7 +120,7 @@ export default function RegisterPage() {
       </form>
 
       <p className="text-center text-gray-600 text-[13px] mt-6">
-        Deja un compte ?{" "}
+        Déjà un compte ?{" "}
         <Link href="/login" className="text-orange-400 hover:text-orange-300">
           Se connecter
         </Link>
