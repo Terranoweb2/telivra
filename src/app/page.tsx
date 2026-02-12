@@ -11,6 +11,7 @@ import {
   UtensilsCrossed,
   ArrowDown, Phone, User, Timer, Droplets,
   Sun, Moon, Clock, Truck,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,8 @@ interface SiteSettings {
   currency: string;
 }
 
+type OrderStep = "menu" | "extras" | "info" | "payment";
+
 export default function LandingPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -48,7 +51,7 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [showOrder, setShowOrder] = useState(false);
+  const [orderStep, setOrderStep] = useState<OrderStep>("menu");
 
   // Guest info
   const [guestName, setGuestName] = useState("");
@@ -57,7 +60,6 @@ export default function LandingPage() {
   const [addressLat, setAddressLat] = useState(0);
   const [addressLng, setAddressLng] = useState(0);
   const [note, setNote] = useState("");
-  const [paymentChoice, setPaymentChoice] = useState<"CASH" | "ONLINE">("CASH");
   const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
@@ -73,6 +75,7 @@ export default function LandingPage() {
 
   const meals = products.filter((p) => !p.isExtra);
   const extras = products.filter((p) => p.isExtra);
+  const hasExtras = extras.length > 0;
 
   const filteredMeals = meals.filter((p) => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -99,13 +102,40 @@ export default function LandingPage() {
     return cart.find((i) => i.product.id === productId)?.quantity || 0;
   }
 
-  const deliveryFee = settings?.deliveryFee || 0;
+  // Cart computed
+  const mealItems = cart.filter((i) => !i.product.isExtra);
+  const extraItems = cart.filter((i) => i.product.isExtra);
+  const totalMeals = mealItems.reduce((s, i) => s + i.quantity, 0);
   const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const deliveryFee = settings?.deliveryFee || 0;
   const total = subtotal + deliveryFee;
-  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
-  const canPayOnline = settings?.defaultPaymentMethod === "ONLINE" || settings?.defaultPaymentMethod === "BOTH";
-  const canPayCash = settings?.defaultPaymentMethod === "CASH" || settings?.defaultPaymentMethod === "BOTH" || !settings?.defaultPaymentMethod;
+  // Step navigation
+  const stepsList: { id: OrderStep; label: string }[] = [
+    ...(hasExtras ? [{ id: "extras" as const, label: "Suppléments" }] : []),
+    { id: "info" as const, label: "Livraison" },
+    { id: "payment" as const, label: "Paiement" },
+  ];
+  const currentStepIndex = stepsList.findIndex((s) => s.id === orderStep);
+
+  function nextStep() {
+    if (orderStep === "menu") {
+      setOrderStep(hasExtras ? "extras" : "info");
+    } else if (currentStepIndex < stepsList.length - 1) {
+      setOrderStep(stepsList[currentStepIndex + 1].id);
+    }
+  }
+
+  function prevStep() {
+    if (currentStepIndex === 0) {
+      setOrderStep("menu");
+    } else if (currentStepIndex > 0) {
+      setOrderStep(stepsList[currentStepIndex - 1].id);
+    }
+  }
+
+  // Admin payment method
+  const adminMethod = settings?.defaultPaymentMethod || "CASH";
 
   const handleAddressSelect = useCallback((lat: number, lng: number, addr: string) => {
     setAddressLat(lat);
@@ -113,8 +143,10 @@ export default function LandingPage() {
     setAddress(addr);
   }, []);
 
-  async function placeOrder() {
-    if (!guestName || !guestPhone || !address || !addressLat || !addressLng) return;
+  const infoValid = guestName.trim() && guestPhone.trim() && address && addressLat && addressLng;
+
+  async function placeOrder(method: "CASH" | "ONLINE") {
+    if (!infoValid) return;
     setOrdering(true);
     try {
       const res = await fetch("/api/orders/guest", {
@@ -128,12 +160,12 @@ export default function LandingPage() {
           note,
           guestName,
           guestPhone,
-          paymentMethod: paymentChoice,
+          paymentMethod: method,
         }),
       });
       if (res.ok) {
         const order = await res.json();
-        if (paymentChoice === "ONLINE") {
+        if (method === "ONLINE") {
           const payRes = await fetch("/api/payments/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -145,7 +177,7 @@ export default function LandingPage() {
           }
         }
         setCart([]);
-        setShowOrder(false);
+        setOrderStep("menu");
         router.push(`/track/${order.id}`);
       }
     } finally {
@@ -211,7 +243,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Menu */}
+      {/* Menu — Plats uniquement */}
       <section id="menu" className="max-w-6xl mx-auto px-4 pb-40">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl sm:text-2xl font-bold text-white">
@@ -280,151 +312,263 @@ export default function LandingPage() {
             })}
           </div>
         )}
-
-        {/* Section Extras */}
-        {extras.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <Droplets className="w-5 h-5 text-gray-500" /> Boissons & Extras
-            </h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {extras.map((p) => {
-                const count = getCartCount(p.id);
-                return (
-                  <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 flex-shrink-0 w-36 transition-colors">
-                    <div className="h-24 flex items-center justify-center bg-gray-800">
-                      {p.image ? (
-                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Droplets className="w-8 h-8 text-gray-600" />
-                      )}
-                    </div>
-                    <div className="p-2">
-                      <h4 className="text-xs font-semibold text-white truncate">{p.name}</h4>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-xs font-bold text-orange-400">{p.price.toLocaleString()} F</p>
-                        <div className="flex items-center gap-1">
-                          {count > 0 && (
-                            <>
-                              <button onClick={() => removeFromCart(p.id)} className="w-5 h-5 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white transition-colors">
-                                <Minus className="w-2.5 h-2.5" />
-                              </button>
-                              <span className="text-[10px] text-white font-bold w-3 text-center">{count}</span>
-                            </>
-                          )}
-                          <button onClick={() => addToCart(p)} className="w-5 h-5 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white transition-colors">
-                            <Plus className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* Barre panier fixe */}
-      {totalItems > 0 && (
+      {/* ============================================ */}
+      {/* Barre panier fixe — seulement sur le menu   */}
+      {/* ============================================ */}
+      {orderStep === "menu" && totalMeals > 0 && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 lg:bottom-0 lg:pb-4 lg:max-w-2xl lg:mx-auto">
-          {!showOrder ? (
-            <button onClick={() => setShowOrder(true)}
-              className="w-full flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg">
-              <span className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5" />
-                <span className="text-sm font-semibold">{totalItems} Article{totalItems > 1 ? "s" : ""}</span>
-              </span>
-              <span className="text-sm font-bold">{total.toLocaleString()} FCFA</span>
-            </button>
-          ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl max-h-[85vh] overflow-y-auto">
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-white font-semibold text-sm">Finaliser la commande</p>
-                  <button onClick={() => setShowOrder(false)}><X className="w-5 h-5 text-gray-400" /></button>
-                </div>
+          <button onClick={nextStep}
+            className="w-full flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg">
+            <span className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-sm font-semibold">{totalMeals} Plat{totalMeals > 1 ? "s" : ""}</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-sm font-bold">
+              Suivant <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
+        </div>
+      )}
 
-                {/* Resume panier */}
-                <div className="max-h-28 overflow-y-auto space-y-1">
-                  {cart.map((i) => (
-                    <div key={i.product.id} className="flex justify-between text-xs text-gray-400">
-                      <span>{i.quantity}x {i.product.name}</span>
-                      <span>{(i.product.price * i.quantity).toLocaleString()} FCFA</span>
-                    </div>
-                  ))}
-                </div>
-                {deliveryFee > 0 && (
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Frais de livraison</span><span>{deliveryFee.toLocaleString()} FCFA</span>
+      {/* ============================================ */}
+      {/* Overlay multi-étapes                         */}
+      {/* ============================================ */}
+      {orderStep !== "menu" && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOrderStep("menu")} />
+
+          {/* Bottom sheet */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[92vh] flex flex-col">
+            {/* Header de l'overlay */}
+            <div className="p-4 pb-3 border-b border-gray-800/50">
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={prevStep} className="flex items-center gap-1 text-gray-400 hover:text-gray-300 text-sm transition-colors">
+                  <ChevronLeft className="w-4 h-4" /> Retour
+                </button>
+                <p className="text-xs text-gray-500">
+                  Étape {currentStepIndex + 1}/{stepsList.length}
+                </p>
+                <button onClick={() => setOrderStep("menu")} className="text-gray-400 hover:text-gray-300 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Barre de progression */}
+              <div className="flex gap-1.5">
+                {stepsList.map((step, i) => (
+                  <div key={step.id} className={cn(
+                    "h-1 rounded-full flex-1 transition-colors",
+                    i <= currentStepIndex ? "bg-orange-500" : "bg-gray-700"
+                  )} />
+                ))}
+              </div>
+              <p className="text-white font-semibold text-sm mt-3">
+                {stepsList[currentStepIndex]?.label}
+              </p>
+            </div>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-4">
+
+              {/* ——— ÉTAPE : Suppléments ——— */}
+              {orderStep === "extras" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Ajoutez des boissons ou accompagnements à votre commande (optionnel)
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {extras.map((p) => {
+                      const count = getCartCount(p.id);
+                      return (
+                        <div key={p.id} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+                          <div className="h-24 flex items-center justify-center bg-gray-800">
+                            {p.image ? (
+                              <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Droplets className="w-8 h-8 text-gray-600" />
+                            )}
+                          </div>
+                          <div className="p-2.5">
+                            <h4 className="text-sm font-semibold text-white truncate">{p.name}</h4>
+                            {p.description && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{p.description}</p>}
+                            <div className="flex items-center justify-between mt-2">
+                              <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">F</span></p>
+                              <div className="flex items-center gap-1.5">
+                                {count > 0 && (
+                                  <>
+                                    <button onClick={() => removeFromCart(p.id)} className="w-6 h-6 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-full text-white transition-colors">
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-xs text-white font-bold w-4 text-center">{count}</span>
+                                  </>
+                                )}
+                                <button onClick={() => addToCart(p)} className="w-6 h-6 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white transition-colors">
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-                <div className="flex justify-between text-sm font-bold text-white border-t border-gray-800 pt-2">
-                  <span>Total</span><span>{total.toLocaleString()} FCFA</span>
                 </div>
+              )}
 
-                {/* Infos client */}
-                <div className="space-y-2">
+              {/* ——— ÉTAPE : Informations de livraison ——— */}
+              {orderStep === "info" && (
+                <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Votre nom *</label>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Votre nom *</label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Nom complet"
-                        className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
+                        className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Téléphone *</label>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Téléphone *</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="+229 00 00 00 00"
-                        className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
+                        className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
                     </div>
                   </div>
-
-                  {/* Carte adresse */}
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Adresse de livraison *</label>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Adresse de livraison *</label>
                     <AddressPickerMap onSelect={handleAddressSelect} />
                   </div>
-
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note pour la commande (optionnel)"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-orange-500" />
+                    className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm resize-none focus:outline-none focus:border-orange-500" />
                 </div>
+              )}
 
-                {/* Choix de paiement */}
-                {(canPayOnline || canPayCash) && (
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-500 block">Mode de paiement</label>
-                    <div className="flex gap-2">
-                      {canPayCash && (
-                        <button onClick={() => setPaymentChoice("CASH")}
-                          className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border",
-                            paymentChoice === "CASH" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
-                          À la livraison
-                        </button>
-                      )}
-                      {canPayOnline && (
-                        <button onClick={() => setPaymentChoice("ONLINE")}
-                          className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border flex items-center justify-center gap-1.5",
-                            paymentChoice === "ONLINE" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
-                          <CreditCard className="w-4 h-4" /> En ligne
-                        </button>
-                      )}
+              {/* ——— ÉTAPE : Récapitulatif & Paiement ——— */}
+              {orderStep === "payment" && (
+                <div className="space-y-4">
+                  {/* Plats */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Plats</p>
+                    {mealItems.map((i) => (
+                      <div key={i.product.id} className="flex justify-between text-sm">
+                        <span className="text-gray-300">{i.quantity}× {i.product.name}</span>
+                        <span className="text-gray-400">{(i.product.price * i.quantity).toLocaleString()} F</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Suppléments */}
+                  {extraItems.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Suppléments</p>
+                      {extraItems.map((i) => (
+                        <div key={i.product.id} className="flex justify-between text-sm">
+                          <span className="text-gray-300">{i.quantity}× {i.product.name}</span>
+                          <span className="text-gray-400">{(i.product.price * i.quantity).toLocaleString()} F</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Totaux */}
+                  <div className="border-t border-gray-800 pt-3 space-y-1.5">
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>Sous-total</span>
+                      <span>{subtotal.toLocaleString()} F</span>
+                    </div>
+                    {deliveryFee > 0 && (
+                      <div className="flex justify-between text-sm text-gray-400">
+                        <span>Livraison</span>
+                        <span>{deliveryFee.toLocaleString()} F</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base font-bold text-white pt-1">
+                      <span>Total</span>
+                      <span>{total.toLocaleString()} FCFA</span>
                     </div>
                   </div>
-                )}
 
-                <button onClick={placeOrder}
-                  disabled={ordering || !guestName || !guestPhone || !address || !addressLat || !addressLng}
-                  className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                  {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
-                  {paymentChoice === "ONLINE" ? "Payer en ligne" : "Commander"} - {total.toLocaleString()} FCFA
-                </button>
-              </div>
+                  {/* Infos livraison */}
+                  <div className="bg-gray-800 rounded-xl p-3 space-y-1.5">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Livraison</p>
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                      <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      <span>{guestName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                      <Phone className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      <span>{guestPhone}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm text-gray-300">
+                      <MapPin className="w-3.5 h-3.5 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{address}</span>
+                    </div>
+                    {note && (
+                      <p className="text-xs text-gray-500 italic mt-1">&quot;{note}&quot;</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Footer — boutons d'action */}
+            <div className="p-4 border-t border-gray-800/50">
+
+              {/* Extras : Suivant */}
+              {orderStep === "extras" && (
+                <button onClick={nextStep}
+                  className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  Suivant <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Info : Suivant (disabled si incomplet) */}
+              {orderStep === "info" && (
+                <button onClick={nextStep} disabled={!infoValid}
+                  className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  Suivant <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Paiement : bouton(s) selon config admin */}
+              {orderStep === "payment" && (
+                <div className="space-y-2">
+                  {adminMethod === "CASH" && (
+                    <button onClick={() => placeOrder("CASH")} disabled={ordering}
+                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                      {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+                      Commander — {total.toLocaleString()} FCFA
+                    </button>
+                  )}
+                  {adminMethod === "ONLINE" && (
+                    <button onClick={() => placeOrder("ONLINE")} disabled={ordering}
+                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                      {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      Payer en ligne — {total.toLocaleString()} FCFA
+                    </button>
+                  )}
+                  {adminMethod === "BOTH" && (
+                    <>
+                      <button onClick={() => placeOrder("CASH")} disabled={ordering}
+                        className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
+                        Payer à la livraison — {total.toLocaleString()} FCFA
+                      </button>
+                      <button onClick={() => placeOrder("ONLINE")} disabled={ordering}
+                        className="w-full py-3 bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                        Payer en ligne — {total.toLocaleString()} FCFA
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
