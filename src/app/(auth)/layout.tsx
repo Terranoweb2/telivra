@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, UserPlus } from "lucide-react";
+import { LogIn, UserPlus, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const authTabs = [
+  { label: "Commander", href: "/", icon: ShoppingBag },
   { label: "Connexion", href: "/login", icon: LogIn },
   { label: "Inscription", href: "/register", icon: UserPlus },
 ];
