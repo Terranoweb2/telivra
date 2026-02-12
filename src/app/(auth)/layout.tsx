@@ -2,20 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, UserPlus, ShoppingBag } from "lucide-react";
+import { LogIn, UserPlus, ShoppingBag, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 const authTabs = [
-  { label: "Commander", href: "/", icon: ShoppingBag },
   { label: "Connexion", href: "/login", icon: LogIn },
+  { label: "Commander", href: "/", icon: ShoppingBag },
   { label: "Inscription", href: "/register", icon: UserPlus },
 ];
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-950">
+      {/* Bouton light/dark en haut à droite */}
+      <div className="fixed top-4 right-4 z-40">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="p-2.5 rounded-xl bg-[#1c1c1e]/80 backdrop-blur-xl border border-white/[0.08] text-[#999] hover:text-white transition-colors"
+        >
+          {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </div>
+
       <div className="flex-1 flex items-center justify-center px-0 sm:px-6 pb-16 sm:pb-0">
         <div className="w-full sm:max-w-md">
           {children}
