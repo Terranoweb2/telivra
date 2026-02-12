@@ -50,6 +50,15 @@ app.prepare().then(() => {
       socket.leave("drivers");
     });
 
+    // Cuisine: cuisinier ecoute les nouvelles commandes
+    socket.on("subscribe:cook", () => {
+      socket.join("cooks");
+      console.log(`[Socket.IO] ${socket.id} joined cooks room`);
+    });
+    socket.on("unsubscribe:cook", () => {
+      socket.leave("cooks");
+    });
+
     // Livraison: client ecoute ses commandes
     socket.on("subscribe:client", (clientId: string) => {
       socket.join(`client:${clientId}`);

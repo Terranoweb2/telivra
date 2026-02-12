@@ -25,6 +25,7 @@ model User {
 
   clientOrders     Order[]    @relation("ClientOrders")
   driverDeliveries Delivery[] @relation("DriverDeliveries")
+  cookOrders       Order[]    @relation("CookOrders")
 
   @@map("users")
 }
@@ -35,6 +36,7 @@ enum UserRole {
   VIEWER
   CLIENT
   DRIVER
+  COOK
 }
 
 // ========== APPAREILS DE TRACKING ==========
@@ -263,19 +265,53 @@ enum AlertSeverity {
   CRITICAL
 }
 
+// ========== PAIEMENT ==========
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+  BOTH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ========== PARAMETRES SITE ==========
+
+model SiteSettings {
+  id                   String        @id @default("default")
+  restaurantName       String        @default("Mon Restaurant")
+  defaultPaymentMethod PaymentMethod @default(BOTH)
+  fedapayPublicKey     String?
+  fedapaySecretKey     String?
+  fedapayEnvironment   String        @default("sandbox")
+  deliveryFee          Float         @default(0)
+  currency             String        @default("XOF")
+  updatedAt            DateTime      @updatedAt
+
+  @@map("site_settings")
+}
+
 // ========== LIVRAISON ==========
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  category    ProductCategory
-  shopName    String
-  image       String?
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  price          Float
+  category       ProductCategory
+  shopName       String?
+  image          String?
+  isAvailable    Boolean         @default(true)
+  cookingTimeMin Int             @default(15)
+  isExtra        Boolean         @default(false)
+  paymentMethod  PaymentMethod   @default(BOTH)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   orderItems OrderItem[]
 
@@ -291,8 +327,8 @@ enum ProductCategory {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  status          OrderStatus @default(PENDING)
+  id              String        @id @default(cuid())
+  status          OrderStatus   @default(PENDING)
   totalAmount     Float
   deliveryAddress String
   deliveryLat     Float
@@ -301,11 +337,19 @@ model Order {
   cancelReason    String?
   guestName       String?
   guestPhone      String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  paymentMethod   PaymentMethod @default(CASH)
+  paymentStatus   PaymentStatus @default(PENDING)
+  fedapayTransId  String?
+  cookAcceptedAt  DateTime?
+  cookReadyAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   clientId String?
   client   User?   @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Cascade)
+
+  cookId String?
+  cook   User?   @relation("CookOrders", fields: [cookId], references: [id])
 
   items    OrderItem[]
   delivery Delivery?
@@ -313,6 +357,7 @@ model Order {
   @@index([clientId, status])
   @@index([status])
   @@index([guestPhone])
+  @@index([cookId])
   @@map("orders")
 }
 
@@ -320,6 +365,7 @@ enum OrderStatus {
   PENDING
   ACCEPTED
   PREPARING
+  READY
   PICKED_UP
   DELIVERING
   DELIVERED

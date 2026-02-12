@@ -12,6 +12,11 @@ export async function POST(request: NextRequest) {
   if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
   if (order.delivery) return NextResponse.json({ error: "Commande deja prise" }, { status: 400 });
 
+  // Le livreur ne peut accepter que les commandes READY (cuisine terminee)
+  if (order.status !== "READY") {
+    return NextResponse.json({ error: "Commande pas encore prete (cuisine en cours)" }, { status: 400 });
+  }
+
   const delivery = await prisma.delivery.create({
     data: {
       orderId,
@@ -22,7 +27,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  await prisma.order.update({ where: { id: orderId }, data: { status: "ACCEPTED" } });
+  await prisma.order.update({ where: { id: orderId }, data: { status: "PICKED_UP" } });
 
   // Creer la premiere position si disponible
   if (latitude && longitude) {
@@ -40,12 +45,14 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
     });
-    io.to(`client:${order.clientId}`).emit("delivery:accepted", {
-      orderId,
-      deliveryId: delivery.id,
-      driverName,
-      status: "ACCEPTED",
-    });
+    if (order.clientId) {
+      io.to(`client:${order.clientId}`).emit("delivery:accepted", {
+        orderId,
+        deliveryId: delivery.id,
+        driverName,
+        status: "PICKED_UP",
+      });
+    }
     io.to("drivers").emit("order:taken", { orderId });
 
     // Envoyer la position initiale du livreur au client

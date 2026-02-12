@@ -15,6 +15,7 @@ import {
   Users,
   Truck,
   Bell,
+  ChefHat,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
@@ -31,6 +32,12 @@ const mobileItems: Record<string, { label: string; href: string; icon: any; acce
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList, accent: true },
     { label: "Produits", href: "/products", icon: Package },
   ],
+  COOK: [
+    { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Cuisine", href: "/cuisine", icon: ChefHat, accent: true },
+    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
+    { label: "Carte", href: "/map", icon: Map },
+  ],
   DEFAULT: [
     { label: "Carte", href: "/map", icon: Map },
     { label: "Livreurs", href: "/drivers", icon: Truck },
@@ -46,7 +53,11 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
   DRIVER: [
     { label: "Parametres", href: "/settings", icon: Settings },
   ],
+  COOK: [
+    { label: "Parametres", href: "/settings", icon: Settings },
+  ],
   DEFAULT: [
+    { label: "Cuisine", href: "/cuisine", icon: ChefHat },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
     { label: "Commander", href: "/livraison", icon: ShoppingBag },
     { label: "Alertes", href: "/alerts", icon: Bell },

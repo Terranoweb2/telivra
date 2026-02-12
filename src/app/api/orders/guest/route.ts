@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { items, deliveryAddress, deliveryLat, deliveryLng, note, guestName, guestPhone } = body;
+  const { items, deliveryAddress, deliveryLat, deliveryLng, note, guestName, guestPhone, paymentMethod } = body;
 
   if (!items?.length || !deliveryAddress || !deliveryLat || !deliveryLng) {
     return NextResponse.json({ error: "Donnees manquantes" }, { status: 400 });
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       note,
       guestName,
       guestPhone,
+      paymentMethod: paymentMethod || "CASH",
       items: { create: orderItems },
     },
     include: {
@@ -41,15 +42,17 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Notifier les livreurs
+  // Notifier les cuisiniers (pas les livreurs)
   const io = (global as any).io;
   if (io) {
-    io.to("drivers").emit("order:new", {
+    io.to("cooks").emit("order:new", {
       id: order.id,
       clientName: guestName,
       deliveryAddress: order.deliveryAddress,
       totalAmount: order.totalAmount,
       items: order.items,
+      createdAt: order.createdAt,
+      status: "PENDING",
     });
   }
 

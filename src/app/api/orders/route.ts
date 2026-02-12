@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const body = await request.json();
-  const { items, deliveryAddress, deliveryLat, deliveryLng, note } = body;
+  const { items, deliveryAddress, deliveryLat, deliveryLng, note, paymentMethod } = body;
 
   if (!items?.length || !deliveryAddress || !deliveryLat || !deliveryLng) {
     return NextResponse.json({ error: "Donnees manquantes" }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       deliveryLat,
       deliveryLng,
       note,
+      paymentMethod: paymentMethod || "CASH",
       items: { create: orderItems },
     },
     include: {
@@ -76,14 +77,17 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // Notifier les cuisiniers (pas les livreurs — le livreur sera notifie quand la cuisine est prete)
   const io = (global as any).io;
   if (io) {
-    io.to("drivers").emit("order:new", {
+    io.to("cooks").emit("order:new", {
       id: order.id,
       clientName: order.client?.name,
       deliveryAddress: order.deliveryAddress,
       totalAmount: order.totalAmount,
       items: order.items,
+      createdAt: order.createdAt,
+      status: "PENDING",
     });
   }
 

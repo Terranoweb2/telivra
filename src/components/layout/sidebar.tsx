@@ -16,11 +16,13 @@ import {
   Users,
   Truck,
   Package,
+  ChefHat,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
   { label: "Carte", href: "/map", icon: Map, roles: null },
+  { label: "Cuisine", href: "/cuisine", icon: ChefHat, roles: ["COOK", "ADMIN"] },
   { label: "Commander", href: "/livraison", icon: ShoppingBag, roles: ["ADMIN", "CLIENT"] },
   { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER"] },
   { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER"] },

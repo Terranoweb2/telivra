@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
 type EventHandler = (data: any) => void;
@@ -8,12 +8,15 @@ type EventHandler = (data: any) => void;
 interface UseDeliverySocketOptions {
   orderId?: string;
   asDriver?: boolean;
+  asCook?: boolean;
   clientId?: string;
   onPosition?: EventHandler;
   onStatusChange?: EventHandler;
   onAccepted?: EventHandler;
   onNewOrder?: EventHandler;
   onOrderUpdate?: EventHandler;
+  onCookAccepted?: EventHandler;
+  onOrderReady?: EventHandler;
 }
 
 export function useDeliverySocket(options: UseDeliverySocketOptions) {
@@ -36,6 +39,9 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       if (handlersRef.current.asDriver) {
         socket.emit("subscribe:driver");
       }
+      if (handlersRef.current.asCook) {
+        socket.emit("subscribe:cook");
+      }
       if (handlersRef.current.clientId) {
         socket.emit("subscribe:client", handlersRef.current.clientId);
       }
@@ -56,7 +62,7 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       handlersRef.current.onAccepted?.(data);
     });
 
-    // Nouvelle commande disponible (pour livreurs)
+    // Nouvelle commande disponible (pour cuisiniers et livreurs)
     socket.on("order:new", (data) => {
       handlersRef.current.onNewOrder?.(data);
     });
@@ -64,6 +70,21 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
     // Mise a jour commande (pour client)
     socket.on("order:updated", (data) => {
       handlersRef.current.onOrderUpdate?.(data);
+    });
+
+    // Cuisinier a accepte la commande (pour client)
+    socket.on("order:cook-accepted", (data) => {
+      handlersRef.current.onCookAccepted?.(data);
+    });
+
+    // Commande prete (cuisine terminee — pour livreurs et client)
+    socket.on("order:ready", (data) => {
+      handlersRef.current.onOrderReady?.(data);
+    });
+
+    // Commande prise par un livreur
+    socket.on("order:taken", (data) => {
+      handlersRef.current.onStatusChange?.(data);
     });
 
     return () => {
