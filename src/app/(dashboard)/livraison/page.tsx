@@ -217,24 +217,24 @@ export default function CommanderPage() {
       {extras.length > 0 && (
         <div className="mt-4">
           <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <Droplets className="w-5 h-5 text-blue-400" /> Boissons & Extras
+            <Droplets className="w-5 h-5 text-orange-400" /> Boissons & Extras
           </h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {extras.map((p) => {
               const count = getCartCount(p.id);
               return (
                 <div key={p.id} className="flex-shrink-0 w-36 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
-                  <div className="h-24 flex items-center justify-center bg-blue-600/10">
+                  <div className="h-24 flex items-center justify-center bg-orange-600/10">
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Droplets className="w-8 h-8 opacity-40 text-blue-400" />
+                      <Droplets className="w-8 h-8 opacity-40 text-orange-400" />
                     )}
                   </div>
                   <div className="p-2">
                     <h4 className="text-xs font-semibold text-white truncate">{p.name}</h4>
                     <div className="flex items-center justify-between mt-1.5">
-                      <p className="text-xs font-bold text-blue-400">{p.price.toLocaleString()} F</p>
+                      <p className="text-xs font-bold text-orange-400">{p.price.toLocaleString()} F</p>
                       <div className="flex items-center gap-1">
                         {count > 0 && (
                           <>
@@ -244,7 +244,7 @@ export default function CommanderPage() {
                             <span className="text-[10px] text-white font-bold w-3 text-center">{count}</span>
                           </>
                         )}
-                        <button onClick={() => addToCart(p)} className="w-5 h-5 flex items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-full text-white">
+                        <button onClick={() => addToCart(p)} className="w-5 h-5 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white">
                           <Plus className="w-2.5 h-2.5" />
                         </button>
                       </div>
@@ -316,7 +316,7 @@ export default function CommanderPage() {
                     {canPayOnline && (
                       <button onClick={() => setPaymentChoice("ONLINE")}
                         className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border flex items-center justify-center gap-1.5",
-                          paymentChoice === "ONLINE" ? "bg-blue-600/20 border-blue-500/50 text-blue-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
+                          paymentChoice === "ONLINE" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
                         <CreditCard className="w-4 h-4" /> Payer en ligne
                       </button>
                     )}

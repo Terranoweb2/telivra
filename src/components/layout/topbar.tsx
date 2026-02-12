@@ -62,7 +62,7 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
         <div className="relative hidden lg:block" ref={dropdownRef}>
           <button onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-gray-800/60 transition-colors">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+            <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
               {initials}
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
@@ -72,7 +72,7 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
             <div className="absolute right-0 top-full mt-2 w-60 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/40 z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-800/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">
+                  <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">
                     {initials}
                   </div>
                   <div className="min-w-0">

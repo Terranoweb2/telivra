@@ -28,7 +28,7 @@ export default function DeviceDetailPage() {
     router.push("/devices");
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
   if (!device) return <div className="text-center py-12 text-gray-400">Appareil non trouve</div>;
 
   const entityInfo =
@@ -86,7 +86,7 @@ export default function DeviceDetailPage() {
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
-          <entityInfo.icon className="w-5 h-5 text-blue-400" />
+          <entityInfo.icon className="w-5 h-5 text-orange-400" />
           <h2 className="text-white font-semibold">Details</h2>
         </div>
         <div className="space-y-2">

@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Loader2, Clock, Gauge, MapPin, Route as RouteIcon } from "lucide-react";
 
-const TripMap = dynamic(() => import("@/components/map/trip-map"), { ssr: false, loading: () => <div className="h-96 bg-gray-900 rounded-xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div> });
+const TripMap = dynamic(() => import("@/components/map/trip-map"), { ssr: false, loading: () => <div className="h-96 bg-gray-900 rounded-xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div> });
 
 const statusLabels: Record<string, string> = { IN_PROGRESS: "En cours", COMPLETED: "Termine", CANCELLED: "Annule" };
 
@@ -22,7 +22,7 @@ export default function TripDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
   if (!trip) return <div className="text-center py-12 text-gray-400">Trajet non trouve</div>;
 
   return (

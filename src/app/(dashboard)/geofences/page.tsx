@@ -49,7 +49,7 @@ export default function GeofencesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function GeofencesPage() {
         </div>
         <Link
           href="/geofences/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors w-fit"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm transition-colors w-fit"
         >
           <Plus className="w-4 h-4" /> Nouvelle zone
         </Link>
@@ -75,7 +75,7 @@ export default function GeofencesPage() {
           <p className="text-gray-400 mb-4">Aucune geofence configuree</p>
           <Link
             href="/geofences/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm"
           >
             <Plus className="w-4 h-4" /> Creer une zone
           </Link>

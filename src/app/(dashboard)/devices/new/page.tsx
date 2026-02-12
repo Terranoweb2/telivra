@@ -64,7 +64,7 @@ export default function NewDevicePage() {
     }
   }
 
-  const inputClass = "w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const inputClass = "w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500";
   const labelClass = "block text-sm font-medium text-gray-300 mb-1.5";
 
   return (
@@ -102,7 +102,7 @@ export default function NewDevicePage() {
                   type="button"
                   onClick={() => setType(t)}
                   className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    type === t ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
+                    type === t ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
                   }`}
                 >
                   {t === "VEHICLE" ? "Vehicule" : t === "PERSON" ? "Personne" : "Asset"}
@@ -162,7 +162,7 @@ export default function NewDevicePage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
           {loading ? "Creation..." : "Creer l'appareil"}

@@ -11,7 +11,7 @@ const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
     </div>
   ),
 });
@@ -208,7 +208,7 @@ export default function DriverDeliveryDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     );
   }
@@ -233,9 +233,9 @@ export default function DriverDeliveryDetail() {
       </button>
 
       {/* Info livraison */}
-      <div className="bg-blue-600/10 border border-blue-500/30 rounded-xl p-4">
+      <div className="bg-orange-600/10 border border-orange-500/30 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+          <p className="text-sm font-semibold text-orange-400 flex items-center gap-2">
             <Truck className="w-4 h-4" />
             {delivery.status === "PICKING_UP" ? "Recuperation en cours" : "En route vers le client"}
           </p>
@@ -255,7 +255,7 @@ export default function DriverDeliveryDetail() {
               <MapPin className="w-3 h-3" /> {order?.deliveryAddress}
             </p>
             {order?.guestPhone && !order?.client && (
-              <a href={`tel:${order.guestPhone}`} className="text-xs text-blue-400 flex items-center gap-1 mt-0.5">
+              <a href={`tel:${order.guestPhone}`} className="text-xs text-orange-400 flex items-center gap-1 mt-0.5">
                 <Phone className="w-3 h-3" /> {order.guestPhone}
               </a>
             )}
@@ -265,7 +265,7 @@ export default function DriverDeliveryDetail() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           <div className="bg-gray-900/50 rounded-lg p-2 text-center">
-            <Gauge className="w-4 h-4 text-blue-400 mx-auto mb-0.5" />
+            <Gauge className="w-4 h-4 text-orange-400 mx-auto mb-0.5" />
             <p className="text-lg font-bold text-white">{speed}</p>
             <p className="text-[10px] text-gray-500">km/h</p>
           </div>
@@ -309,7 +309,7 @@ export default function DriverDeliveryDetail() {
         {delivery.status === "PICKING_UP" && (
           <button
             onClick={() => updateStatus("DELIVERING")}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
           >
             <Navigation className="w-4 h-4" /> Commande recuperee - En route
           </button>

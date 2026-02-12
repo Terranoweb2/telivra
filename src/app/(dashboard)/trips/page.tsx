@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const statusLabels: Record<string, string> = { IN_PROGRESS: "En cours", COMPLETED: "Termine", CANCELLED: "Annule" };
 const statusColors: Record<string, string> = {
   IN_PROGRESS: "text-green-400 bg-green-500/10",
-  COMPLETED: "text-blue-400 bg-blue-500/10",
+  COMPLETED: "text-orange-400 bg-orange-500/10",
   CANCELLED: "text-gray-400 bg-gray-500/10",
 };
 
@@ -58,7 +58,7 @@ export default function TripsPage() {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -69,7 +69,7 @@ export default function TripsPage() {
         </div>
         <button
           onClick={() => setShowNew(!showNew)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg"
         >
           <Play className="w-4 h-4" /> Demarrer un trajet
         </button>
@@ -119,10 +119,10 @@ export default function TripsPage() {
             <div key={trip.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Route className="w-5 h-5 text-blue-400 shrink-0" />
+                  <Route className="w-5 h-5 text-orange-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Link href={`/trips/${trip.id}`} className="text-white font-medium text-sm hover:text-blue-400">
+                      <Link href={`/trips/${trip.id}`} className="text-white font-medium text-sm hover:text-orange-400">
                         {trip.name || "Trajet sans nom"}
                       </Link>
                       <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColors[trip.status])}>

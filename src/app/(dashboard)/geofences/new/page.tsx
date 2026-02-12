@@ -11,7 +11,7 @@ const GeofenceDrawMap = dynamic(() => import("@/components/map/geofence-draw"), 
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
     </div>
   ),
 });
@@ -88,7 +88,7 @@ export default function NewGeofencePage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
               placeholder="Ex: Zone Bureau"
             />
           </div>
@@ -99,7 +99,7 @@ export default function NewGeofencePage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500 resize-none"
               placeholder="Description optionnelle..."
             />
           </div>
@@ -112,7 +112,7 @@ export default function NewGeofencePage() {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors",
                   type === "CIRCLE"
-                    ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-400"
                     : "border-gray-700 text-gray-400 hover:border-gray-600"
                 )}
               >
@@ -123,7 +123,7 @@ export default function NewGeofencePage() {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors",
                   type === "POLYGON"
-                    ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-400"
                     : "border-gray-700 text-gray-400 hover:border-gray-600"
                 )}
               >
@@ -141,7 +141,7 @@ export default function NewGeofencePage() {
                 onChange={(e) => setRadiusMeters(Number(e.target.value))}
                 min={50}
                 max={50000}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
           )}
@@ -180,7 +180,7 @@ export default function NewGeofencePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Sauvegarder

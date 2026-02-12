@@ -64,7 +64,7 @@ export default function DeliveryTrackMap({ driverPos, clientPos, positions, driv
         {trail.length >= 2 && <Polyline positions={trail} pathOptions={{ color: "#3B82F6", weight: 3, opacity: 0.6, dashArray: "6,4" }} />}
         {driverPos && (
           <Marker position={[driverPos.lat, driverPos.lng]} icon={driverIcon}>
-            <Popup><div className="text-sm"><p className="font-semibold text-blue-600">{driverLabel}</p><p className="text-xs text-gray-500">{driverPos.lat.toFixed(5)}, {driverPos.lng.toFixed(5)}</p></div></Popup>
+            <Popup><div className="text-sm"><p className="font-semibold text-orange-600">{driverLabel}</p><p className="text-xs text-gray-500">{driverPos.lat.toFixed(5)}, {driverPos.lng.toFixed(5)}</p></div></Popup>
           </Marker>
         )}
         <Marker position={[clientPos.lat, clientPos.lng]} icon={clientIcon}>

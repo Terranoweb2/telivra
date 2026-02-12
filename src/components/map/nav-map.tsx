@@ -176,7 +176,7 @@ export default function NavMap({ myPos, destination, isNavigating, heading, onMa
           <Marker position={myPos} icon={myPosIcon}>
             <Popup>
               <div className="text-sm">
-                <p className="font-semibold text-blue-600">Ma position</p>
+                <p className="font-semibold text-orange-600">Ma position</p>
                 <p className="text-gray-500 text-xs">{myPos[0].toFixed(6)}, {myPos[1].toFixed(6)}</p>
               </div>
             </Popup>

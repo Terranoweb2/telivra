@@ -42,7 +42,7 @@ export default function DevicesPage() {
         </div>
         <Link
           href="/devices/new"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Ajouter
@@ -56,13 +56,13 @@ export default function DevicesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
         >
           <option value="">Tous les types</option>
           <option value="VEHICLE">Vehicules</option>
@@ -73,13 +73,13 @@ export default function DevicesPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <Cpu className="w-12 h-12 text-gray-700 mx-auto mb-3" />
           <p className="text-gray-400">Aucun appareil trouve</p>
-          <Link href="/devices/new" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">
+          <Link href="/devices/new" className="text-orange-400 hover:text-orange-300 text-sm mt-2 inline-block">
             Ajouter un appareil
           </Link>
         </div>
@@ -100,7 +100,7 @@ export default function DevicesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="bg-gray-800 p-2.5 rounded-lg shrink-0">
-                      <Icon className="w-5 h-5 text-blue-400" />
+                      <Icon className="w-5 h-5 text-orange-400" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-white font-medium text-sm truncate">{device.name}</p>

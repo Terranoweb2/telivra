@@ -15,7 +15,7 @@ export default function DriversPage() {
     });
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   const totalActive = drivers.reduce((s, d) => s + d.stats.active, 0);
   const totalCompleted = drivers.reduce((s, d) => s + d.stats.completed, 0);
@@ -41,7 +41,7 @@ export default function DriversPage() {
           <p className="text-xs text-gray-500">Livrees</p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <TrendingUp className="w-5 h-5 text-blue-400 mx-auto mb-1" />
+          <TrendingUp className="w-5 h-5 text-orange-400 mx-auto mb-1" />
           <p className="text-lg font-bold text-white">{totalRevenue.toLocaleString()}</p>
           <p className="text-xs text-gray-500">FCFA total</p>
         </div>
@@ -52,8 +52,8 @@ export default function DriversPage() {
         {drivers.map((driver) => (
           <div key={driver.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-11 h-11 bg-blue-600/20 rounded-full flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-blue-400" />
+              <div className="w-11 h-11 bg-orange-600/20 rounded-full flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-orange-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">{driver.name}</p>

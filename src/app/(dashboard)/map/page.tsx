@@ -15,7 +15,7 @@ const MainMap = dynamic(() => import("@/components/map/main-map"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-950">
-      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+      <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
     </div>
   ),
 });
@@ -223,7 +223,7 @@ export default function MapPage() {
   if (locating || loading) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-950 z-50">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+        <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
         <p className="text-white text-lg">{locating ? "Localisation en cours..." : "Chargement..."}</p>
       </div>
     );
@@ -244,10 +244,10 @@ export default function MapPage() {
 
       {/* Banner mode placement position */}
       {settingPos && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] bg-blue-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] bg-orange-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm">
           <MousePointer className="w-4 h-4" />
           Cliquez sur la carte pour placer votre position
-          <button onClick={() => setSettingPos(false)} className="ml-2 p-1 hover:bg-blue-700 rounded">
+          <button onClick={() => setSettingPos(false)} className="ml-2 p-1 hover:bg-orange-700 rounded">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -259,7 +259,7 @@ export default function MapPage() {
           <div className="flex items-center gap-2 px-4 py-3">
             {isNavigating ? (
               <>
-                <Navigation className="w-5 h-5 text-blue-500 shrink-0" />
+                <Navigation className="w-5 h-5 text-orange-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{destName}</p>
                   {routeInfo && (
@@ -292,7 +292,7 @@ export default function MapPage() {
           )}
           {searching && (
             <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /><span className="text-sm text-gray-500">Recherche...</span>
+              <Loader2 className="w-4 h-4 text-orange-500 animate-spin" /><span className="text-sm text-gray-500">Recherche...</span>
             </div>
           )}
         </div>
@@ -301,12 +301,12 @@ export default function MapPage() {
       {/* Boutons lateraux */}
       <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-2">
         <button onClick={() => { setShowDevices(!showDevices); setShowTracking(false); }}
-          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showDevices ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
+          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showDevices ? "bg-orange-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
           title="Appareils">
           <MapPin className="w-5 h-5" />
         </button>
         <button onClick={() => { setShowTracking(!showTracking); setShowDevices(false); }}
-          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showTracking ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
+          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showTracking ? "bg-orange-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
           title="Tracking manuel">
           <Crosshair className="w-5 h-5" />
         </button>
@@ -338,7 +338,7 @@ export default function MapPage() {
           </div>
         )}
         <button onClick={recenter} className="bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors" title="Recentrer (GPS auto)">
-          <Locate className="w-5 h-5 text-blue-600" />
+          <Locate className="w-5 h-5 text-orange-600" />
         </button>
       </div>
 
@@ -360,7 +360,7 @@ export default function MapPage() {
               return (
                 <div key={d.id} className="px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 transition-colors">
                   <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-blue-500 shrink-0" />
+                    <Icon className="w-4 h-4 text-orange-500 shrink-0" />
                     <span className="text-sm font-medium text-gray-900 truncate">{d.name}</span>
                     <span className={cn("w-2 h-2 rounded-full shrink-0 ml-auto", statusColors[d.status])} />
                   </div>
@@ -380,17 +380,17 @@ export default function MapPage() {
       {showTracking && (
         <div className="absolute top-16 right-3 z-[1000] w-80 bg-white rounded-xl shadow-2xl overflow-hidden">
           <div className="p-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900 flex items-center gap-2"><Crosshair className="w-4 h-4 text-blue-500" /> Tracking manuel</p>
+            <p className="text-sm font-semibold text-gray-900 flex items-center gap-2"><Crosshair className="w-4 h-4 text-orange-500" /> Tracking manuel</p>
           </div>
           <div className="p-3 space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <input type="number" step="any" value={trackLat} onChange={(e) => setTrackLat(e.target.value)}
-                placeholder="Latitude" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500" />
+                placeholder="Latitude" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-orange-500" />
               <input type="number" step="any" value={trackLng} onChange={(e) => setTrackLng(e.target.value)}
-                placeholder="Longitude" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500" />
+                placeholder="Longitude" className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-orange-500" />
             </div>
             <select value={trackSerial} onChange={(e) => setTrackSerial(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500">
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-orange-500">
               <option value="">-- Voir seulement --</option>
               {trackDevices.map((d: any) => <option key={d.id} value={d.serialNumber}>{d.name}</option>)}
             </select>
@@ -399,7 +399,7 @@ export default function MapPage() {
                 <Eye className="w-4 h-4" /> Voir
               </button>
               <button onClick={sendPosition} disabled={sending || !trackSerial}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm">
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Envoyer
               </button>
             </div>
@@ -418,13 +418,13 @@ export default function MapPage() {
               <p className="text-sm font-semibold text-gray-900 truncate flex-1">{destName}</p>
             </div>
             <div className="flex items-center gap-4 mb-3">
-              <div className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-blue-500" /><span className="text-sm font-semibold text-gray-900">{fmt(routeInfo.distance)}</span></div>
+              <div className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-orange-500" /><span className="text-sm font-semibold text-gray-900">{fmt(routeInfo.distance)}</span></div>
               <div className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-green-500" /><span className="text-sm font-semibold text-gray-900">{fmtTime(routeInfo.time)}</span></div>
               <div className="flex items-center gap-1.5"><Navigation className="w-4 h-4 text-purple-500" /><span className="text-sm text-gray-500">Arrivee {eta(routeInfo.time)}</span></div>
             </div>
           </div>
           <div className="flex gap-2 px-4 pb-4">
-            <button onClick={startNav} className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold">
+            <button onClick={startNav} className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold">
               <Navigation className="w-5 h-5" /> Demarrer
             </button>
             <button onClick={() => setShowSteps(!showSteps)} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm">Etapes</button>
@@ -434,7 +434,7 @@ export default function MapPage() {
             <div className="border-t border-gray-100 max-h-48 overflow-y-auto px-4 py-2">
               {routeSteps.map((step, i) => (
                 <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-xs font-bold text-blue-600">{i + 1}</span></div>
+                  <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-xs font-bold text-orange-600">{i + 1}</span></div>
                   <div className="flex-1 min-w-0"><p className="text-sm text-gray-700">{step.instruction}</p><p className="text-xs text-gray-400">{fmt(step.distance)}</p></div>
                 </div>
               ))}
@@ -449,13 +449,13 @@ export default function MapPage() {
           <div className="px-4 pt-3 pb-4">
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
             {routeSteps.length > 0 && (
-              <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0"><ArrowUp className="w-5 h-5 text-white" /></div>
-                <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{routeSteps[0]?.instruction}</p><p className="text-xs text-blue-600">{fmt(routeSteps[0]?.distance || 0)}</p></div>
+              <div className="flex items-center gap-3 mb-4 p-3 bg-orange-50 rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center shrink-0"><ArrowUp className="w-5 h-5 text-white" /></div>
+                <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{routeSteps[0]?.instruction}</p><p className="text-xs text-orange-600">{fmt(routeSteps[0]?.distance || 0)}</p></div>
               </div>
             )}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center"><Gauge className="w-4 h-4 text-blue-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{speed}</p><p className="text-xs text-gray-500">km/h</p></div>
+              <div className="text-center"><Gauge className="w-4 h-4 text-orange-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{speed}</p><p className="text-xs text-gray-500">km/h</p></div>
               <div className="text-center"><Ruler className="w-4 h-4 text-green-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{routeInfo ? fmt(routeInfo.distance) : "--"}</p><p className="text-xs text-gray-500">restant</p></div>
               <div className="text-center"><Clock className="w-4 h-4 text-purple-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{routeInfo ? eta(routeInfo.time) : "--"}</p><p className="text-xs text-gray-500">arrivee</p></div>
             </div>

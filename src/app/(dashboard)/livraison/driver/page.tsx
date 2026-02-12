@@ -9,7 +9,7 @@ import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 
 const statusLabels: Record<string, { text: string; color: string }> = {
   PICKING_UP: { text: "Recuperation", color: "text-yellow-400 bg-yellow-600/20" },
-  DELIVERING: { text: "En livraison", color: "text-blue-400 bg-blue-600/20" },
+  DELIVERING: { text: "En livraison", color: "text-orange-400 bg-orange-600/20" },
 };
 
 export default function DriverPage() {
@@ -146,7 +146,7 @@ export default function DriverPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     );
   }
@@ -182,9 +182,9 @@ export default function DriverPage() {
       {activeDeliveries.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-            <Truck className="w-5 h-5 text-blue-400" />
+            <Truck className="w-5 h-5 text-orange-400" />
             Mes livraisons en cours
-            <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">{activeDeliveries.length}</span>
+            <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded-full">{activeDeliveries.length}</span>
           </h2>
           <div className="space-y-2">
             {activeDeliveries.map((order) => {
@@ -193,12 +193,12 @@ export default function DriverPage() {
                 <button
                   key={order.id}
                   onClick={() => router.push(`/livraison/driver/${order.delivery.id}`)}
-                  className="w-full bg-gray-900 border border-gray-800 hover:border-blue-500/50 rounded-xl p-4 text-left transition-colors"
+                  className="w-full bg-gray-900 border border-gray-800 hover:border-orange-500/50 rounded-xl p-4 text-left transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center shrink-0">
-                        <User className="w-5 h-5 text-blue-400" />
+                      <div className="w-10 h-10 bg-orange-600/20 rounded-full flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5 text-orange-400" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-white">{order.client?.name}</p>
@@ -213,7 +213,7 @@ export default function DriverPage() {
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.color}`}>
                       {status.text}
                     </span>
-                    <span className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</span>
+                    <span className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</span>
                   </div>
                 </button>
               );
@@ -247,7 +247,7 @@ export default function DriverPage() {
                       <MapPin className="w-3 h-3" /> {order.deliveryAddress}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</span>
+                  <span className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</span>
                 </div>
                 <div className="text-xs text-gray-400 mb-3">
                   {order.items?.map((i: any) => (

@@ -13,7 +13,7 @@ const NavMap = dynamic(() => import("@/components/map/nav-map"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-950">
-      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+      <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
     </div>
   ),
 });
@@ -190,7 +190,7 @@ export default function NavigatePage() {
   if (locating) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-950 z-50">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+        <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
         <p className="text-white text-lg">Localisation en cours...</p>
         <p className="text-gray-500 text-sm mt-1">Autorisez l acces a votre position</p>
       </div>
@@ -217,7 +217,7 @@ export default function NavigatePage() {
           <div className="flex items-center gap-2 px-4 py-3">
             {navState === "navigating" ? (
               <>
-                <Navigation className="w-5 h-5 text-blue-500 shrink-0" />
+                <Navigation className="w-5 h-5 text-orange-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{destName}</p>
                   {routeInfo && (
@@ -267,7 +267,7 @@ export default function NavigatePage() {
           )}
           {showSearch && searching && (
             <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+              <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
               <span className="text-sm text-gray-500">Recherche...</span>
             </div>
           )}
@@ -280,7 +280,7 @@ export default function NavigatePage() {
         className="absolute right-3 z-[1000] bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors"
         style={{ bottom: navState === "idle" ? "1.5rem" : navState === "planning" ? "10rem" : "11rem" }}
       >
-        <Locate className="w-5 h-5 text-blue-600" />
+        <Locate className="w-5 h-5 text-orange-600" />
       </button>
 
       {/* Panneau planification (quand destination selectionnee) */}
@@ -296,7 +296,7 @@ export default function NavigatePage() {
             </div>
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center gap-1.5">
-                <Ruler className="w-4 h-4 text-blue-500" />
+                <Ruler className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-semibold text-gray-900">{formatDistance(routeInfo.distance)}</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -312,7 +312,7 @@ export default function NavigatePage() {
           <div className="flex gap-2 px-4 pb-4">
             <button
               onClick={startNavigation}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors"
             >
               <Navigation className="w-5 h-5" /> Demarrer
             </button>
@@ -334,8 +334,8 @@ export default function NavigatePage() {
             <div className="border-t border-gray-100 max-h-48 overflow-y-auto px-4 py-2">
               {routeSteps.map((step, i) => (
                 <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-blue-600">{i + 1}</span>
+                  <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-orange-600">{i + 1}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700">{step.instruction}</p>
@@ -356,13 +356,13 @@ export default function NavigatePage() {
 
             {/* Prochaine instruction */}
             {routeSteps.length > 0 && (
-              <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-3 mb-4 p-3 bg-orange-50 rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center shrink-0">
                   <ArrowUp className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{routeSteps[0]?.instruction}</p>
-                  <p className="text-xs text-blue-600">{formatDistance(routeSteps[0]?.distance || 0)}</p>
+                  <p className="text-xs text-orange-600">{formatDistance(routeSteps[0]?.distance || 0)}</p>
                 </div>
               </div>
             )}
@@ -371,7 +371,7 @@ export default function NavigatePage() {
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <Gauge className="w-4 h-4 text-blue-500" />
+                  <Gauge className="w-4 h-4 text-orange-500" />
                 </div>
                 <p className="text-xl font-bold text-gray-900">{speed}</p>
                 <p className="text-xs text-gray-500">km/h</p>

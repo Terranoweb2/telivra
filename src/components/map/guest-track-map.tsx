@@ -64,7 +64,7 @@ export default function GuestTrackMap({ driverPos, clientPos, positions = [], dr
         </Marker>
         {driverPos && (
           <Marker position={[driverPos.lat, driverPos.lng]} icon={driverIcon}>
-            <Popup><div className="text-sm"><p className="font-semibold text-blue-600">{driverLabel}</p><p className="text-xs text-gray-500">{driverPos.lat.toFixed(5)}, {driverPos.lng.toFixed(5)}</p></div></Popup>
+            <Popup><div className="text-sm"><p className="font-semibold text-orange-600">{driverLabel}</p><p className="text-xs text-gray-500">{driverPos.lat.toFixed(5)}, {driverPos.lng.toFixed(5)}</p></div></Popup>
           </Marker>
         )}
         {trail.length > 1 && <Polyline positions={trail} color="#3b82f6" weight={3} opacity={0.6} />}

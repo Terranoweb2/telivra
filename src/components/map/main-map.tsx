@@ -179,7 +179,7 @@ export default function MainMap({ myPos, devices, destination, manualMarker, geo
           <Marker position={myPos} icon={myPosIcon} zIndexOffset={1000}>
             <Popup>
               <div className="text-sm">
-                <p className="font-semibold text-blue-600">Ma position</p>
+                <p className="font-semibold text-orange-600">Ma position</p>
                 <p className="text-gray-500 text-xs">{myPos[0].toFixed(6)}, {myPos[1].toFixed(6)}</p>
                 {accuracy !== null && accuracy > 0 && <p className="text-gray-400 text-xs">Precision: ±{accuracy}m</p>}
               </div>

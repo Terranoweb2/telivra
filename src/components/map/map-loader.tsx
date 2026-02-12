@@ -7,7 +7,7 @@ const GPSMap = dynamic(() => import("./map-container"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
     </div>
   ),
 });

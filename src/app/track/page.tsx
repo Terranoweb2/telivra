@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400", icon: Clock },
-  ACCEPTED: { label: "Acceptee", color: "bg-blue-500/20 text-blue-400", icon: CheckCircle },
+  ACCEPTED: { label: "Acceptee", color: "bg-orange-500/20 text-orange-400", icon: CheckCircle },
   PICKING_UP: { label: "Recuperation", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag },
   DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck },
   DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
@@ -60,13 +60,13 @@ export default function TrackPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && searchOrders()}
                 placeholder="+229 00 00 00 00"
-                className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500"
+                className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
             <button
               onClick={searchOrders}
               disabled={loading || phone.length < 8}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               Rechercher
@@ -114,7 +114,7 @@ export default function TrackPage() {
                       {order.items?.length > 3 && <p className="text-gray-600">+{order.items.length - 3} autres</p>}
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
-                      <p className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                      <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
                       {order.delivery && (
                         <span className="text-xs text-green-400">Livreur assigne</span>
                       )}
@@ -132,10 +132,10 @@ export default function TrackPage() {
         <div className="bg-gray-900/80 backdrop-blur-lg border-t border-gray-800/50">
           <div className="flex items-center justify-around h-16 px-2">
             <Link href="/track" className="flex flex-col items-center justify-center flex-1 py-1 group">
-              <div className="p-2 rounded-2xl bg-blue-600/15">
-                <ClipboardList className="w-5 h-5 text-blue-400 transition-colors" />
+              <div className="p-2 rounded-2xl bg-orange-600/15">
+                <ClipboardList className="w-5 h-5 text-orange-400 transition-colors" />
               </div>
-              <span className="text-[10px] mt-0.5 font-medium text-blue-400">Commandes</span>
+              <span className="text-[10px] mt-0.5 font-medium text-orange-400">Commandes</span>
             </Link>
             <Link href="/" className="flex flex-col items-center justify-center flex-1 py-1 group">
               <div className="p-2 rounded-2xl">

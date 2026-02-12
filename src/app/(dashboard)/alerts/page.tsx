@@ -17,7 +17,7 @@ interface Alert {
 }
 
 const severityConfig: Record<string, { icon: any; color: string; bg: string }> = {
-  INFO: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
+  INFO: { icon: Info, color: "text-orange-400", bg: "bg-orange-500/10" },
   WARNING: { icon: AlertTriangle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
   CRITICAL: { icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500/10" },
 };
@@ -107,7 +107,7 @@ export default function AlertsPage() {
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors",
               filter === f.key
-                ? "bg-blue-600 text-white"
+                ? "bg-orange-600 text-white"
                 : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
             )}
           >
@@ -118,7 +118,7 @@ export default function AlertsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
         </div>
       ) : alerts.length === 0 ? (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
