@@ -15,6 +15,9 @@ export function middleware(request: NextRequest) {
     "/api/products",
     "/api/orders/guest",
     "/api/orders/track",
+    "/api/payments/callback",
+    "/api/payments/webhook",
+    "/api/settings",
     "/track",
   ];
   const isPublic =

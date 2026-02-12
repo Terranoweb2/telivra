@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ShoppingBag, Zap, MapPin, CreditCard, UserCheck,
-  Search, Plus, Minus, X, Loader2, Store,
+  Search, Plus, Minus, X, Loader2,
   ClipboardList, Map, LogIn,
-  UtensilsCrossed, ShoppingCart, Pill, Smartphone, Package,
-  ArrowDown, Phone, User,
+  UtensilsCrossed, ShoppingCart,
+  ArrowDown, Phone, User, Timer, Droplets, ChefHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,8 +18,10 @@ interface Product {
   description: string | null;
   price: number;
   category: string;
-  shopName: string;
+  shopName: string | null;
   image: string | null;
+  cookingTimeMin: number;
+  isExtra: boolean;
 }
 
 interface CartItem {
@@ -27,27 +29,26 @@ interface CartItem {
   quantity: number;
 }
 
+interface SiteSettings {
+  restaurantName: string;
+  defaultPaymentMethod: string;
+  deliveryFee: number;
+  currency: string;
+}
+
 const advantages = [
+  { icon: ChefHat, title: "Cuisine maison", desc: "Plats prepares avec soin par nos cuisiniers", color: "from-orange-500 to-red-500" },
   { icon: Zap, title: "Livraison rapide", desc: "Recevez vos commandes en un temps record", color: "from-yellow-500 to-orange-500" },
   { icon: MapPin, title: "Suivi en direct", desc: "Suivez votre livreur en temps reel sur la carte", color: "from-blue-500 to-cyan-500" },
-  { icon: CreditCard, title: "Paiement a la livraison", desc: "Payez en especes a la reception de votre commande", color: "from-green-500 to-emerald-500" },
-  { icon: UserCheck, title: "Sans inscription", desc: "Commandez sans creer de compte, c'est simple et rapide", color: "from-purple-500 to-pink-500" },
+  { icon: UserCheck, title: "Sans inscription", desc: "Commandez sans creer de compte, simple et rapide", color: "from-purple-500 to-pink-500" },
 ];
-
-const categoryConfig: Record<string, { label: string; icon: any; color: string; bg: string }> = {
-  RESTAURANT: { label: "Restaurants", icon: UtensilsCrossed, color: "text-orange-400", bg: "bg-orange-600/20" },
-  GROCERY: { label: "Epicerie", icon: ShoppingCart, color: "text-green-400", bg: "bg-green-600/20" },
-  PHARMACY: { label: "Pharmacie", icon: Pill, color: "text-blue-400", bg: "bg-blue-600/20" },
-  ELECTRONICS: { label: "Electronique", icon: Smartphone, color: "text-purple-400", bg: "bg-purple-600/20" },
-  OTHER: { label: "Autre", icon: Package, color: "text-gray-400", bg: "bg-gray-600/20" },
-};
 
 export default function LandingPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showOrder, setShowOrder] = useState(false);
 
@@ -58,14 +59,28 @@ export default function LandingPage() {
   const [addressLat, setAddressLat] = useState("");
   const [addressLng, setAddressLng] = useState("");
   const [note, setNote] = useState("");
+  const [paymentChoice, setPaymentChoice] = useState<"CASH" | "ONLINE">("CASH");
   const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
-    fetch("/api/products")
-      .then((r) => r.json())
-      .then((data) => setProducts(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/products").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()).catch(() => null),
+    ]).then(([prods, sett]) => {
+      setProducts(Array.isArray(prods) ? prods : []);
+      setSettings(sett);
+      setLoading(false);
+    });
   }, []);
+
+  // Separer repas et extras
+  const meals = products.filter((p) => !p.isExtra);
+  const extras = products.filter((p) => p.isExtra);
+
+  const filteredMeals = meals.filter((p) => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -87,14 +102,13 @@ export default function LandingPage() {
     return cart.find((i) => i.product.id === productId)?.quantity || 0;
   }
 
-  const total = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const deliveryFee = settings?.deliveryFee || 0;
+  const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const total = subtotal + deliveryFee;
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
-  const filtered = products.filter((p) => {
-    if (activeCategory !== "all" && p.category !== activeCategory) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.shopName.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const canPayOnline = settings?.defaultPaymentMethod === "ONLINE" || settings?.defaultPaymentMethod === "BOTH";
+  const canPayCash = settings?.defaultPaymentMethod === "CASH" || settings?.defaultPaymentMethod === "BOTH" || !settings?.defaultPaymentMethod;
 
   function useMyPosition() {
     if (!navigator.geolocation) return;
@@ -120,10 +134,28 @@ export default function LandingPage() {
           note,
           guestName,
           guestPhone,
+          paymentMethod: paymentChoice,
         }),
       });
       if (res.ok) {
         const order = await res.json();
+
+        // Si paiement en ligne, rediriger vers FedaPay
+        if (paymentChoice === "ONLINE") {
+          const payRes = await fetch("/api/payments/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId: order.id }),
+          });
+          if (payRes.ok) {
+            const { paymentUrl } = await payRes.json();
+            if (paymentUrl) {
+              window.location.href = paymentUrl;
+              return;
+            }
+          }
+        }
+
         setCart([]);
         setShowOrder(false);
         router.push(`/track/${order.id}`);
@@ -133,13 +165,15 @@ export default function LandingPage() {
     }
   }
 
+  const restaurantName = settings?.restaurantName || "Terrano";
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
-          <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Terrano
+          <span className="text-lg font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+            {restaurantName}
           </span>
           <Link href="/login" className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium transition-colors">
             <LogIn className="w-4 h-4" /> Connexion
@@ -149,22 +183,22 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-purple-600/10" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 via-transparent to-red-600/10" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-600/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-red-600/10 rounded-full blur-3xl" />
         <div className="relative max-w-6xl mx-auto px-4 py-16 sm:py-24 text-center">
           <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight">
-            Commandez en ligne,
+            Savourez nos plats,
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              livraison rapide
+            <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-500 bg-clip-text text-transparent">
+              livres chez vous
             </span>
           </h1>
           <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
-            Faites vos courses et commandes en quelques clics. Livraison chez vous, paiement a la livraison, sans inscription.
+            Decouvrez notre menu et commandez vos repas preferes. Livraison rapide, paiement flexible.
           </p>
-          <a href="#catalogue" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl text-sm font-semibold transition-colors shadow-lg shadow-blue-600/20">
-            Voir les articles <ArrowDown className="w-4 h-4" />
+          <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-2xl text-sm font-semibold transition-colors shadow-lg shadow-orange-600/20">
+            Voir le menu <ArrowDown className="w-4 h-4" />
           </a>
         </div>
       </section>
@@ -187,70 +221,52 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Catalogue */}
-      <section id="catalogue" className="max-w-6xl mx-auto px-4 pb-40">
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Nos articles</h2>
+      {/* Menu */}
+      <section id="menu" className="max-w-6xl mx-auto px-4 pb-40">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2">
+          <UtensilsCrossed className="w-6 h-6 text-orange-400" /> Notre Menu
+        </h2>
 
         {/* Recherche */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un plat, produit, restaurant..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500" />
+            placeholder="Rechercher un plat..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
         </div>
 
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide mb-4">
-          <button onClick={() => setActiveCategory("all")}
-            className={cn("px-4 py-2 rounded-xl text-sm whitespace-nowrap transition-colors", activeCategory === "all" ? "bg-blue-600 text-white" : "bg-gray-900 text-gray-400")}>
-            Tout
-          </button>
-          {Object.entries(categoryConfig).map(([key, cfg]) => {
-            const Icon = cfg.icon;
-            return (
-              <button key={key} onClick={() => setActiveCategory(key)}
-                className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm whitespace-nowrap transition-colors",
-                  activeCategory === key ? "bg-blue-600 text-white" : "bg-gray-900 text-gray-400")}>
-                <Icon className="w-4 h-4" /> {cfg.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Grille produits */}
+        {/* Grille repas */}
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredMeals.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-            <ShoppingBag className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-400">Aucun produit trouve</p>
+            <UtensilsCrossed className="w-12 h-12 text-gray-700 mx-auto mb-3" />
+            <p className="text-gray-400">Aucun plat trouve</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filtered.map((p) => {
+            {filteredMeals.map((p) => {
               const count = getCartCount(p.id);
-              const cat = categoryConfig[p.category] || categoryConfig.OTHER;
-              const CatIcon = cat.icon;
               return (
                 <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
-                  <div className={cn("relative h-32 sm:h-36 flex items-center justify-center", cat.bg)}>
+                  <div className="relative h-32 sm:h-36 flex items-center justify-center bg-orange-600/20">
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
-                      <CatIcon className={cn("w-12 h-12 opacity-40", cat.color)} />
+                      <UtensilsCrossed className="w-12 h-12 opacity-40 text-orange-400" />
                     )}
-                    <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-md">
-                      <Store className="w-3 h-3 text-gray-300" />
-                      <span className="text-[9px] text-gray-300 font-medium truncate max-w-[80px]">{p.shopName}</span>
+                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-md">
+                      <Timer className="w-3 h-3 text-orange-300" />
+                      <span className="text-[9px] text-orange-300 font-medium">~{p.cookingTimeMin} min</span>
                     </div>
                   </div>
                   <div className="p-3">
                     <h3 className="text-sm font-semibold text-white truncate">{p.name}</h3>
                     {p.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{p.description}</p>}
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-bold text-blue-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal">FCFA</span></p>
+                      <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal">FCFA</span></p>
                       <div className="flex items-center gap-1.5">
                         {count > 0 && (
                           <>
@@ -260,7 +276,7 @@ export default function LandingPage() {
                             <span className="text-xs text-white font-bold w-4 text-center">{count}</span>
                           </>
                         )}
-                        <button onClick={() => addToCart(p)} className="w-6 h-6 flex items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-full text-white">
+                        <button onClick={() => addToCart(p)} className="w-6 h-6 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
@@ -271,6 +287,50 @@ export default function LandingPage() {
             })}
           </div>
         )}
+
+        {/* Section Extras (boissons, eau, jus) */}
+        {extras.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-blue-400" /> Boissons & Extras
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {extras.map((p) => {
+                const count = getCartCount(p.id);
+                return (
+                  <div key={p.id} className="flex-shrink-0 w-36 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
+                    <div className="h-24 flex items-center justify-center bg-blue-600/10">
+                      {p.image ? (
+                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Droplets className="w-8 h-8 opacity-40 text-blue-400" />
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <h4 className="text-xs font-semibold text-white truncate">{p.name}</h4>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-xs font-bold text-blue-400">{p.price.toLocaleString()} F</p>
+                        <div className="flex items-center gap-1">
+                          {count > 0 && (
+                            <>
+                              <button onClick={() => removeFromCart(p.id)} className="w-5 h-5 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white">
+                                <Minus className="w-2.5 h-2.5" />
+                              </button>
+                              <span className="text-[10px] text-white font-bold w-3 text-center">{count}</span>
+                            </>
+                          )}
+                          <button onClick={() => addToCart(p)} className="w-5 h-5 flex items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-full text-white">
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Barre panier fixe */}
@@ -278,7 +338,7 @@ export default function LandingPage() {
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 lg:bottom-0 lg:pb-4 lg:max-w-2xl lg:mx-auto">
           {!showOrder ? (
             <button onClick={() => setShowOrder(true)}
-              className="w-full flex items-center justify-between py-3.5 px-5 bg-blue-600 hover:bg-blue-700 rounded-2xl text-white transition-colors shadow-lg shadow-blue-600/20">
+              className="w-full flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg shadow-orange-600/20">
               <span className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5" />
                 <span className="text-sm font-semibold">Commander {totalItems} Article{totalItems > 1 ? "s" : ""}</span>
@@ -301,6 +361,12 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
+              {deliveryFee > 0 && (
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Frais de livraison</span>
+                  <span>{deliveryFee.toLocaleString()} FCFA</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm font-bold text-white border-t border-gray-800 pt-2">
                 <span>Total</span><span>{total.toLocaleString()} FCFA</span>
               </div>
@@ -312,7 +378,7 @@ export default function LandingPage() {
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Nom complet"
-                      className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500" />
+                      className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
                   </div>
                 </div>
                 <div>
@@ -320,34 +386,57 @@ export default function LandingPage() {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="+229 00 00 00 00"
-                      className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500" />
+                      className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Adresse de livraison *</label>
                   <div className="flex gap-2">
                     <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Adresse..."
-                      className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500" />
-                    <button onClick={useMyPosition} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-blue-400" title="Ma position">
+                      className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
+                    <button onClick={useMyPosition} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-orange-400" title="Ma position">
                       <MapPin className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <input type="number" step="any" value={addressLat} onChange={(e) => setAddressLat(e.target.value)} placeholder="Latitude"
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500" />
+                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-orange-500" />
                   <input type="number" step="any" value={addressLng} onChange={(e) => setAddressLng(e.target.value)} placeholder="Longitude"
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500" />
+                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-orange-500" />
                 </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note pour le livreur (optionnel)"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-blue-500" />
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note pour la commande (optionnel)"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-orange-500" />
               </div>
+
+              {/* Choix de paiement */}
+              {(canPayOnline || canPayCash) && (
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500 block">Mode de paiement</label>
+                  <div className="flex gap-2">
+                    {canPayCash && (
+                      <button onClick={() => setPaymentChoice("CASH")}
+                        className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border",
+                          paymentChoice === "CASH" ? "bg-green-600/20 border-green-500/50 text-green-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
+                        A la livraison
+                      </button>
+                    )}
+                    {canPayOnline && (
+                      <button onClick={() => setPaymentChoice("ONLINE")}
+                        className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border flex items-center justify-center gap-1.5",
+                          paymentChoice === "ONLINE" ? "bg-blue-600/20 border-blue-500/50 text-blue-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
+                        <CreditCard className="w-4 h-4" /> Payer en ligne
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <button onClick={placeOrder}
                 disabled={ordering || !guestName || !guestPhone || !address || !addressLat || !addressLng}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                 {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
-                Commander - {total.toLocaleString()} FCFA
+                {paymentChoice === "ONLINE" ? "Payer en ligne" : "Commander"} - {total.toLocaleString()} FCFA
               </button>
             </div>
           )}
