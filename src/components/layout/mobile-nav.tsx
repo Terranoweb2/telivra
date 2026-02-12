@@ -111,7 +111,7 @@ export function MobileNav() {
       )}
 
       {showMenu && (
-        <div ref={menuRef} className="fixed bottom-[4rem] right-3 z-50 w-56 bg-[#1c1c1e] rounded-xl shadow-2xl shadow-black/60 overflow-hidden lg:hidden">
+        <div ref={menuRef} className="fixed bottom-[4.2rem] right-3 z-50 w-56 bg-[#1c1c1e]/95 backdrop-blur-xl rounded-xl shadow-2xl shadow-black/60 overflow-hidden lg:hidden">
           <div className="px-4 py-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-700 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0">
@@ -119,7 +119,7 @@ export function MobileNav() {
               </div>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-white truncate">{userName}</p>
-                <p className="text-[11px] text-gray-500 truncate">{userEmail}</p>
+                <p className="text-[11px] text-[#999] truncate">{userEmail}</p>
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ export function MobileNav() {
                     "flex items-center gap-3 px-4 py-2.5 text-[13px] font-normal transition-colors",
                     isActive ? "text-orange-400 bg-orange-500/10" : "text-white active:bg-white/5"
                   )}>
-                  <Icon className="w-[18px] h-[18px] text-gray-400" />
+                  <Icon className={cn("w-[18px] h-[18px]", isActive ? "text-orange-400" : "text-[#999]")} />
                   {item.label}
                 </Link>
               );
@@ -150,11 +150,11 @@ export function MobileNav() {
       )}
 
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-30 lg:hidden safe-bottom transition-transform duration-200",
+        "fixed bottom-0 left-0 right-0 z-30 lg:hidden transition-transform duration-200",
         visible ? "translate-y-0" : "translate-y-full"
       )}>
-        <div className="bg-[#1c1c1e] border-t border-white/[0.04]">
-          <div className="flex items-stretch h-[3.6rem]">
+        <div className="bg-[#1c1c1e]/[0.97] backdrop-blur-xl border-t border-white/[0.08]" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="flex items-stretch h-[3.2rem]">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = item.href === "/livraison"
@@ -163,30 +163,30 @@ export function MobileNav() {
 
               return (
                 <Link key={item.href} href={item.href} onClick={() => setShowMenu(false)}
-                  className="flex flex-col items-center justify-center flex-1">
+                  className="flex flex-col items-center justify-center flex-1 gap-[3px]">
                   <Icon className={cn(
                     "w-[24px] h-[24px] transition-colors",
-                    isActive ? "text-orange-500" : "text-gray-500"
-                  )} strokeWidth={isActive ? 2 : 1.6} />
+                    isActive ? "text-orange-500" : "text-[#999]"
+                  )} strokeWidth={isActive ? 2.1 : 1.5} />
                   <span className={cn(
-                    "text-[11px] mt-1 leading-tight",
-                    isActive ? "text-orange-500 font-semibold" : "text-gray-500 font-normal"
+                    "text-[10px] leading-none",
+                    isActive ? "text-orange-500 font-semibold" : "text-[#999] font-medium"
                   )}>{item.label}</span>
                 </Link>
               );
             })}
 
             <button onClick={() => setShowMenu(!showMenu)}
-              className="flex flex-col items-center justify-center flex-1">
+              className="flex flex-col items-center justify-center flex-1 gap-[3px]">
               <div className={cn(
                 "w-[24px] h-[24px] rounded-full flex items-center justify-center text-[9px] font-bold transition-colors",
-                showMenu ? "bg-orange-500 text-white" : "bg-gray-600 text-gray-300"
+                showMenu ? "bg-orange-500 text-white" : "bg-[#666] text-[#ddd]"
               )}>
                 {initials}
               </div>
               <span className={cn(
-                "text-[11px] mt-1 leading-tight",
-                showMenu ? "text-orange-500 font-semibold" : "text-gray-500 font-normal"
+                "text-[10px] leading-none",
+                showMenu ? "text-orange-500 font-semibold" : "text-[#999] font-medium"
               )}>Profil</span>
             </button>
           </div>
