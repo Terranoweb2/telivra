@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   ShoppingBag,
   ClipboardList,
-  Map,
   Package,
   Settings,
   LogOut,
@@ -22,13 +21,11 @@ import { useState, useEffect, useRef } from "react";
 const mobileItems: Record<string, { label: string; href: string; icon: any }[]> = {
   CLIENT: [
     { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Carte", href: "/map", icon: Map },
     { label: "Commander", href: "/livraison", icon: ShoppingBag },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
   ],
   DRIVER: [
     { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Carte", href: "/map", icon: Map },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
     { label: "Produits", href: "/products", icon: Package },
   ],
@@ -38,9 +35,8 @@ const mobileItems: Record<string, { label: string; href: string; icon: any }[]> 
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
   ],
   DEFAULT: [
-    { label: "Carte", href: "/map", icon: Map },
-    { label: "Livreurs", href: "/drivers", icon: Truck },
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
     { label: "Produits", href: "/products", icon: Package },
   ],
 };
@@ -53,12 +49,11 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
     { label: "Parametres", href: "/settings", icon: Settings },
   ],
   COOK: [
-    { label: "Carte", href: "/map", icon: Map },
     { label: "Parametres", href: "/settings", icon: Settings },
   ],
   DEFAULT: [
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
-    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
+    { label: "Livreurs", href: "/drivers", icon: Truck },
     { label: "Commander", href: "/livraison", icon: ShoppingBag },
     { label: "Alertes", href: "/alerts", icon: Bell },
     { label: "Utilisateurs", href: "/users", icon: Users },
@@ -111,16 +106,13 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Overlay */}
       {showMenu && (
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setShowMenu(false)} />
       )}
 
-      {/* Dropdown menu (style Telegram) */}
       {showMenu && (
         <div ref={menuRef} className="fixed bottom-[3.6rem] right-3 z-50 w-56 bg-[#1c1c1e] rounded-xl shadow-2xl shadow-black/60 overflow-hidden lg:hidden">
-          {/* User header */}
-          <div className="px-4 py-3 border-b border-white/5">
+          <div className="px-4 py-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-700 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0">
                 {initials}
@@ -131,8 +123,6 @@ export function MobileNav() {
               </div>
             </div>
           </div>
-
-          {/* Menu items */}
           <div className="py-1">
             {extraItems.map((item) => {
               const Icon = item.icon;
@@ -149,9 +139,7 @@ export function MobileNav() {
               );
             })}
           </div>
-
-          {/* Logout */}
-          <div className="border-t border-white/5 py-1">
+          <div className="border-t border-white/[0.06] py-1">
             <button onClick={() => signOut({ callbackUrl: "/login" })}
               className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-normal text-red-400 active:bg-white/5 transition-colors w-full">
               <LogOut className="w-[18px] h-[18px]" />
@@ -161,7 +149,6 @@ export function MobileNav() {
         </div>
       )}
 
-      {/* Bottom tab bar (style Telegram) */}
       <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-30 lg:hidden safe-bottom transition-transform duration-200",
         visible ? "translate-y-0" : "translate-y-full"
@@ -176,8 +163,7 @@ export function MobileNav() {
 
               return (
                 <Link key={item.href} href={item.href} onClick={() => setShowMenu(false)}
-                  className="flex flex-col items-center justify-center flex-1 relative group">
-                  {/* Active indicator line */}
+                  className="flex flex-col items-center justify-center flex-1 relative">
                   {isActive && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] bg-orange-500 rounded-full" />
                   )}
@@ -193,7 +179,6 @@ export function MobileNav() {
               );
             })}
 
-            {/* Profile tab */}
             <button onClick={() => setShowMenu(!showMenu)}
               className="flex flex-col items-center justify-center flex-1 relative">
               {showMenu && (
@@ -201,9 +186,7 @@ export function MobileNav() {
               )}
               <div className={cn(
                 "w-[22px] h-[22px] rounded-full flex items-center justify-center text-[9px] font-bold transition-colors",
-                showMenu
-                  ? "bg-orange-500 text-white"
-                  : "bg-gray-600 text-gray-300"
+                showMenu ? "bg-orange-500 text-white" : "bg-gray-600 text-gray-300"
               )}>
                 {initials}
               </div>

@@ -7,16 +7,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* ===== Light mode (default) ===== */
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
   color-scheme: light;
 }
 
-/* ===== Dark mode ===== */
 .dark {
-  --background: #0f172a;
+  --background: #0f0f0f;
   --foreground: #f1f5f9;
   color-scheme: dark;
 }
@@ -25,89 +23,88 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ==========================================
-   LIGHT MODE — Color overrides
+   LIGHT MODE
    ========================================== */
 
-/* --- Backgrounds --- */
 html:not(.dark) .bg-gray-950 { background-color: #f8fafc !important; }
 html:not(.dark) .bg-gray-900 { background-color: #ffffff !important; }
 html:not(.dark) .bg-gray-800 { background-color: #f1f5f9 !important; }
 html:not(.dark) .bg-gray-700 { background-color: #e2e8f0 !important; }
 
-/* Backgrounds with opacity (glass effects) */
 html:not(.dark) .bg-gray-950\/80 { background-color: rgb(248 250 252 / 0.9) !important; }
 html:not(.dark) .bg-gray-900\/80 { background-color: rgb(255 255 255 / 0.85) !important; }
 html:not(.dark) .bg-gray-900\/50 { background-color: rgb(255 255 255 / 0.6) !important; }
 html:not(.dark) .bg-gray-800\/60 { background-color: rgb(241 245 249 / 0.6) !important; }
 html:not(.dark) .bg-gray-800\/50 { background-color: rgb(241 245 249 / 0.5) !important; }
 
-/* Overlays */
-html:not(.dark) .bg-black\/60 { background-color: rgb(0 0 0 / 0.25) !important; }
-html:not(.dark) .bg-black\/50 { background-color: rgb(0 0 0 / 0.2) !important; }
+/* Telegram-style backgrounds */
+html:not(.dark) .bg-\[\#1c1c1e\] { background-color: #ffffff !important; }
+html:not(.dark) .bg-white\/\[0\.05\] { background-color: rgb(241 245 249 / 1) !important; }
+html:not(.dark) .bg-white\/\[0\.03\] { background-color: rgb(248 250 252 / 1) !important; }
+html:not(.dark) .bg-white\/5 { background-color: rgb(241 245 249 / 1) !important; }
 
-/* --- Borders --- */
+html:not(.dark) .bg-black\/60 { background-color: rgb(0 0 0 / 0.2) !important; }
+html:not(.dark) .bg-black\/50 { background-color: rgb(0 0 0 / 0.15) !important; }
+html:not(.dark) .bg-black\/40 { background-color: rgb(0 0 0 / 0.1) !important; }
+
 html:not(.dark) .border-gray-800 { border-color: #e2e8f0 !important; }
 html:not(.dark) .border-gray-800\/50 { border-color: rgb(226 232 240 / 0.6) !important; }
 html:not(.dark) .border-gray-700 { border-color: #cbd5e1 !important; }
+html:not(.dark) .border-white\/\[0\.06\] { border-color: rgb(226 232 240 / 0.6) !important; }
+html:not(.dark) .border-white\/\[0\.08\] { border-color: rgb(226 232 240 / 0.8) !important; }
 
-/* --- Text (gray) --- */
 html:not(.dark) .text-white { color: #0f172a !important; }
 html:not(.dark) .text-gray-300 { color: #334155 !important; }
 html:not(.dark) .text-gray-400 { color: #64748b !important; }
-html:not(.dark) .text-gray-500 { color: #475569 !important; }
-html:not(.dark) .text-gray-600 { color: #334155 !important; }
+html:not(.dark) .text-gray-500 { color: #64748b !important; }
+html:not(.dark) .text-gray-600 { color: #475569 !important; }
 html:not(.dark) .text-gray-700 { color: #1e293b !important; }
 
-/* --- Text (colored) — darken for readability on white --- */
 html:not(.dark) .text-yellow-400 { color: #ca8a04 !important; }
 html:not(.dark) .text-green-400 { color: #16a34a !important; }
 html:not(.dark) .text-blue-400 { color: #2563eb !important; }
 html:not(.dark) .text-purple-400 { color: #9333ea !important; }
 html:not(.dark) .text-orange-400 { color: #ea580c !important; }
+html:not(.dark) .text-orange-500 { color: #ea580c !important; }
 html:not(.dark) .text-red-400 { color: #dc2626 !important; }
 html:not(.dark) .text-cyan-400 { color: #0891b2 !important; }
+html:not(.dark) .text-amber-400 { color: #d97706 !important; }
 
-/* --- Preserve white text on colored backgrounds --- */
+/* Preserve white on colored bg */
 html:not(.dark) :is(
   [class*="bg-blue-6"], [class*="bg-blue-7"],
   [class*="bg-green-5"], [class*="bg-green-6"], [class*="bg-green-7"],
   [class*="bg-red-6"], [class*="bg-red-7"],
-  [class*="bg-purple-6"], [class*="bg-orange-6"],
+  [class*="bg-purple-6"], [class*="bg-orange-5"], [class*="bg-orange-6"],
   [class*="bg-gradient"]
 ) .text-white,
 html:not(.dark) :is(
   [class*="bg-blue-6"], [class*="bg-blue-7"],
   [class*="bg-green-5"], [class*="bg-green-6"], [class*="bg-green-7"],
   [class*="bg-red-6"], [class*="bg-red-7"],
-  [class*="bg-purple-6"], [class*="bg-orange-6"],
+  [class*="bg-purple-6"], [class*="bg-orange-5"], [class*="bg-orange-6"],
   [class*="bg-gradient"]
 ).text-white {
   color: #ffffff !important;
 }
 
-/* --- Hover states --- */
 html:not(.dark) .hover\:text-white:hover { color: #0f172a !important; }
 html:not(.dark) .hover\:bg-gray-800:hover { background-color: #f1f5f9 !important; }
-html:not(.dark) .hover\:bg-gray-800\/60:hover { background-color: rgb(241 245 249 / 0.6) !important; }
 html:not(.dark) .hover\:border-gray-700:hover { border-color: #cbd5e1 !important; }
-/* Preserve hover:text-white on colored buttons */
-html:not(.dark) :is([class*="bg-blue-6"], [class*="bg-green-6"], [class*="bg-red-6"]) .hover\:text-white:hover,
-html:not(.dark) :is([class*="bg-blue-6"], [class*="bg-green-6"], [class*="bg-red-6"]).hover\:text-white:hover {
+html:not(.dark) :is([class*="bg-orange-6"]) .hover\:text-white:hover,
+html:not(.dark) :is([class*="bg-orange-6"]).hover\:text-white:hover {
   color: #ffffff !important;
 }
 
-/* --- Active states --- */
 html:not(.dark) .active\:bg-gray-800:active { background-color: #e2e8f0 !important; }
-html:not(.dark) .group-active\:text-gray-300 { color: #334155 !important; }
+html:not(.dark) .active\:bg-white\/5:active { background-color: rgb(241 245 249 / 1) !important; }
 
-/* --- Focus states --- */
-html:not(.dark) .focus\:border-blue-500:focus { border-color: #3b82f6 !important; }
+html:not(.dark) .focus\:border-orange-500\/50:focus { border-color: rgb(249 115 22 / 0.5) !important; }
 
-/* --- Inputs & forms --- */
 html:not(.dark) input:not([type="checkbox"]):not([type="radio"]),
 html:not(.dark) select,
 html:not(.dark) textarea {
@@ -118,33 +115,26 @@ html:not(.dark) textarea {
 html:not(.dark) input:focus,
 html:not(.dark) select:focus,
 html:not(.dark) textarea:focus {
-  border-color: #3b82f6 !important;
+  border-color: rgb(249 115 22 / 0.5) !important;
 }
 
-/* --- Placeholder --- */
 html:not(.dark) ::placeholder { color: #94a3b8 !important; }
 
-/* --- Shadows --- */
 html:not(.dark) .shadow-2xl { box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.08) !important; }
 html:not(.dark) .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.06) !important; }
 html:not(.dark) [class*="shadow-black"] { --tw-shadow-color: rgb(0 0 0 / 0.06) !important; }
-html:not(.dark) [class*="shadow-blue"] { --tw-shadow-color: rgb(59 130 246 / 0.15) !important; }
 
-/* --- Scrollbar --- */
+/* Scrollbar */
 html.dark ::-webkit-scrollbar { width: 6px; }
-html.dark ::-webkit-scrollbar-track { background: #1e293b; }
-html.dark ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+html.dark ::-webkit-scrollbar-track { background: #1c1c1e; }
+html.dark ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 html:not(.dark) ::-webkit-scrollbar { width: 6px; }
 html:not(.dark) ::-webkit-scrollbar-track { background: #f1f5f9; }
 html:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
-/* ==========================================
-   DARK MODE — Slightly lighter than default
-   ========================================== */
-html.dark .bg-gray-950 { background-color: #0f172a !important; }
+/* Dark mode base */
+html.dark .bg-gray-950 { background-color: #0f0f0f !important; }
 
-/* ==========================================
-   Map tiles container
-   ========================================== */
+/* Map */
 .leaflet-container { background: #e2e8f0; }
-html.dark .leaflet-container { background: #1e293b; }
+html.dark .leaflet-container { background: #1c1c1e; }

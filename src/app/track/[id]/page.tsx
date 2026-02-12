@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const GuestMap = dynamic(() => import("@/components/map/guest-track-map"), {
   ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>,
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>,
 });
 
 const statusConfig: Record<string, { label: string; color: string; icon: any; step: number }> = {
@@ -21,7 +21,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any; st
   ACCEPTED: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400", icon: ChefHat, step: 1 },
   PREPARING: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400", icon: ChefHat, step: 1 },
   READY: { label: "Prete", color: "bg-emerald-500/20 text-emerald-400", icon: CheckCircle, step: 2 },
-  PICKED_UP: { label: "Recuperee", color: "bg-blue-500/20 text-blue-400", icon: ShoppingBag, step: 3 },
+  PICKED_UP: { label: "Recuperee", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag, step: 3 },
   DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck, step: 4 },
   DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle, step: 5 },
   CANCELLED: { label: "Annulee", color: "bg-red-500/20 text-red-400", icon: XCircle, step: -1 },
@@ -177,12 +177,12 @@ export default function TrackDetailPage() {
     return (Date.now() - new Date(acceptedAt).getTime()) / 60000 <= 5;
   }
 
-  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
   if (!order) return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white px-4">
       <ShoppingBag className="w-16 h-16 text-gray-700 mb-4" />
       <p className="text-gray-400 text-center">Commande introuvable</p>
-      <Link href="/track" className="mt-4 text-blue-400 text-sm hover:underline">Retour</Link>
+      <Link href="/track" className="mt-4 text-orange-400 text-sm hover:underline">Retour</Link>
     </div>
   );
 
@@ -239,7 +239,7 @@ export default function TrackDetailPage() {
         {/* Paiement badge */}
         {order.paymentMethod === "ONLINE" && (
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-2xl">
-            <CreditCard className="w-4 h-4 text-blue-400" />
+            <CreditCard className="w-4 h-4 text-orange-400" />
             <span className="text-xs text-gray-400">Paiement en ligne</span>
             <span className={cn("ml-auto px-2 py-0.5 rounded text-[10px] font-semibold", pStatus.color)}>{pStatus.label}</span>
           </div>
@@ -265,7 +265,7 @@ export default function TrackDetailPage() {
         {isActive && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-blue-400 animate-pulse" />
+              <Navigation className="w-4 h-4 text-orange-400 animate-pulse" />
               <span className="text-sm font-semibold text-white">Suivi en direct</span>
             </div>
             <div className="h-52 sm:h-72">
@@ -285,7 +285,7 @@ export default function TrackDetailPage() {
         {isActive && (routeTime != null || routeDistance != null) && (
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-              <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+              <Clock className="w-4 h-4 text-orange-400 mx-auto mb-1" />
               <p className="text-xs text-gray-500">Temps</p>
               <p className="text-sm font-semibold text-white">{routeTime != null ? fmtTime(routeTime) : "--"}</p>
             </div>
@@ -314,9 +314,9 @@ export default function TrackDetailPage() {
                   <div key={step.key} className="flex items-start gap-3">
                     <div className="flex flex-col items-center">
                       <div className={cn("w-3 h-3 rounded-full border-2 shrink-0",
-                        done ? "bg-blue-500 border-blue-500" : "bg-transparent border-gray-700",
-                        isCurrent && "ring-4 ring-blue-500/20")} />
-                      {i < steps.length - 1 && <div className={cn("w-0.5 h-8", done ? "bg-blue-500/40" : "bg-gray-800")} />}
+                        done ? "bg-orange-500 border-orange-500" : "bg-transparent border-gray-700",
+                        isCurrent && "ring-4 ring-orange-500/20")} />
+                      {i < steps.length - 1 && <div className={cn("w-0.5 h-8", done ? "bg-orange-500/40" : "bg-gray-800")} />}
                     </div>
                     <p className={cn("text-sm -mt-0.5", done ? "text-white font-medium" : "text-gray-600")}>{step.label}</p>
                   </div>
@@ -339,7 +339,7 @@ export default function TrackDetailPage() {
           </div>
           <div className="flex justify-between text-sm font-bold text-white border-t border-gray-800 pt-2">
             <span>Total</span>
-            <span className="text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</span>
+            <span className="text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</span>
           </div>
         </div>
 
@@ -395,8 +395,8 @@ export default function TrackDetailPage() {
         <div className="bg-gray-900/80 backdrop-blur-lg border-t border-gray-800/50">
           <div className="flex items-center justify-around h-16 px-2">
             <Link href="/track" className="flex flex-col items-center justify-center flex-1 py-1 group">
-              <div className="p-2 rounded-2xl bg-blue-600/15"><ClipboardList className="w-5 h-5 text-blue-400" /></div>
-              <span className="text-[10px] mt-0.5 font-medium text-blue-400">Commandes</span>
+              <div className="p-2 rounded-2xl bg-orange-600/15"><ClipboardList className="w-5 h-5 text-orange-400" /></div>
+              <span className="text-[10px] mt-0.5 font-medium text-orange-400">Commandes</span>
             </Link>
             <Link href="/" className="flex flex-col items-center justify-center flex-1 py-1 group">
               <div className="p-2 rounded-2xl"><ShoppingBag className="w-5 h-5 text-gray-500 group-active:text-gray-300" /></div>

@@ -22,7 +22,7 @@ const categoryConfig: Record<string, { label: string; icon: any }> = {
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400" },
-  ACCEPTED: { label: "Acceptee", color: "bg-blue-500/20 text-blue-400" },
+  ACCEPTED: { label: "Acceptee", color: "bg-orange-500/20 text-orange-400" },
   PREPARING: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400" },
   READY: { label: "Pret", color: "bg-cyan-500/20 text-cyan-400" },
   PICKED_UP: { label: "Recuperee", color: "bg-indigo-500/20 text-indigo-400" },
@@ -232,7 +232,7 @@ export default function ProductsPage() {
                       onChange={(e) => setForm({ ...form, isExtra: e.target.checked })}
                       className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-orange-500 focus:ring-orange-500" />
                     <span className="text-sm text-gray-300 flex items-center gap-1">
-                      <Droplets className="w-3.5 h-3.5 text-blue-400" /> Extra
+                      <Droplets className="w-3.5 h-3.5 text-orange-400" /> Extra
                     </span>
                   </label>
                 </div>
@@ -315,7 +315,7 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-white truncate">{p.name}</p>
                             {p.isExtra && (
-                              <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded font-medium flex items-center gap-0.5">
+                              <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] rounded font-medium flex items-center gap-0.5">
                                 <Droplets className="w-2.5 h-2.5" /> Extra
                               </span>
                             )}
@@ -430,7 +430,7 @@ export default function ProductsPage() {
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-500 mb-1">Cette semaine</p>
-              <p className="text-lg font-bold text-blue-400">{revenue.week.revenue.toLocaleString()}</p>
+              <p className="text-lg font-bold text-orange-400">{revenue.week.revenue.toLocaleString()}</p>
               <p className="text-[10px] text-gray-600">FCFA - {revenue.week.orders} cmd</p>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">

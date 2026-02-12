@@ -12,10 +12,10 @@ import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400", icon: Clock },
-  ACCEPTED: { label: "Acceptee", color: "bg-blue-500/20 text-blue-400", icon: CheckCircle },
+  ACCEPTED: { label: "Acceptee", color: "bg-orange-500/20 text-orange-400", icon: CheckCircle },
   PREPARING: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400", icon: ChefHat },
   READY: { label: "Prete", color: "bg-emerald-500/20 text-emerald-400", icon: CheckCircle },
-  PICKED_UP: { label: "Recuperee", color: "bg-blue-500/20 text-blue-400", icon: ShoppingBag },
+  PICKED_UP: { label: "Recuperee", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag },
   DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck },
   DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
   CANCELLED: { label: "Annulee", color: "bg-red-500/20 text-red-400", icon: XCircle },
@@ -206,7 +206,7 @@ export default function CommandesPage() {
     setCustomReason("");
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   // Filtrage par onglet
   // Pour les livreurs: "En attente" = commandes READY (cuisine terminee, en attente de livreur)
@@ -276,7 +276,7 @@ export default function CommandesPage() {
             onClick={() => setTab(t.key)}
             className={cn(
               "flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
-              tab === t.key ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+              tab === t.key ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white"
             )}
           >
             {t.label}
@@ -331,7 +331,7 @@ export default function CommandesPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-blue-400 shrink-0">{order.totalAmount?.toLocaleString()} FCFA</span>
+                    <span className="text-sm font-bold text-orange-400 shrink-0">{order.totalAmount?.toLocaleString()} FCFA</span>
                   </div>
                   <div className="text-xs text-gray-400 mb-3">
                     {order.items?.map((i: any) => (
@@ -377,7 +377,7 @@ export default function CommandesPage() {
                     <p className="text-xs text-red-400 mt-1">Raison: {order.cancelReason}</p>
                   )}
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
-                    <p className="text-sm font-bold text-blue-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                    <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
                     {tab === "active" && (
                       <span className="flex items-center gap-1 text-xs text-green-400">
                         <Eye className="w-3 h-3" /> {isDriver ? "Voir la carte" : "Suivre en direct"}

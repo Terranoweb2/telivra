@@ -13,7 +13,7 @@ import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 
 const TrackMap = dynamic(() => import("@/components/map/delivery-track-map"), {
   ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>,
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-900 rounded-xl"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>,
 });
 
 const statusSteps = [
@@ -160,7 +160,7 @@ export default function OrderDetailPage() {
     }
   }, [driverPos?.lat, order?.deliveryLat]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
   if (!order) return <p className="text-gray-400">Commande introuvable</p>;
 
   const currentStep = getStepIndex(order.status);
@@ -219,7 +219,7 @@ export default function OrderDetailPage() {
       {/* Paiement badge */}
       {order.paymentMethod === "ONLINE" && (
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl">
-          <CreditCard className="w-4 h-4 text-blue-400" />
+          <CreditCard className="w-4 h-4 text-orange-400" />
           <span className="text-xs text-gray-400">Paiement en ligne</span>
           <span className={cn("ml-auto px-2 py-0.5 rounded text-[10px] font-semibold", pStatus.color)}>{pStatus.label}</span>
         </div>
@@ -247,7 +247,7 @@ export default function OrderDetailPage() {
           <div className="px-4 py-3 border-b border-gray-800">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-white flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-blue-400 animate-pulse" /> Suivi en direct
+                <Navigation className="w-4 h-4 text-orange-400 animate-pulse" /> Suivi en direct
               </p>
               {routeTime && <span className="text-xs font-semibold text-green-400">Arrivee ~{etaDate ? fmtHour(etaDate) : "--"}</span>}
             </div>
@@ -258,7 +258,7 @@ export default function OrderDetailPage() {
               <p className="text-lg font-bold text-white">{routeTime ? fmtTime(routeTime) : "--"}</p>
             </div>
             <div className="p-3 text-center border-r border-gray-800">
-              <div className="flex items-center justify-center gap-1 mb-1"><Ruler className="w-3.5 h-3.5 text-blue-400" /><span className="text-[10px] text-gray-500 uppercase">Distance</span></div>
+              <div className="flex items-center justify-center gap-1 mb-1"><Ruler className="w-3.5 h-3.5 text-orange-400" /><span className="text-[10px] text-gray-500 uppercase">Distance</span></div>
               <p className="text-lg font-bold text-white">{routeDistance ? fmt(routeDistance) : "--"}</p>
             </div>
             <div className="p-3 text-center">
@@ -294,7 +294,7 @@ export default function OrderDetailPage() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-2">Votre livreur</p>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center"><User className="w-5 h-5 text-white" /></div>
+            <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center"><User className="w-5 h-5 text-white" /></div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-white">{order.delivery.driver?.name}</p>
               <p className="text-xs text-gray-500">

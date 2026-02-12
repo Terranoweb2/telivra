@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400" },
-  ACCEPTED: { label: "Acceptee", color: "bg-blue-500/20 text-blue-400" },
+  ACCEPTED: { label: "Acceptee", color: "bg-orange-500/20 text-orange-400" },
   PREPARING: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400" },
   READY: { label: "Pret", color: "bg-cyan-500/20 text-cyan-400" },
   PICKED_UP: { label: "Recuperee", color: "bg-indigo-500/20 text-indigo-400" },
@@ -80,10 +80,10 @@ export default function DashboardPage() {
             <p className="text-xs text-green-400/70">Recette du jour</p>
             <p className="text-[10px] text-gray-500 mt-0.5">{revenue.today.orders} commande{revenue.today.orders > 1 ? "s" : ""}</p>
           </div>
-          <div className="bg-gradient-to-br from-blue-600/20 to-blue-600/5 border border-blue-500/20 rounded-xl p-4">
-            <BarChart3 className="w-5 h-5 text-blue-400 mb-2" />
+          <div className="bg-gradient-to-br from-orange-600/20 to-orange-600/5 border border-orange-500/20 rounded-xl p-4">
+            <BarChart3 className="w-5 h-5 text-orange-400 mb-2" />
             <p className="text-2xl font-bold text-white">{revenue.week.revenue.toLocaleString()}</p>
-            <p className="text-xs text-blue-400/70">Cette semaine</p>
+            <p className="text-xs text-orange-400/70">Cette semaine</p>
             <p className="text-[10px] text-gray-500 mt-0.5">{revenue.week.orders} commande{revenue.week.orders > 1 ? "s" : ""}</p>
           </div>
           <div className="bg-gradient-to-br from-purple-600/20 to-purple-600/5 border border-purple-500/20 rounded-xl p-4">

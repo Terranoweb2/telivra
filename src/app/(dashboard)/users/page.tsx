@@ -8,7 +8,7 @@ const roleConfig: Record<string, { label: string; color: string; icon: any }> = 
   ADMIN: { label: "Admin", color: "bg-red-500/20 text-red-400", icon: Shield },
   MANAGER: { label: "Manager", color: "bg-orange-500/20 text-orange-400", icon: Eye },
   VIEWER: { label: "Viewer", color: "bg-gray-500/20 text-gray-400", icon: Eye },
-  CLIENT: { label: "Client", color: "bg-blue-500/20 text-blue-400", icon: ShoppingBag },
+  CLIENT: { label: "Client", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag },
   DRIVER: { label: "Livreur", color: "bg-green-500/20 text-green-400", icon: Truck },
   COOK: { label: "Cuisinier", color: "bg-amber-500/20 text-amber-400", icon: ChefHat },
 };

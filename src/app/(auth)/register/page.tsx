@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Loader2 } from "lucide-react";
+import { UtensilsCrossed, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,7 +41,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Connexion automatique apres inscription
       const result = await signIn("credentials", {
         email,
         password,
@@ -60,81 +59,69 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-6 sm:p-8 border border-gray-800 shadow-2xl mx-4 sm:mx-0">
-      <div className="flex items-center justify-center gap-3 mb-6">
-        <div className="bg-blue-600 p-2 rounded-lg">
-          <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+    <div className="bg-[#1c1c1e] rounded-2xl p-6 sm:p-8 border border-white/[0.06] shadow-2xl shadow-black/40 mx-4 sm:mx-0 w-full max-w-sm">
+      <div className="flex flex-col items-center mb-6">
+        <div className="bg-orange-600 p-3 rounded-2xl mb-3">
+          <UtensilsCrossed className="w-7 h-7 text-white" />
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-white">Terrano GPS</h1>
+        <h1 className="text-xl font-bold text-white">Terrano</h1>
+        <p className="text-[13px] text-gray-500 mt-1">Creer un compte</p>
       </div>
 
-      <p className="text-center text-gray-400 text-sm mb-6">Creer un compte client</p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-[13px]">
             {error}
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Nom complet</label>
+          <label className="block text-[13px] text-gray-400 mb-1.5">Nom complet</label>
           <input
-            name="name"
-            type="text"
-            required
-            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            name="name" type="text" required
+            className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
             placeholder="Jean Dupont"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+          <label className="block text-[13px] text-gray-400 mb-1.5">Email</label>
           <input
-            name="email"
-            type="email"
-            required
-            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            name="email" type="email" required
+            className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
             placeholder="jean@exemple.com"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Mot de passe</label>
+          <label className="block text-[13px] text-gray-400 mb-1.5">Mot de passe</label>
           <input
-            name="password"
-            type="password"
-            required
-            minLength={6}
-            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            name="password" type="password" required minLength={6}
+            className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
             placeholder="6 caracteres minimum"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Confirmer le mot de passe</label>
+          <label className="block text-[13px] text-gray-400 mb-1.5">Confirmer</label>
           <input
-            name="confirmPassword"
-            type="password"
-            required
-            minLength={6}
-            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            name="confirmPassword" type="password" required minLength={6}
+            className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
             placeholder="••••••••"
           />
         </div>
 
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+          type="submit" disabled={loading}
+          className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-2"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Inscription...</> : "S'inscrire"}
         </button>
       </form>
 
-      <p className="text-center text-gray-500 text-sm mt-5">
+      <p className="text-center text-gray-600 text-[13px] mt-6">
         Deja un compte ?{" "}
-        <Link href="/login" className="text-blue-400 hover:text-blue-300">
+        <Link href="/login" className="text-orange-400 hover:text-orange-300">
           Se connecter
         </Link>
       </p>
