@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle,
   MapPin, ArrowLeft, Phone, User, RefreshCw, Navigation, Wifi,
-  ClipboardList, LogIn, X, Ruler, Gauge,
+  ClipboardList, LogIn, X, Ruler, Gauge, ChefHat, Timer, CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,17 +18,20 @@ const GuestMap = dynamic(() => import("@/components/map/guest-track-map"), {
 
 const statusConfig: Record<string, { label: string; color: string; icon: any; step: number }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400", icon: Clock, step: 0 },
-  ACCEPTED: { label: "Acceptee", color: "bg-blue-500/20 text-blue-400", icon: CheckCircle, step: 1 },
-  PICKING_UP: { label: "Recuperation", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag, step: 2 },
-  DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck, step: 3 },
-  DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle, step: 4 },
+  ACCEPTED: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400", icon: ChefHat, step: 1 },
+  PREPARING: { label: "En cuisine", color: "bg-orange-500/20 text-orange-400", icon: ChefHat, step: 1 },
+  READY: { label: "Prete", color: "bg-emerald-500/20 text-emerald-400", icon: CheckCircle, step: 2 },
+  PICKED_UP: { label: "Recuperee", color: "bg-blue-500/20 text-blue-400", icon: ShoppingBag, step: 3 },
+  DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck, step: 4 },
+  DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle, step: 5 },
   CANCELLED: { label: "Annulee", color: "bg-red-500/20 text-red-400", icon: XCircle, step: -1 },
 };
 
 const steps = [
   { label: "Commande placee", key: "PENDING" },
-  { label: "Acceptee", key: "ACCEPTED" },
-  { label: "En recuperation", key: "PICKING_UP" },
+  { label: "En cuisine", key: "PREPARING" },
+  { label: "Prete", key: "READY" },
+  { label: "Recuperee", key: "PICKED_UP" },
   { label: "En livraison", key: "DELIVERING" },
   { label: "Livree", key: "DELIVERED" },
 ];
@@ -44,19 +47,73 @@ const cancelReasons = [
 function fmtDist(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`; }
 function fmtTime(s: number) { const min = Math.ceil(s / 60); return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}min` : `${min} min`; }
 
+// Countdown cuisson
+function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: string; cookingTimeMin: number }) {
+  const [remaining, setRemaining] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const totalMs = cookingTimeMin * 60 * 1000;
+    const update = () => {
+      const elapsed = Date.now() - new Date(cookAcceptedAt).getTime();
+      const rem = Math.max(0, totalMs - elapsed);
+      setRemaining(Math.ceil(rem / 1000));
+      setProgress(Math.min(100, (elapsed / totalMs) * 100));
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [cookAcceptedAt, cookingTimeMin]);
+
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  const isOverdue = remaining === 0;
+
+  return (
+    <div className="bg-orange-600/10 border border-orange-500/20 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <ChefHat className="w-5 h-5 text-orange-400" />
+        <span className="text-sm font-semibold text-white">Preparation en cours</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Timer className={cn("w-5 h-5", isOverdue ? "text-red-400" : "text-orange-400")} />
+          <span className={cn("text-2xl font-bold", isOverdue ? "text-red-400" : "text-white")}>
+            {isOverdue ? "Bientot pret !" : `${min}:${sec.toString().padStart(2, "0")}`}
+          </span>
+        </div>
+        <span className="text-xs text-gray-500">~{cookingTimeMin} min</span>
+      </div>
+      <div className="w-full bg-gray-800 rounded-full h-2.5">
+        <div
+          className={cn("h-2.5 rounded-full transition-all duration-1000",
+            isOverdue ? "bg-red-500" : progress > 75 ? "bg-yellow-500" : "bg-orange-500"
+          )}
+          style={{ width: `${Math.min(progress, 100)}%` }}
+        />
+      </div>
+      <p className="text-xs text-gray-500">
+        {isOverdue ? "Votre repas devrait etre pret d'un instant a l'autre" : "Votre repas est en preparation"}
+      </p>
+    </div>
+  );
+}
+
+const paymentBadge: Record<string, { label: string; color: string }> = {
+  PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400" },
+  PAID: { label: "Paye", color: "bg-green-500/20 text-green-400" },
+  FAILED: { label: "Echoue", color: "bg-red-500/20 text-red-400" },
+};
+
 export default function TrackDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  // Cancel state
   const [showCancel, setShowCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [customReason, setCustomReason] = useState("");
-
-  // OSRM state
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const [routeTime, setRouteTime] = useState<number | null>(null);
   const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
@@ -74,37 +131,28 @@ export default function TrackDetailPage() {
     return () => clearInterval(interval);
   }, [loadOrder]);
 
-  // OSRM route calculation
   const calcRoute = useCallback(async (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
     const now = Date.now();
     if (now - routeThrottle.current < 10000) return;
     routeThrottle.current = now;
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
-      const res = await fetch(url);
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`);
       if (!res.ok) return;
       const data = await res.json();
-      if (data.routes?.[0]) {
-        setRouteDistance(data.routes[0].distance);
-        setRouteTime(data.routes[0].duration);
-      }
+      if (data.routes?.[0]) { setRouteDistance(data.routes[0].distance); setRouteTime(data.routes[0].duration); }
     } catch {}
   }, []);
 
-  // Recalculate route when driver moves
   useEffect(() => {
     if (!order) return;
     const lastPos = order.delivery?.positions?.[0];
     if (!lastPos) return;
-    const driverPos = { lat: lastPos.latitude, lng: lastPos.longitude };
-    const clientPos = { lat: order.deliveryLat, lng: order.deliveryLng };
     if (lastPos.speed != null) setDriverSpeed(lastPos.speed * 3.6);
-    if (["ACCEPTED", "PICKING_UP", "DELIVERING"].includes(order.status)) {
-      calcRoute(driverPos, clientPos);
+    if (["PICKED_UP", "DELIVERING"].includes(order.status)) {
+      calcRoute({ lat: lastPos.latitude, lng: lastPos.longitude }, { lat: order.deliveryLat, lng: order.deliveryLng });
     }
-  }, [order?.delivery?.positions?.[0]?.latitude, order?.delivery?.positions?.[0]?.longitude, order?.status, calcRoute]);
+  }, [order?.delivery?.positions?.[0]?.latitude, order?.status, calcRoute]);
 
-  // Cancel
   async function handleCancel() {
     if (!order) return;
     const finalReason = cancelReason === "Autre" ? customReason.trim() : cancelReason;
@@ -116,29 +164,20 @@ export default function TrackDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: finalReason, guestPhone: order.guestPhone }),
     });
-    if (res.ok) {
-      setShowCancel(false);
-      setCancelReason("");
-      setCustomReason("");
-      loadOrder();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setCancelError(data.error || "Erreur lors de l'annulation");
-    }
+    if (res.ok) { setShowCancel(false); setCancelReason(""); setCustomReason(""); loadOrder(); }
+    else { const data = await res.json().catch(() => ({})); setCancelError(data.error || "Erreur"); }
     setCancelling(false);
   }
 
   function canCancel() {
     if (!order) return false;
-    if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
+    if (["DELIVERED", "CANCELLED"].includes(order.status)) return false;
     if (order.status === "PENDING") return true;
     const acceptedAt = order.delivery?.startTime || order.updatedAt;
-    const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
-    return minutes <= 5;
+    return (Date.now() - new Date(acceptedAt).getTime()) / 60000 <= 5;
   }
 
   if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
-
   if (!order) return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white px-4">
       <ShoppingBag className="w-16 h-16 text-gray-700 mb-4" />
@@ -154,29 +193,25 @@ export default function TrackDetailPage() {
   const lastPos = order.delivery?.positions?.[0];
   const driverPos = lastPos ? { lat: lastPos.latitude, lng: lastPos.longitude } : null;
   const clientPos = { lat: order.deliveryLat, lng: order.deliveryLng };
-  const isActive = ["ACCEPTED", "PICKING_UP", "DELIVERING"].includes(order.status);
-  const cancelMinutes = order.delivery?.startTime
-    ? Math.max(0, Math.ceil(5 - (Date.now() - new Date(order.delivery.startTime).getTime()) / 60000))
-    : null;
+  const isActive = ["PICKED_UP", "DELIVERING"].includes(order.status);
+  const isCooking = ["ACCEPTED", "PREPARING"].includes(order.status);
+  const isReady = order.status === "READY";
+  const maxCookTime = Math.max(...(order.items?.map((i: any) => i.product?.cookingTimeMin ?? 15) || [15]));
+  const pStatus = paymentBadge[order.paymentStatus] || paymentBadge.PENDING;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 h-14">
-          <Link href="/track" className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
+          <Link href="/track" className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><ArrowLeft className="w-5 h-5" /></Link>
           <span className="text-sm font-semibold text-white flex-1">Commande #{(order.id as string).slice(-6)}</span>
-          {isActive && (
+          {(isActive || isCooking) && (
             <div className="flex items-center gap-1.5 px-2 py-1 bg-green-600/20 rounded-full">
               <Wifi className="w-3 h-3 text-green-400 animate-pulse" />
               <span className="text-[10px] text-green-400 font-medium">En direct</span>
             </div>
           )}
-          <button onClick={loadOrder} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg">
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <button onClick={loadOrder} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><RefreshCw className="w-4 h-4" /></button>
         </div>
       </header>
 
@@ -186,10 +221,12 @@ export default function TrackDetailPage() {
           <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-2", st.color)}>
             <st.icon className="w-4 h-4" /> {st.label}
           </div>
+          {isCooking && <p className="text-sm text-gray-400">Votre repas est en preparation</p>}
+          {isReady && <p className="text-sm text-emerald-400">Votre repas est pret, en attente d&apos;un livreur</p>}
           {order.status === "DELIVERING" && driverName && (
             <p className="text-sm text-gray-400"><Truck className="w-4 h-4 inline mr-1" /> {driverName} est en route</p>
           )}
-          {order.status === "PENDING" && <p className="text-sm text-gray-400">Recherche d&apos;un livreur...</p>}
+          {order.status === "PENDING" && <p className="text-sm text-gray-400">En attente du cuisinier...</p>}
           {order.status === "DELIVERED" && <p className="text-sm text-green-400">Votre commande a ete livree !</p>}
           {order.status === "CANCELLED" && (
             <div>
@@ -199,6 +236,31 @@ export default function TrackDetailPage() {
           )}
         </div>
 
+        {/* Paiement badge */}
+        {order.paymentMethod === "ONLINE" && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-2xl">
+            <CreditCard className="w-4 h-4 text-blue-400" />
+            <span className="text-xs text-gray-400">Paiement en ligne</span>
+            <span className={cn("ml-auto px-2 py-0.5 rounded text-[10px] font-semibold", pStatus.color)}>{pStatus.label}</span>
+          </div>
+        )}
+
+        {/* Countdown cuisson */}
+        {isCooking && order.cookAcceptedAt && (
+          <CookingCountdown cookAcceptedAt={order.cookAcceptedAt} cookingTimeMin={maxCookTime} />
+        )}
+
+        {/* Commande prete */}
+        {isReady && (
+          <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-emerald-400" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-400">Votre repas est pret !</p>
+              <p className="text-xs text-gray-400">En attente d&apos;un livreur</p>
+            </div>
+          </div>
+        )}
+
         {/* Carte temps reel */}
         {isActive && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -207,20 +269,12 @@ export default function TrackDetailPage() {
               <span className="text-sm font-semibold text-white">Suivi en direct</span>
             </div>
             <div className="h-52 sm:h-72">
-              <GuestMap
-                driverPos={driverPos}
-                clientPos={clientPos}
-                positions={order.delivery?.positions || []}
-                driverLabel="Le livreur"
-                clientLabel="Ma position"
-              />
+              <GuestMap driverPos={driverPos} clientPos={clientPos} positions={order.delivery?.positions || []} driverLabel="Le livreur" clientLabel="Ma position" />
             </div>
             {driverName && (
               <div className="px-4 py-2 border-t border-gray-800 flex items-center gap-2 text-xs text-gray-500">
                 <User className="w-3 h-3" /> {driverName}
-                {driverPhone && (
-                  <a href={`tel:${driverPhone}`} className="ml-2 text-green-400 hover:text-green-300"><Phone className="w-3 h-3 inline" /></a>
-                )}
+                {driverPhone && <a href={`tel:${driverPhone}`} className="ml-2 text-green-400"><Phone className="w-3 h-3 inline" /></a>}
                 {lastPos && <span className="ml-auto">Maj {new Date(lastPos.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>}
               </div>
             )}
@@ -228,11 +282,11 @@ export default function TrackDetailPage() {
         )}
 
         {/* Stats OSRM */}
-        {isActive && (routeTime != null || routeDistance != null || driverSpeed != null) && (
+        {isActive && (routeTime != null || routeDistance != null) && (
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
               <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-              <p className="text-xs text-gray-500">Temps restant</p>
+              <p className="text-xs text-gray-500">Temps</p>
               <p className="text-sm font-semibold text-white">{routeTime != null ? fmtTime(routeTime) : "--"}</p>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
@@ -298,16 +352,13 @@ export default function TrackDetailPage() {
           </div>
         </div>
 
-        {/* Bouton annuler */}
+        {/* Annuler */}
         {canCancel() && (
           <div>
             {!showCancel ? (
               <button onClick={() => setShowCancel(true)}
                 className="w-full py-3 bg-red-600/10 border border-red-500/30 hover:bg-red-600/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
                 <X className="w-4 h-4" /> Annuler la commande
-                {cancelMinutes !== null && cancelMinutes > 0 && (
-                  <span className="text-xs text-red-400/60">({cancelMinutes} min restantes)</span>
-                )}
               </button>
             ) : (
               <div className="bg-gray-900 border border-red-500/30 rounded-xl p-4 space-y-3">
@@ -325,9 +376,7 @@ export default function TrackDetailPage() {
                 {cancelError && <p className="text-xs text-red-400">{cancelError}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => { setShowCancel(false); setCancelReason(""); setCustomReason(""); }}
-                    className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-lg text-sm font-medium">
-                    Non, garder
-                  </button>
+                    className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-lg text-sm font-medium">Non, garder</button>
                   <button onClick={handleCancel} disabled={cancelling || !cancelReason}
                     className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                     {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
@@ -339,12 +388,9 @@ export default function TrackDetailPage() {
           </div>
         )}
 
-        <p className="text-xs text-gray-600 text-center">
-          Commande du {new Date(order.createdAt).toLocaleString("fr-FR")}
-        </p>
+        <p className="text-xs text-gray-600 text-center">Commande du {new Date(order.createdAt).toLocaleString("fr-FR")}</p>
       </div>
 
-      {/* Nav mobile */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden">
         <div className="bg-gray-900/80 backdrop-blur-lg border-t border-gray-800/50">
           <div className="flex items-center justify-around h-16 px-2">
