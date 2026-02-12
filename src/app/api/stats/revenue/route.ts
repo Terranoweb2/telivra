@@ -13,7 +13,12 @@ export async function GET() {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [todayOrders, weekOrders, monthOrders, allOrders, pendingCount, activeDeliveries, deliveredToday] = await Promise.all([
+  const [
+    todayOrders, weekOrders, monthOrders, allOrders,
+    pendingCount, activeDeliveries, deliveredToday,
+    preparingCount, readyCount, pendingCookCount, preparedToday,
+    cashOrders, onlineOrders,
+  ] = await Promise.all([
     prisma.order.findMany({ where: { createdAt: { gte: todayStart } }, select: { totalAmount: true, status: true } }),
     prisma.order.findMany({ where: { createdAt: { gte: weekStart } }, select: { totalAmount: true, status: true } }),
     prisma.order.findMany({ where: { createdAt: { gte: monthStart } }, select: { totalAmount: true, status: true } }),
@@ -21,6 +26,20 @@ export async function GET() {
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.delivery.count({ where: { status: { in: ["PICKING_UP", "DELIVERING"] } } }),
     prisma.delivery.count({ where: { status: "DELIVERED", endTime: { gte: todayStart } } }),
+    // Cook stats
+    prisma.order.count({ where: { status: "PREPARING" } }),
+    prisma.order.count({ where: { status: "READY" } }),
+    prisma.order.count({ where: { status: "PENDING" } }),
+    prisma.order.count({ where: { status: { in: ["READY", "PICKED_UP", "DELIVERING", "DELIVERED"] }, cookReadyAt: { gte: todayStart } } }),
+    // Payment breakdown
+    prisma.order.findMany({
+      where: { createdAt: { gte: monthStart }, status: { not: "CANCELLED" }, paymentMethod: "CASH" },
+      select: { totalAmount: true },
+    }),
+    prisma.order.findMany({
+      where: { createdAt: { gte: monthStart }, status: { not: "CANCELLED" }, paymentMethod: "ONLINE" },
+      select: { totalAmount: true },
+    }),
   ]);
 
   // Revenue par jour (7 derniers jours)
@@ -50,5 +69,15 @@ export async function GET() {
     month: { revenue: sum(monthOrders), orders: monthOrders.length },
     totals: { orders: allOrders, pending: pendingCount, activeDeliveries, deliveredToday },
     dailyRevenue,
+    cookStats: {
+      pendingCook: pendingCookCount,
+      preparing: preparingCount,
+      ready: readyCount,
+      prepared: preparedToday,
+    },
+    paymentBreakdown: {
+      cash: { revenue: sum(cashOrders), count: cashOrders.length },
+      online: { revenue: sum(onlineOrders), count: onlineOrders.length },
+    },
   });
 }
