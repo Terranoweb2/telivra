@@ -157,21 +157,21 @@ export default function LandingPage() {
   const restaurantName = settings?.restaurantName || "Terrano";
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50">
+      <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
               <UtensilsCrossed className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-white">
+            <span className="text-lg font-bold text-white">
               {restaurantName}
             </span>
           </div>
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="p-2 rounded-lg bg-gray-900/80 border border-gray-800 text-gray-500 hover:text-gray-300 transition-colors"
           >
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -180,31 +180,31 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 text-center">
-        <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-gray-900 dark:text-white">
+        <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-white">
           Savourez nos plats,
           <br />
           livres chez vous
         </h1>
-        <p className="mt-4 text-gray-500 dark:text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
+        <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
           Decouvrez notre menu et commandez vos repas preferes. Livraison rapide, paiement flexible.
         </p>
-        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full text-sm font-semibold transition-colors">
+        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full text-white text-sm font-semibold transition-colors">
           Voir le menu <ArrowDown className="w-4 h-4" />
         </a>
 
         {/* Stats rapides */}
         <div className="flex items-center justify-center gap-8 mt-10">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-gray-500">
             <Clock className="w-4 h-4" />
             <span className="text-sm">15-30 min</span>
           </div>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-700" />
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="w-px h-4 bg-gray-700" />
+          <div className="flex items-center gap-2 text-gray-500">
             <Truck className="w-4 h-4" />
             <span className="text-sm">Livraison rapide</span>
           </div>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 hidden sm:block" />
-          <div className="hidden sm:flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="w-px h-4 bg-gray-700 hidden sm:block" />
+          <div className="hidden sm:flex items-center gap-2 text-gray-500">
             <MapPin className="w-4 h-4" />
             <span className="text-sm">Suivi en direct</span>
           </div>
@@ -214,27 +214,27 @@ export default function LandingPage() {
       {/* Menu */}
       <section id="menu" className="max-w-6xl mx-auto px-4 pb-40">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
             Notre Menu
           </h2>
-          <span className="text-sm text-gray-400">{meals.length} plat{meals.length > 1 ? "s" : ""}</span>
+          <span className="text-sm text-gray-500">{meals.length} plat{meals.length > 1 ? "s" : ""}</span>
         </div>
 
         {/* Recherche */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher un plat..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:border-orange-500 placeholder-gray-400 dark:placeholder-gray-500" />
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
         </div>
 
         {/* Grille repas */}
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+            <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
           </div>
         ) : filteredMeals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-40 text-gray-500">
             <UtensilsCrossed className="w-10 h-10 mb-2 opacity-40" />
             <p className="text-sm">Aucun plat trouve</p>
           </div>
@@ -243,30 +243,30 @@ export default function LandingPage() {
             {filteredMeals.map((p) => {
               const count = getCartCount(p.id);
               return (
-                <div key={p.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
-                  <div className="relative h-32 sm:h-36 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-colors">
+                  <div className="relative h-32 sm:h-36 flex items-center justify-center bg-gray-800">
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
-                      <UtensilsCrossed className="w-12 h-12 text-gray-300 dark:text-gray-600" />
+                      <UtensilsCrossed className="w-12 h-12 text-gray-600" />
                     )}
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-white/80 dark:bg-black/60 rounded-md backdrop-blur-sm">
-                      <Timer className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                      <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">~{p.cookingTimeMin} min</span>
+                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-md backdrop-blur-sm">
+                      <Timer className="w-3 h-3 text-gray-400" />
+                      <span className="text-[9px] text-gray-400 font-medium">~{p.cookingTimeMin} min</span>
                     </div>
                   </div>
                   <div className="p-3">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{p.name}</h3>
+                    <h3 className="text-sm font-semibold text-white truncate">{p.name}</h3>
                     {p.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{p.description}</p>}
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">FCFA</span></p>
+                      <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">FCFA</span></p>
                       <div className="flex items-center gap-1.5">
                         {count > 0 && (
                           <>
-                            <button onClick={() => removeFromCart(p.id)} className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-white transition-colors">
+                            <button onClick={() => removeFromCart(p.id)} className="w-6 h-6 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white transition-colors">
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="text-xs text-gray-900 dark:text-white font-bold w-4 text-center">{count}</span>
+                            <span className="text-xs text-white font-bold w-4 text-center">{count}</span>
                           </>
                         )}
                         <button onClick={() => addToCart(p)} className="w-6 h-6 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white transition-colors">
@@ -284,32 +284,32 @@ export default function LandingPage() {
         {/* Section Extras */}
         {extras.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <Droplets className="w-5 h-5 text-gray-400" /> Boissons & Extras
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-gray-500" /> Boissons & Extras
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {extras.map((p) => {
                 const count = getCartCount(p.id);
                 return (
-                  <div key={p.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden hover:border-gray-300 dark:hover:border-gray-700 flex-shrink-0 w-36 transition-colors">
-                    <div className="h-24 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                  <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 flex-shrink-0 w-36 transition-colors">
+                    <div className="h-24 flex items-center justify-center bg-gray-800">
                       {p.image ? (
                         <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                       ) : (
-                        <Droplets className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                        <Droplets className="w-8 h-8 text-gray-600" />
                       )}
                     </div>
                     <div className="p-2">
-                      <h4 className="text-xs font-semibold text-gray-900 dark:text-white truncate">{p.name}</h4>
+                      <h4 className="text-xs font-semibold text-white truncate">{p.name}</h4>
                       <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">{p.price.toLocaleString()} F</p>
+                        <p className="text-xs font-bold text-orange-400">{p.price.toLocaleString()} F</p>
                         <div className="flex items-center gap-1">
                           {count > 0 && (
                             <>
-                              <button onClick={() => removeFromCart(p.id)} className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-white transition-colors">
+                              <button onClick={() => removeFromCart(p.id)} className="w-5 h-5 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white transition-colors">
                                 <Minus className="w-2.5 h-2.5" />
                               </button>
-                              <span className="text-[10px] text-gray-900 dark:text-white font-bold w-3 text-center">{count}</span>
+                              <span className="text-[10px] text-white font-bold w-3 text-center">{count}</span>
                             </>
                           )}
                           <button onClick={() => addToCart(p)} className="w-5 h-5 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white transition-colors">
@@ -331,7 +331,7 @@ export default function LandingPage() {
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 lg:bottom-0 lg:pb-4 lg:max-w-2xl lg:mx-auto">
           {!showOrder ? (
             <button onClick={() => setShowOrder(true)}
-              className="w-full flex items-center justify-between py-3.5 px-5 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-2xl transition-colors shadow-lg">
+              className="w-full flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg">
               <span className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5" />
                 <span className="text-sm font-semibold">{totalItems} Article{totalItems > 1 ? "s" : ""}</span>
@@ -339,28 +339,28 @@ export default function LandingPage() {
               <span className="text-sm font-bold">{total.toLocaleString()} FCFA</span>
             </button>
           ) : (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl max-h-[85vh] overflow-y-auto">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl max-h-[85vh] overflow-y-auto">
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-900 dark:text-white font-semibold text-sm">Finaliser la commande</p>
+                  <p className="text-white font-semibold text-sm">Finaliser la commande</p>
                   <button onClick={() => setShowOrder(false)}><X className="w-5 h-5 text-gray-400" /></button>
                 </div>
 
                 {/* Resume panier */}
                 <div className="max-h-28 overflow-y-auto space-y-1">
                   {cart.map((i) => (
-                    <div key={i.product.id} className="flex justify-between text-xs text-gray-500">
+                    <div key={i.product.id} className="flex justify-between text-xs text-gray-400">
                       <span>{i.quantity}x {i.product.name}</span>
                       <span>{(i.product.price * i.quantity).toLocaleString()} FCFA</span>
                     </div>
                   ))}
                 </div>
                 {deliveryFee > 0 && (
-                  <div className="flex justify-between text-xs text-gray-400">
+                  <div className="flex justify-between text-xs text-gray-500">
                     <span>Frais de livraison</span><span>{deliveryFee.toLocaleString()} FCFA</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white border-t border-gray-200 dark:border-gray-800 pt-2">
+                <div className="flex justify-between text-sm font-bold text-white border-t border-gray-800 pt-2">
                   <span>Total</span><span>{total.toLocaleString()} FCFA</span>
                 </div>
 
@@ -369,17 +369,17 @@ export default function LandingPage() {
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Votre nom *</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Nom complet"
-                        className="w-full pl-10 pr-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:border-orange-500 placeholder-gray-400" />
+                        className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Telephone *</label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="+229 00 00 00 00"
-                        className="w-full pl-10 pr-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:border-orange-500 placeholder-gray-400" />
+                        className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
                     </div>
                   </div>
 
@@ -390,7 +390,7 @@ export default function LandingPage() {
                   </div>
 
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note pour la commande (optionnel)"
-                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm resize-none focus:outline-none focus:border-orange-500 placeholder-gray-400" />
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-orange-500" />
                 </div>
 
                 {/* Choix de paiement */}
@@ -401,14 +401,14 @@ export default function LandingPage() {
                       {canPayCash && (
                         <button onClick={() => setPaymentChoice("CASH")}
                           className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border",
-                            paymentChoice === "CASH" ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900" : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500")}>
+                            paymentChoice === "CASH" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
                           A la livraison
                         </button>
                       )}
                       {canPayOnline && (
                         <button onClick={() => setPaymentChoice("ONLINE")}
                           className={cn("flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border flex items-center justify-center gap-1.5",
-                            paymentChoice === "ONLINE" ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900" : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500")}>
+                            paymentChoice === "ONLINE" ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : "bg-gray-800 border-gray-700 text-gray-400")}>
                           <CreditCard className="w-4 h-4" /> En ligne
                         </button>
                       )}
@@ -428,21 +428,21 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Navigation mobile fixe — flottant arrondi */}
+      {/* Navigation mobile fixe */}
       <nav className="fixed bottom-3 left-3 right-3 z-30 lg:hidden">
-        <div className="bg-white/[0.97] dark:bg-gray-900/[0.97] backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg">
+        <div className="bg-gray-900/[0.97] backdrop-blur-xl border border-gray-800 rounded-2xl shadow-lg shadow-black/20">
           <div className="flex items-stretch h-[3.2rem]">
             <Link href="/track" className="flex flex-col items-center justify-center flex-1 gap-[3px]">
-              <ClipboardList className="w-[24px] h-[24px] text-gray-400 dark:text-gray-500 transition-colors" strokeWidth={1.5} />
-              <span className="text-[10px] leading-none text-gray-400 dark:text-gray-500 font-medium">Commandes</span>
+              <ClipboardList className="w-[24px] h-[24px] text-gray-500 transition-colors" strokeWidth={1.5} />
+              <span className="text-[10px] leading-none text-gray-500 font-medium">Commandes</span>
             </Link>
             <a href="#menu" className="flex flex-col items-center justify-center flex-1 gap-[3px]">
-              <ShoppingBag className="w-[24px] h-[24px] text-orange-600 dark:text-orange-500 transition-colors" strokeWidth={2.1} />
-              <span className="text-[10px] leading-none text-orange-600 dark:text-orange-500 font-semibold">Commander</span>
+              <ShoppingBag className="w-[24px] h-[24px] text-orange-500 transition-colors" strokeWidth={2.1} />
+              <span className="text-[10px] leading-none text-orange-500 font-semibold">Commander</span>
             </a>
             <Link href="/login" className="flex flex-col items-center justify-center flex-1 gap-[3px]">
-              <LogIn className="w-[24px] h-[24px] text-gray-400 dark:text-gray-500 transition-colors" strokeWidth={1.5} />
-              <span className="text-[10px] leading-none text-gray-400 dark:text-gray-500 font-medium">Connexion</span>
+              <LogIn className="w-[24px] h-[24px] text-gray-500 transition-colors" strokeWidth={1.5} />
+              <span className="text-[10px] leading-none text-gray-500 font-medium">Connexion</span>
             </Link>
           </div>
         </div>
