@@ -7,6 +7,7 @@ import {
   Loader2, ShoppingBag, UtensilsCrossed,
   Plus, Minus, Search, X, Timer, Droplets, CreditCard, ChefHat,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -135,9 +136,12 @@ export default function CommanderPage() {
             if (paymentUrl) { window.location.href = paymentUrl; return; }
           }
         }
+        toast.success("Commande passée avec succès !");
         setCart([]);
         setShowOrder(false);
         router.push(`/livraison/order/${order.id}`);
+      } else {
+        toast.error("Erreur lors de la commande");
       }
     } finally {
       setOrdering(false);

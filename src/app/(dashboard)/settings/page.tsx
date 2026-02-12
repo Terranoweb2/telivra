@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Settings, User, Shield, Bell, Save, Loader2, Check, CreditCard, Store } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { PillTabGroup } from "@/components/ui/tabs";
@@ -57,6 +58,9 @@ export default function SettingsPage() {
         setSiteSettings(data);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+        toast.success("Paramètres sauvegardés");
+      } else {
+        toast.error("Erreur lors de la sauvegarde");
       }
     } finally { setSaving(false); }
   }

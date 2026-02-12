@@ -7,6 +7,7 @@ import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Eye, Wifi,
   MapPin, User, Bell, X, ChevronDown, ChefHat, Timer, Navigation,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 import { Card, CardContent } from "@/components/ui/card";
@@ -227,6 +228,9 @@ export default function CommandesPage() {
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
       await loadData();
       setTab("active");
+      toast.success("Livraison acceptée");
+    } else {
+      toast.error("Erreur lors de l'acceptation");
     }
   }
 
@@ -237,6 +241,9 @@ export default function CommandesPage() {
     if (res.ok) {
       await loadData();
       setTab("active");
+      toast.success("Commande acceptée");
+    } else {
+      toast.error("Erreur lors de l'acceptation");
     }
     setAccepting(null);
   }
@@ -244,7 +251,12 @@ export default function CommandesPage() {
   async function cookReady(orderId: string) {
     setReadying(orderId);
     const res = await fetch(`/api/orders/${orderId}/cook-ready`, { method: "POST" });
-    if (res.ok) await loadData();
+    if (res.ok) {
+      await loadData();
+      toast.success("Commande marquée prête !");
+    } else {
+      toast.error("Erreur lors de la mise à jour");
+    }
     setReadying(null);
   }
 
@@ -262,6 +274,9 @@ export default function CommandesPage() {
     if (res.ok) {
       await loadData();
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+      toast.success("Commande annulée");
+    } else {
+      toast.error("Erreur lors de l'annulation");
     }
     setCancellingId(null);
     setCancelFormId(null);

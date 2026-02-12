@@ -14,6 +14,7 @@ import {
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const AddressPickerMap = dynamic(() => import("@/components/map/address-picker-map"), { ssr: false });
@@ -176,9 +177,12 @@ export default function LandingPage() {
             if (paymentUrl) { window.location.href = paymentUrl; return; }
           }
         }
+        toast.success("Commande passée avec succès !");
         setCart([]);
         setOrderStep("menu");
         router.push(`/track/${order.id}`);
+      } else {
+        toast.error("Erreur lors de la commande");
       }
     } finally {
       setOrdering(false);

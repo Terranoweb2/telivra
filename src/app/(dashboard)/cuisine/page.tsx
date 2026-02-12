@@ -5,6 +5,7 @@ import {
   Loader2, Clock, CheckCircle, ChefHat, Bell, Wifi,
   User, MapPin, Timer,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 import { Card, CardContent } from "@/components/ui/card";
@@ -127,6 +128,9 @@ export default function CuisinePage() {
     if (res.ok) {
       await loadOrders();
       setTab("preparing");
+      toast.success("Commande acceptée");
+    } else {
+      toast.error("Erreur lors de l'acceptation");
     }
     setAccepting(null);
   }
@@ -134,7 +138,12 @@ export default function CuisinePage() {
   async function markReady(orderId: string) {
     setReadying(orderId);
     const res = await fetch(`/api/orders/${orderId}/cook-ready`, { method: "POST" });
-    if (res.ok) await loadOrders();
+    if (res.ok) {
+      await loadOrders();
+      toast.success("Commande prête !");
+    } else {
+      toast.error("Erreur lors de la mise à jour");
+    }
     setReadying(null);
   }
 

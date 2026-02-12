@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { UtensilsCrossed, Loader2, Mail, KeyRound, ArrowLeft, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 
 type Step = "email" | "code" | "done";
 
@@ -29,12 +30,16 @@ export default function ForgotPasswordPage() {
 
       if (res.ok) {
         setStep("code");
+        toast.success("Code envoyé par email");
       } else {
         const data = await res.json();
-        setError(data.error || "Erreur lors de l'envoi");
+        const msg = data.error || "Erreur lors de l'envoi";
+        setError(msg);
+        toast.error(msg);
       }
     } catch {
       setError("Erreur réseau");
+      toast.error("Erreur réseau");
     }
     setLoading(false);
   }
@@ -61,11 +66,15 @@ export default function ForgotPasswordPage() {
 
       if (res.ok) {
         setStep("done");
+        toast.success("Mot de passe réinitialisé !");
       } else {
-        setError(data.error || "Erreur lors de la réinitialisation");
+        const msg = data.error || "Erreur lors de la réinitialisation";
+        setError(msg);
+        toast.error(msg);
       }
     } catch {
       setError("Erreur réseau");
+      toast.error("Erreur réseau");
     }
     setLoading(false);
   }

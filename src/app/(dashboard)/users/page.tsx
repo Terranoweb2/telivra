@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Users, Shield, Eye, Truck, ShoppingBag, UserCheck, UserX, ChefHat } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -37,6 +38,10 @@ export default function UsersPage() {
     if (res.ok) {
       const updated = await res.json();
       setUsers((prev) => prev.map((u) => u.id === id ? { ...u, ...updated } : u));
+      toast.success("Utilisateur mis à jour");
+    } else {
+      const err = await res.json().catch(() => null);
+      toast.error(err?.error || "Erreur lors de la mise à jour");
     }
   }
 

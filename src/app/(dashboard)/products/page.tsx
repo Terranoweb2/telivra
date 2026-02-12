@@ -7,6 +7,7 @@ import {
   UtensilsCrossed, ShoppingCart, Pill, Smartphone,
   Timer, Droplets, CreditCard, Edit2, X, Save,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCardCentered, StatCardBadge } from "@/components/ui/stat-card";
@@ -93,6 +94,9 @@ export default function ProductsPage() {
       setProducts((prev) => [p, ...prev]);
       setForm({ name: "", description: "", price: "", category: "RESTAURANT", shopName: "", image: "", cookingTimeMin: "15", isExtra: false, paymentMethod: "BOTH" });
       setShowAdd(false);
+      toast.success("Produit ajouté");
+    } else {
+      toast.error("Erreur lors de l'ajout du produit");
     }
     setSaving(false);
   }
@@ -115,12 +119,20 @@ export default function ProductsPage() {
       setProducts((prev) => prev.map((p) => p.id === id ? updated : p));
       setEditingId(null);
       setEditForm(null);
+      toast.success("Produit modifié");
+    } else {
+      toast.error("Erreur lors de la modification");
     }
   }
 
   async function deleteProduct(id: string) {
     const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-    if (res.ok) setProducts((prev) => prev.filter((p) => p.id !== id));
+    if (res.ok) {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Produit supprimé");
+    } else {
+      toast.error("Erreur lors de la suppression");
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;

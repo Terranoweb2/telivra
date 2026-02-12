@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { UtensilsCrossed, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,8 +26,10 @@ export default function LoginPage() {
 
     if (result?.error) {
       setError("Email ou mot de passe incorrect");
+      toast.error("Email ou mot de passe incorrect");
       setLoading(false);
     } else {
+      toast.success("Connexion réussie");
       router.push("/dashboard");
     }
   }

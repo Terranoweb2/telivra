@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { UtensilsCrossed, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,7 +37,9 @@ export default function RegisterPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Erreur lors de l'inscription");
+        const msg = data.error || "Erreur lors de l'inscription";
+        setError(msg);
+        toast.error(msg);
         setLoading(false);
         return;
       }
@@ -50,10 +53,12 @@ export default function RegisterPage() {
       if (result?.error) {
         router.push("/login");
       } else {
+        toast.success("Inscription réussie !");
         router.push("/dashboard");
       }
     } catch {
       setError("Erreur réseau");
+      toast.error("Erreur réseau");
       setLoading(false);
     }
   }
