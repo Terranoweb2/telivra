@@ -10,7 +10,9 @@ import {
   ClipboardList, Map, LogIn,
   UtensilsCrossed,
   ArrowDown, Phone, User, Timer, Droplets, ChefHat,
+  Sun, Moon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -160,6 +162,7 @@ export default function LandingPage() {
     }
   }
 
+  const { theme, setTheme } = useTheme();
   const restaurantName = settings?.restaurantName || "Terrano";
 
   return (
@@ -170,9 +173,12 @@ export default function LandingPage() {
           <span className="text-lg font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
             {restaurantName}
           </span>
-          <Link href="/login" className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-xl text-sm font-medium transition-colors">
-            <LogIn className="w-4 h-4" /> Connexion
-          </Link>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[#999] hover:text-white transition-colors"
+          >
+            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
         </div>
       </header>
 
@@ -439,12 +445,12 @@ export default function LandingPage() {
               </div>
               <span className="text-[10px] mt-0.5 font-medium text-gray-500">Commandes</span>
             </Link>
-            <Link href="/map" className="flex flex-col items-center justify-center flex-1 py-1 group">
+            <a href="#menu" className="flex flex-col items-center justify-center flex-1 py-1 group">
               <div className="p-2 rounded-2xl">
-                <Map className="w-5 h-5 text-gray-500 group-active:text-gray-300 transition-colors" />
+                <ShoppingBag className="w-5 h-5 text-orange-500 transition-colors" />
               </div>
-              <span className="text-[10px] mt-0.5 font-medium text-gray-500">Carte</span>
-            </Link>
+              <span className="text-[10px] mt-0.5 font-semibold text-orange-500">Commander</span>
+            </a>
             <Link href="/login" className="flex flex-col items-center justify-center flex-1 py-1 group">
               <div className="p-2 rounded-2xl">
                 <LogIn className="w-5 h-5 text-gray-500 group-active:text-gray-300 transition-colors" />
