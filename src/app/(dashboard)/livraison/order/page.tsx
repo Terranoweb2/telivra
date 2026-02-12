@@ -540,14 +540,12 @@ export default function CommandesPage() {
                         <CheckCircle className="w-4 h-4" /> Accepter
                       </button>
                       {order.deliveryLat && order.deliveryLng && (
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLat},${order.deliveryLng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="py-2.5 px-3 bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 text-blue-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                        <Link
+                          href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}`}
+                          className="py-2.5 px-3 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Navigation className="w-4 h-4" />
-                        </a>
+                        </Link>
                       )}
                     </div>
                   </CardContent>
@@ -597,15 +595,13 @@ export default function CommandesPage() {
 
                   {/* Bouton itineraire pour livreur/admin */}
                   {isDriver && order.deliveryLat && order.deliveryLng && (tab === "active" || tab === "delivered") && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLat},${order.deliveryLng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 w-full py-2 bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                    <Link
+                      href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}`}
+                      className="mt-2 w-full py-2 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      Itineraire Google Maps
-                    </a>
+                      Voir l&apos;itineraire
+                    </Link>
                   )}
 
                   {/* Bouton annuler avec formulaire expandable */}

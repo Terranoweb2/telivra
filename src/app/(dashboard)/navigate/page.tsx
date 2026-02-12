@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Navigation, MapPin, Clock, Ruler, RotateCcw, Loader2, Search,
@@ -33,6 +34,15 @@ interface RouteStep {
 type NavState = "idle" | "planning" | "navigating";
 
 export default function NavigatePage() {
+  return (
+    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-gray-950"><Loader2 className="w-12 h-12 text-orange-500 animate-spin" /></div>}>
+      <NavigateContent />
+    </Suspense>
+  );
+}
+
+function NavigateContent() {
+  const searchParams = useSearchParams();
   const [navState, setNavState] = useState<NavState>("idle");
   const [myPos, setMyPos] = useState<[number, number] | null>(null);
   const [destination, setDestination] = useState<[number, number] | null>(null);
@@ -50,6 +60,22 @@ export default function NavigatePage() {
   const [geoError, setGeoError] = useState("");
   const watchRef = useRef<number | null>(null);
   const searchTimeout = useRef<any>(null);
+
+  // Destination depuis les parametres URL (?lat=&lng=&address=)
+  useEffect(() => {
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
+    const addr = searchParams.get("address");
+    if (lat && lng) {
+      const latN = parseFloat(lat);
+      const lngN = parseFloat(lng);
+      if (!isNaN(latN) && !isNaN(lngN)) {
+        setDestination([latN, lngN]);
+        setDestName(addr || `${latN.toFixed(5)}, ${lngN.toFixed(5)}`);
+        setNavState("planning");
+      }
+    }
+  }, [searchParams]);
 
   // Geolocalisation automatique
   useEffect(() => {
