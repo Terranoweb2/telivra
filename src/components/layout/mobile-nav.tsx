@@ -68,10 +68,8 @@ export function MobileNav() {
   const { data: session, status } = useSession();
   const role = (session?.user as any)?.role;
   const [showMenu, setShowMenu] = useState(false);
-  const [visible, setVisible] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const lastScrollY = useRef(0);
-  const menuRef = useRef<HTMLDivElement>(null);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const menuRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || "Utilisateur";
   const userEmail = session?.user?.email || "";
@@ -100,20 +98,7 @@ export function MobileNav() {
     }
   }, [status, fetchUnread]);
 
-  useEffect(() => {
-    function handleScroll() {
-      const currentY = window.scrollY;
-      if (currentY > lastScrollY.current && currentY > 60) {
-        setVisible(false);
-        setShowMenu(false);
-      } else {
-        setVisible(true);
-      }
-      lastScrollY.current = currentY;
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -192,7 +177,7 @@ export function MobileNav() {
 
       <nav className={cn(
         "fixed bottom-3 left-3 right-3 z-30 lg:hidden transition-all duration-200",
-        visible ? "translate-y-0 opacity-100" : "translate-y-[calc(100%+1rem)] opacity-0"
+        "translate-y-0 opacity-100"
       )}>
         <div className="bg-gray-900/[0.97] backdrop-blur-xl border border-gray-800 rounded-2xl shadow-lg shadow-black/20" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="flex items-stretch h-[3.2rem]">
