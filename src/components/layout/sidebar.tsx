@@ -18,6 +18,7 @@ import {
   Package,
   ChefHat,
   UtensilsCrossed,
+  Percent,
 } from "lucide-react";
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Repas", href: "/products", icon: Package },
+  { label: "Marketing", href: "/products?tab=promotions", icon: Percent },
   { label: "Utilisateurs", href: "/users", icon: Users },
   { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
   { label: "Livreurs", href: "/drivers", icon: Truck },

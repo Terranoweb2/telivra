@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Non autorise" }, { status: 401 });
     }
     const promotions = await prisma.promotion.findMany({
-      include: { products: { include: { product: { select: { id: true, name: true, price: true } } } } },
+      include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(promotions);
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const now = new Date();
   const promotions = await prisma.promotion.findMany({
     where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
-    include: { products: { include: { product: { select: { id: true, name: true, price: true } } } } },
+    include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(promotions);
@@ -51,15 +51,15 @@ export async function POST(request: NextRequest) {
       image: image || null,
       discountType,
       discountValue: value,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: (() => { const d = new Date(startDate); d.setHours(0, 0, 0, 0); return d; })(),
+      endDate: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })(),
       isActive: isActive !== false,
       appliesToAll: appliesToAll === true,
       products: productIds?.length
         ? { create: productIds.map((pid: string) => ({ productId: pid })) }
         : undefined,
     },
-    include: { products: { include: { product: { select: { id: true, name: true, price: true } } } } },
+    include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
   });
 
   return NextResponse.json(promotion, { status: 201 });

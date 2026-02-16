@@ -16,6 +16,7 @@ export function middleware(request: NextRequest) {
     "/api/payments/callback",
     "/api/payments/webhook",
     "/api/settings",
+    "/api/promotions",
     "/api/geocode",
     "/track",
   ];

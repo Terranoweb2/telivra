@@ -95,6 +95,13 @@ function RichTextArea({ initialValue, onChange }: { initialValue: string; onChan
 
 export default function ProductsPage() {
   const [tab, setTab] = useState<Tab>("products");
+
+  // Lire ?tab= depuis l'URL au montage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab") as Tab;
+    if (t && ["products", "promotions", "orders", "revenue"].includes(t)) setTab(t);
+  }, []);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [revenue, setRevenue] = useState<any>(null);
@@ -571,7 +578,7 @@ export default function ProductsPage() {
           {promotions.length === 0 ? (
             <EmptyState icon={Percent} message="Aucune promotion" />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
               {promotions.map((promo: any) => {
                 const isExpired = new Date(promo.endDate) < new Date();
                 const isUpcoming = new Date(promo.startDate) > new Date();
@@ -588,9 +595,9 @@ export default function ProductsPage() {
                           isExpired ? "bg-red-500/20 text-red-400" : isUpcoming ? "bg-blue-500/20 text-blue-400" : promo.isActive ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"
                         )}>{isExpired ? "Expirée" : isUpcoming ? "À venir" : promo.isActive ? "Active" : "Inactive"}</span>
                       </div>
-                      {promo.description && <p className="text-[10px] text-gray-500 line-clamp-2">{promo.description}</p>}
+                      {promo.description && <div className="text-[10px] text-gray-500 line-clamp-2 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />}
                       <p className="text-[10px] text-gray-500">{new Date(promo.startDate).toLocaleDateString("fr-FR")} → {new Date(promo.endDate).toLocaleDateString("fr-FR")}</p>
-                      <p className="text-[10px] text-gray-500">{promo.appliesToAll ? "Tous les produits" : `${promo.products?.length || 0} produit(s)`}</p>
+                      <p className="text-[10px] text-gray-500">{promo.appliesToAll ? "Tous les repas et extras" : `${promo.products?.length || 0} repas/extra(s)`}</p>
                       <div className="flex items-center gap-1 pt-1.5 border-t border-gray-800">
                         <button onClick={() => openEditPromo(promo)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded transition-colors"><Edit2 className="w-3 h-3" /></button>
                         <button onClick={() => deletePromo(promo.id, promo.name)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
@@ -961,7 +968,11 @@ export default function ProductsPage() {
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Description</label>
-            <textarea placeholder="Description..." value={promoForm.description} onChange={(e) => setPromoForm({ ...promoForm, description: e.target.value })} className={inputClass + " w-full min-h-[80px] resize-none"} />
+            <RichTextArea
+              key={editPromoId || "add-promo"}
+              initialValue={promoForm.description}
+              onChange={(html) => setPromoForm((prev) => ({ ...prev, description: html }))}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -992,13 +1003,22 @@ export default function ProductsPage() {
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={promoForm.appliesToAll} onChange={(e) => setPromoForm({ ...promoForm, appliesToAll: e.target.checked })} className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-orange-500 focus:ring-orange-500" />
-            <span className="text-sm text-gray-300">Appliquer à tous les produits</span>
+            <span className="text-sm text-gray-300">Appliquer à tous les repas et extras</span>
           </label>
           {!promoForm.appliesToAll && (
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Produits concernés</label>
-              <div className="max-h-40 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 p-2 space-y-1">
-                {products.map((pr: any) => (
+              <label className="text-xs text-gray-400 mb-1 block">Repas et extras concernés</label>
+              <div className="max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 p-2 space-y-1">
+                <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider px-2 pt-1">Repas</p>
+                {products.filter((pr: any) => !pr.isExtra).map((pr: any) => (
+                  <label key={pr.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded hover:bg-gray-700">
+                    <input type="checkbox" checked={promoForm.productIds.includes(pr.id)} onChange={(e) => setPromoForm((prev) => ({ ...prev, productIds: e.target.checked ? [...prev.productIds, pr.id] : prev.productIds.filter((id) => id !== pr.id) }))} className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-orange-500" />
+                    <span className="text-xs text-gray-300">{pr.name}</span>
+                    <span className="text-[10px] text-gray-500 ml-auto">{pr.price} F</span>
+                  </label>
+                ))}
+                <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2 border-t border-gray-700 mt-1">Extras</p>
+                {products.filter((pr: any) => pr.isExtra).map((pr: any) => (
                   <label key={pr.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded hover:bg-gray-700">
                     <input type="checkbox" checked={promoForm.productIds.includes(pr.id)} onChange={(e) => setPromoForm((prev) => ({ ...prev, productIds: e.target.checked ? [...prev.productIds, pr.id] : prev.productIds.filter((id) => id !== pr.id) }))} className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-orange-500" />
                     <span className="text-xs text-gray-300">{pr.name}</span>

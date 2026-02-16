@@ -70,6 +70,8 @@ export default function CommanderPage() {
   const [ordering, setOrdering] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promoIndex, setPromoIndex] = useState(0);
+  const [showPromoDialog, setShowPromoDialog] = useState(false);
+  const [promoDismissed, setPromoDismissed] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -79,8 +81,16 @@ export default function CommanderPage() {
     ]).then(([prods, sett, promos]) => {
       setProducts(Array.isArray(prods) ? prods : []);
       setSettings(sett);
-      setPromotions(Array.isArray(promos) ? promos : []);
+      const activePromos = Array.isArray(promos) ? promos : [];
+      setPromotions(activePromos);
       setLoading(false);
+      if (activePromos.length > 0) {
+        try {
+          const dismissed = localStorage.getItem("promo-dialog-dismissed");
+          if (!dismissed) { setTimeout(() => setShowPromoDialog(true), 500); }
+          else { setPromoDismissed(true); }
+        } catch { setTimeout(() => setShowPromoDialog(true), 500); }
+      }
     });
   }, []);
 
@@ -187,43 +197,16 @@ export default function CommanderPage() {
         <ChefHat className="w-6 h-6 text-orange-400" />
       </PageHeader>
 
-      {/* Bannière promotionnelle */}
-      {promotions.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${promoIndex * 100}%)` }}>
-            {promotions.map((promo) => (
-              <div key={promo.id} className="w-full flex-shrink-0">
-                {promo.image ? (
-                  <div className="relative h-36 sm:h-44">
-                    <img src={promo.image} alt={promo.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                    <div className="absolute bottom-3 left-4 right-4">
-                      <p className="text-white font-bold text-sm sm:text-base">{promo.name}</p>
-                      <p className="text-orange-300 text-xs font-semibold">-{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"} de réduction</p>
-                      {promo.description && <p className="text-gray-300 text-[10px] mt-0.5 line-clamp-1">{promo.description}</p>}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-28 sm:h-36 bg-gradient-to-r from-orange-600 to-orange-500 flex items-center justify-center px-6">
-                    <div className="text-center">
-                      <p className="text-white font-bold text-base sm:text-lg">{promo.name}</p>
-                      <p className="text-orange-100 text-sm font-semibold">-{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"}</p>
-                      {promo.description && <p className="text-orange-200/80 text-[10px] mt-1">{promo.description}</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* Bandeau promo */}
+      {promoDismissed && promotions.length > 0 && (
+        <button onClick={() => setShowPromoDialog(true)}
+          className="w-full py-2.5 px-4 bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-between gap-3 hover:from-orange-500 hover:to-orange-400 transition-all">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔥</span>
+            <span className="text-sm font-semibold text-white">{promotions.length} promo{promotions.length > 1 ? "s" : ""} en cours !</span>
           </div>
-          {promotions.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {promotions.map((_, i) => (
-                <button key={i} onClick={() => setPromoIndex(i)}
-                  className={cn("w-2 h-2 rounded-full transition-all", i === promoIndex ? "bg-orange-400 w-4" : "bg-white/40")} />
-              ))}
-            </div>
-          )}
-        </div>
+          <span className="text-xs text-orange-100 font-medium">Voir →</span>
+        </button>
       )}
 
       {/* Recherche */}
@@ -416,6 +399,58 @@ export default function CommanderPage() {
           )}
         </div>
       )}
+
+      {/* Dialog Promotions */}
+      {showPromoDialog && promotions.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+            <div className="space-y-0">
+              {promotions.map((promo: any, idx: number) => {
+                const bannerImg = promo.image || (!promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null);
+                return (
+                  <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
+                    {bannerImg && (
+                      <div className="relative h-44">
+                        <img src={bannerImg} alt={promo.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
+                      </div>
+                    )}
+                    <div className={cn("px-5 pb-5", bannerImg ? "-mt-12 relative z-10" : "pt-5")}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-bold">
+                          -{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          Jusqu&apos;au {new Date(promo.endDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-1">{promo.name}</h3>
+                      {promo.description && (
+                        <div className="text-sm text-gray-400 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} article(s)`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-gray-800">
+              <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                C&apos;est compris !
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

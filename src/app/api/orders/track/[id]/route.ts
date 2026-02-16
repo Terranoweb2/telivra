@@ -12,6 +12,7 @@ export async function GET(
     include: {
       items: { include: { product: true } },
       client: { select: { id: true, name: true } },
+      promotion: { select: { name: true } },
       rating: true,
       delivery: {
         include: {

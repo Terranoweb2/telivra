@@ -30,8 +30,8 @@ export async function PUT(
   if (image !== undefined) data.image = image || null;
   if (discountType !== undefined) data.discountType = discountType;
   if (discountValue !== undefined) data.discountValue = parseFloat(discountValue);
-  if (startDate !== undefined) data.startDate = new Date(startDate);
-  if (endDate !== undefined) data.endDate = new Date(endDate);
+  if (startDate !== undefined) { const d = new Date(startDate); d.setHours(0, 0, 0, 0); data.startDate = d; }
+  if (endDate !== undefined) { const d = new Date(endDate); d.setHours(23, 59, 59, 999); data.endDate = d; }
   if (isActive !== undefined) data.isActive = isActive;
   if (appliesToAll !== undefined) data.appliesToAll = appliesToAll;
 
@@ -39,7 +39,7 @@ export async function PUT(
     const promotion = await prisma.promotion.update({
       where: { id },
       data,
-      include: { products: { include: { product: { select: { id: true, name: true, price: true } } } } },
+      include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
     });
     return NextResponse.json(promotion);
   } catch {

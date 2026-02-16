@@ -31,6 +31,23 @@ interface Product {
   image: string | null;
   cookingTimeMin: number;
   isExtra: boolean;
+  effectivePrice?: number;
+  originalPrice?: number;
+  hasDiscount?: boolean;
+}
+
+interface Promotion {
+  id: string;
+  name: string;
+  description: string | null;
+  image: string | null;
+  discountType: string;
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  appliesToAll: boolean;
+  products?: { product?: { id: string; image: string | null } }[];
 }
 
 interface CartItem {
@@ -55,6 +72,10 @@ export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promoIndex, setPromoIndex] = useState(0);
+  const [showPromoDialog, setShowPromoDialog] = useState(false);
+  const [promoDismissed, setPromoDismissed] = useState(false);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(MEALS_PER_LOAD);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -179,10 +200,26 @@ export default function LandingPage() {
     Promise.all([
       fetch("/api/products").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()).catch(() => null),
-    ]).then(([prods, sett]) => {
+      fetch("/api/promotions").then((r) => r.json()).catch(() => []),
+    ]).then(([prods, sett, promos]) => {
       setProducts(Array.isArray(prods) ? prods : []);
       setSettings(sett);
+      const activePromos = Array.isArray(promos) ? promos : [];
+      setPromotions(activePromos);
       setLoading(false);
+      // Afficher le dialog promo si des promos actives et pas encore vu
+      if (activePromos.length > 0) {
+        try {
+          const dismissed = localStorage.getItem("promo-dialog-dismissed");
+          if (!dismissed) {
+            setTimeout(() => setShowPromoDialog(true), 800);
+          } else {
+            setPromoDismissed(true);
+          }
+        } catch {
+          setTimeout(() => setShowPromoDialog(true), 800);
+        }
+      }
       // Auto-scroll vers le menu après chargement
       setTimeout(() => {
         const el = document.getElementById("menu");
@@ -196,6 +233,13 @@ export default function LandingPage() {
       } catch {}
     });
   }, []);
+
+  // Auto-rotate promo carousel
+  useEffect(() => {
+    if (promotions.length <= 1) return;
+    const iv = setInterval(() => setPromoIndex((i) => (i + 1) % promotions.length), 5000);
+    return () => clearInterval(iv);
+  }, [promotions.length]);
 
   const meals = products.filter((p) => !p.isExtra);
   const extras = products.filter((p) => p.isExtra);
@@ -253,7 +297,7 @@ export default function LandingPage() {
   const mealItems = cart.filter((i) => !i.product.isExtra);
   const extraItems = cart.filter((i) => i.product.isExtra);
   const totalMeals = mealItems.reduce((s, i) => s + i.quantity, 0);
-  const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const subtotal = cart.reduce((s, i) => s + (i.product.effectivePrice ?? i.product.price) * i.quantity, 0);
   const deliveryFee = settings?.deliveryFee || 0;
   const total = subtotal + deliveryFee;
 
@@ -414,6 +458,18 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* Bandeau promo en bas (visible après fermeture du dialog) */}
+        {promoDismissed && promotions.length > 0 && (
+          <button onClick={() => { setShowPromoDialog(true); }}
+            className="w-full mb-4 py-2.5 px-4 bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-between gap-3 hover:from-orange-500 hover:to-orange-400 transition-all">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔥</span>
+              <span className="text-sm font-semibold text-white">{promotions.length} promo{promotions.length > 1 ? "s" : ""} en cours !</span>
+            </div>
+            <span className="text-xs text-orange-100 font-medium">Voir →</span>
+          </button>
+        )}
+
         {/* Recherche */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -453,7 +509,14 @@ export default function LandingPage() {
                     <h3 className="text-sm font-semibold text-white truncate cursor-pointer hover:text-orange-400 transition-colors" onClick={() => setSelectedProduct(p)}>{p.name}</h3>
                     {p.description && <div className="text-xs text-gray-500 mt-0.5 line-clamp-2 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: p.description }} />}
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">FCFA</span></p>
+                      {p.hasDiscount ? (
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-bold text-green-400">{(p.effectivePrice ?? p.price).toLocaleString()} <span className="text-[9px] font-normal">FCFA</span></span>
+                          <span className="text-[10px] text-gray-500 line-through">{p.price.toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">FCFA</span></p>
+                      )}
                       <div className="flex items-center gap-1.5">
                         {count > 0 && (
                           <>
@@ -565,7 +628,14 @@ export default function LandingPage() {
                             <h4 className="text-sm font-semibold text-white truncate">{p.name}</h4>
                             {p.description && <div className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: p.description }} />}
                             <div className="flex items-center justify-between mt-2">
-                              <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">F</span></p>
+                              {p.hasDiscount ? (
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-sm font-bold text-green-400">{(p.effectivePrice ?? p.price).toLocaleString()} <span className="text-[9px] font-normal">F</span></span>
+                                  <span className="text-[9px] text-gray-500 line-through">{p.price.toLocaleString()}</span>
+                                </div>
+                              ) : (
+                                <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">F</span></p>
+                              )}
                               <div className="flex items-center gap-1.5">
                                 {count > 0 && (
                                   <>
@@ -643,7 +713,7 @@ export default function LandingPage() {
                     {mealItems.map((i) => (
                       <div key={i.product.id} className="flex justify-between text-sm">
                         <span className="text-gray-300">{i.quantity}× {i.product.name}</span>
-                        <span className="text-gray-400">{(i.product.price * i.quantity).toLocaleString()} F</span>
+                        <span className="text-gray-400">{((i.product.effectivePrice ?? i.product.price) * i.quantity).toLocaleString()} F</span>
                       </div>
                     ))}
                   </div>
@@ -655,7 +725,7 @@ export default function LandingPage() {
                       {extraItems.map((i) => (
                         <div key={i.product.id} className="flex justify-between text-sm">
                           <span className="text-gray-300">{i.quantity}× {i.product.name}</span>
-                          <span className="text-gray-400">{(i.product.price * i.quantity).toLocaleString()} F</span>
+                          <span className="text-gray-400">{((i.product.effectivePrice ?? i.product.price) * i.quantity).toLocaleString()} F</span>
                         </div>
                       ))}
                     </div>
@@ -904,7 +974,11 @@ export default function LandingPage() {
                   <p className="text-xs text-gray-500 mt-1">{p.shopName}</p>
                 )}
                 <p className="text-lg font-bold text-orange-400 mt-2">
-                  {p.price.toLocaleString()} <span className="text-sm font-normal text-gray-500">FCFA</span>
+                  {p.hasDiscount ? (
+                    <><span className="text-green-400">{(p.effectivePrice ?? p.price).toLocaleString()}</span> <span className="text-sm font-normal text-gray-500 line-through ml-2">{p.price.toLocaleString()}</span> <span className="text-sm font-normal text-gray-500">FCFA</span></>
+                  ) : (
+                    <>{p.price.toLocaleString()} <span className="text-sm font-normal text-gray-500">FCFA</span></>
+                  )}
                 </p>
 
                 {p.description && (
@@ -950,7 +1024,7 @@ export default function LandingPage() {
                       className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       <CreditCard className="w-4 h-4" />
-                      Payer maintenant — {(cart.reduce((s, i) => s + i.product.price * i.quantity, 0)).toLocaleString()} FCFA
+                      Payer maintenant — {(cart.reduce((s, i) => s + (i.product.effectivePrice ?? i.product.price) * i.quantity, 0)).toLocaleString()} FCFA
                     </button>
                     <button
                       onClick={() => setSelectedProduct(null)}
@@ -1044,6 +1118,60 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
+
+      {/* Dialog Promotions */}
+      {showPromoDialog && promotions.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="space-y-0">
+              {promotions.map((promo: any, idx: number) => {
+                const bannerImg = promo.image || (!promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null);
+                return (
+                  <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
+                    {bannerImg && (
+                      <div className="relative h-44">
+                        <img src={bannerImg} alt={promo.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
+                      </div>
+                    )}
+                    <div className={cn("px-5 pb-5", bannerImg ? "-mt-12 relative z-10" : "pt-5")}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-bold">
+                          -{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          Jusqu&apos;au {new Date(promo.endDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-1">{promo.name}</h3>
+                      {promo.description && (
+                        <div className="text-sm text-gray-400 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} article(s)`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-4 border-t border-gray-800">
+              <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                Commander maintenant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

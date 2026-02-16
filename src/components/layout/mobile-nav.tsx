@@ -15,6 +15,7 @@ import {
   Truck,
   Bell,
   ChefHat,
+  Percent,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 
@@ -53,6 +54,7 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
   ],
   DEFAULT: [
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
+    { label: "Marketing", href: "/products?tab=promotions", icon: Percent },
     { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
     { label: "Livreurs", href: "/drivers", icon: Truck },
     { label: "Alertes", href: "/alerts", icon: Bell },

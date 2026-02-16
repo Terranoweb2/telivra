@@ -466,7 +466,12 @@ export default function TrackDetailPage() {
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>{order.items?.length || 0} article(s)</span>
                 </div>
-                <p className="text-sm font-bold text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</p>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</p>
+                  {order.discountAmount > 0 && (
+                    <p className="text-[10px] text-green-600 font-medium">-{order.discountAmount?.toLocaleString()} éco.</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -540,7 +545,19 @@ export default function TrackDetailPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="border-t border-gray-200 mt-2 pt-2">
+                  <div className="border-t border-gray-200 mt-2 pt-2 space-y-1.5">
+                    {deliveryFee > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Frais de livraison</span>
+                        <span>{deliveryFee.toLocaleString()} FCFA</span>
+                      </div>
+                    )}
+                    {order.discountAmount > 0 && (
+                      <div className="flex justify-between text-xs text-green-600 font-medium">
+                        <span>Réduction{order.promotion?.name ? ` (${order.promotion.name})` : ""}</span>
+                        <span>-{order.discountAmount?.toLocaleString()} FCFA</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm font-bold text-gray-900">
                       <span>Total</span>
                       <span className="text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</span>
