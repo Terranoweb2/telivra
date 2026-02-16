@@ -296,6 +296,10 @@ model SiteSettings {
   paymentPhoneNumber   String?
   deliveryFee          Float         @default(0)
   currency             String        @default("XOF")
+  logo                 String?
+  buttonColor          String?
+  heroTitle            String?
+  heroSubtitle         String?
   updatedAt            DateTime      @updatedAt
 
   @@map("site_settings")

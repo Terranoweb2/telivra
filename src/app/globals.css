@@ -210,3 +210,17 @@ html.dark .leaflet-container { background: #2c2c2e; }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Fix: gradients in light mode (promo dialog overlays) */
+html:not(.dark) .from-gray-900 { --tw-gradient-from: #f8fafc !important; }
+html:not(.dark) .via-gray-900\/40 { --tw-gradient-via: rgb(248 250 252 / 0.4) !important; }
+html:not(.dark) .via-transparent { --tw-gradient-via: transparent !important; }
+
+/* Fix: cooking time badge on product images — keep visible in light mode */
+html:not(.dark) .backdrop-blur-sm[class*="bg-black"] {
+  background-color: rgb(255 255 255 / 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+html:not(.dark) .backdrop-blur-sm .text-gray-400 {
+  color: #334155 !important;
+}

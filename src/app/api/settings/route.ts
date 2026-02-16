@@ -12,6 +12,10 @@ export async function GET() {
       paymentPhoneNumber: null,
       deliveryFee: 0,
       currency: "XOF",
+      logo: null,
+      buttonColor: null,
+      heroTitle: null,
+      heroSubtitle: null,
     });
   }
   return NextResponse.json(settings);
@@ -30,6 +34,10 @@ export async function PUT(request: NextRequest) {
     paymentPhoneNumber,
     deliveryFee,
     currency,
+    logo,
+    buttonColor,
+    heroTitle,
+    heroSubtitle,
   } = body;
 
   const data: Record<string, unknown> = {};
@@ -38,6 +46,10 @@ export async function PUT(request: NextRequest) {
   if (paymentPhoneNumber !== undefined) data.paymentPhoneNumber = paymentPhoneNumber ? String(paymentPhoneNumber).replace(/[^0-9+]/g, "").slice(0, 20) : null;
   if (deliveryFee !== undefined) data.deliveryFee = parseFloat(deliveryFee) || 0;
   if (currency !== undefined) data.currency = String(currency).slice(0, 10);
+  if (logo !== undefined) data.logo = logo ? String(logo).slice(0, 500) : null;
+  if (buttonColor !== undefined) data.buttonColor = buttonColor ? String(buttonColor).replace(/[^#a-fA-F0-9]/g, "").slice(0, 7) : null;
+  if (heroTitle !== undefined) data.heroTitle = heroTitle ? String(heroTitle).slice(0, 200) : null;
+  if (heroSubtitle !== undefined) data.heroSubtitle = heroSubtitle ? String(heroSubtitle).slice(0, 500) : null;
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "default" },

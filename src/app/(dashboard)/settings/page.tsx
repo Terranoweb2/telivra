@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone } from "lucide-react";
+import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { PillTabGroup } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/ui/page-header";
+import { invalidateSettingsCache } from "@/lib/settings-cache";
 
 export default function SettingsPage() {
   const { data: session, update: updateSession } = useSession();
@@ -34,6 +35,11 @@ export default function SettingsPage() {
   const [paymentPhoneNumber, setPaymentPhoneNumber] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("0");
   const [currency, setCurrency] = useState("XOF");
+  const [logo, setLogo] = useState("");
+  const [buttonColor, setButtonColor] = useState("#ea580c");
+  const [heroTitle, setHeroTitle] = useState("");
+  const [heroSubtitle, setHeroSubtitle] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -44,6 +50,10 @@ export default function SettingsPage() {
         setPaymentPhoneNumber(data.paymentPhoneNumber || "");
         setDeliveryFee(String(data.deliveryFee || 0));
         setCurrency(data.currency || "XOF");
+        setLogo(data.logo || "");
+        setButtonColor(data.buttonColor || "#ea580c");
+        setHeroTitle(data.heroTitle || "");
+        setHeroSubtitle(data.heroSubtitle || "");
       }).catch(() => {});
     }
   }, [isAdmin]);
@@ -109,12 +119,13 @@ export default function SettingsPage() {
   async function saveSiteSettings() {
     setSaving(true);
     try {
-      const body: any = { restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency };
+      const body: any = { restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
       const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
         setSiteSettings(data);
         toast.success("Paramètres sauvegardés");
+        invalidateSettingsCache();
       } else {
         toast.error("Erreur lors de la sauvegarde");
       }
@@ -127,6 +138,7 @@ export default function SettingsPage() {
   const tabs = [
     { key: "profile", label: "Profil", icon: User },
     ...(isAdmin ? [{ key: "restaurant", label: "Restaurant", icon: Store }] : []),
+    ...(isAdmin ? [{ key: "branding", label: "Apparence", icon: Palette }] : []),
     ...(isAdmin ? [{ key: "payment", label: "Paiement", icon: CreditCard }] : []),
     { key: "security", label: "Sécurité", icon: Shield },
   ];

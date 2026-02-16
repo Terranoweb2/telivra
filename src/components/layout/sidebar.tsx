@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { cn } from "@/lib/utils";
+import { getCachedSettings } from "@/lib/settings-cache";
 import {
   LayoutDashboard,
   Bell,
@@ -20,6 +21,14 @@ import {
   UtensilsCrossed,
   Percent,
 } from "lucide-react";
+
+function useBranding() {
+  const [brand, setBrand] = useState({ name: "Terrano", logo: null as string | null });
+  useEffect(() => {
+    getCachedSettings().then((s) => setBrand({ name: s.restaurantName || "Terrano", logo: s.logo }));
+  }, []);
+  return brand;
+}
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
@@ -62,6 +71,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const { name: restaurantName, logo: brandLogo } = useBranding();
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const role = (session?.user as any)?.role;
@@ -147,10 +157,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       )}>
         <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-            <div className="bg-orange-600 p-2 rounded-xl">
-              <UtensilsCrossed className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-white">Terrano</span>
+            {brandLogo ? (
+              <img src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />
+            ) : (
+              <div className="bg-orange-600 p-2 rounded-xl">
+                <UtensilsCrossed className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <span className="text-lg font-bold text-white">{restaurantName}</span>
           </Link>
           <button onClick={onClose}
             className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg lg:hidden">

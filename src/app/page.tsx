@@ -18,6 +18,7 @@ import {
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getCachedSettings } from "@/lib/settings-cache";
 
 const AddressPickerMap = dynamic(() => import("@/components/map/address-picker-map"), { ssr: false });
 
@@ -61,6 +62,10 @@ interface SiteSettings {
   paymentPhoneNumber: string | null;
   deliveryFee: number;
   currency: string;
+  logo: string | null;
+  buttonColor: string | null;
+  heroTitle: string | null;
+  heroSubtitle: string | null;
 }
 
 type OrderStep = "menu" | "extras" | "address" | "info" | "payment";
@@ -198,7 +203,7 @@ export default function LandingPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/products").then((r) => r.json()),
-      fetch("/api/settings").then((r) => r.json()).catch(() => null),
+      getCachedSettings(),
       fetch("/api/promotions").then((r) => r.json()).catch(() => []),
     ]).then(([prods, sett, promos]) => {
       setProducts(Array.isArray(prods) ? prods : []);
@@ -380,9 +385,13 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
-              <UtensilsCrossed className="w-4 h-4 text-white" />
-            </div>
+            {settings?.logo ? (
+              <img src={settings.logo} alt={restaurantName} className="w-8 h-8 object-contain rounded-lg" />
+            ) : (
+              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+                <UtensilsCrossed className="w-4 h-4 text-white" />
+              </div>
+            )}
             <span className="text-lg font-bold text-white">
               {restaurantName}
             </span>
@@ -408,14 +417,13 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 text-center">
         <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-white">
-          Savourez nos plats,
-          <br />
-          livrés chez vous
+          {settings?.heroTitle || <>Savourez nos plats,<br />livrés chez vous</>}
         </h1>
         <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
-          Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible.
+          {settings?.heroSubtitle || "Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible."}
         </p>
-        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full text-white text-sm font-semibold transition-colors">
+        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-full text-white text-sm font-semibold transition-opacity hover:opacity-90"
+          style={{ backgroundColor: settings?.buttonColor || "#ea580c" }}>
           Voir le menu <ArrowDown className="w-4 h-4" />
         </a>
 
