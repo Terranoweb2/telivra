@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { StarRating } from "@/components/ui/star-rating";
 import { toast } from "sonner";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
+import { getCachedSettings } from "@/lib/settings-cache";
 import { playSound } from "@/lib/sounds";
 
 const GuestMap = dynamic(() => import("@/components/map/guest-track-map"), {
@@ -138,6 +139,7 @@ export default function TrackDetailPage() {
   const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
   const routeThrottle = useRef(0);
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [brandColor, setBrandColor] = useState("#ea580c");
 
   // Notation
   const [driverRating, setDriverRating] = useState(0);
@@ -162,7 +164,11 @@ export default function TrackDetailPage() {
 
   useEffect(() => {
     loadOrder();
-    fetch("/api/settings").then(r => r.json()).then(s => setDeliveryFee(s?.deliveryFee || 0)).catch(() => {});
+    getCachedSettings().then(s => {
+      setDeliveryFee(s?.deliveryFee || 0);
+      if (s?.buttonColor) setBrandColor(s.buttonColor);
+      if (s?.restaurantName) document.title = s.restaurantName;
+    });
     // Polling de secours (moins fréquent car Socket.IO gère le temps réel)
     const interval = setInterval(loadOrder, 15000);
     return () => clearInterval(interval);
@@ -345,7 +351,7 @@ export default function TrackDetailPage() {
   }
 
   return (
-    <div className="h-screen w-full relative overflow-hidden">
+    <div className="h-screen w-full relative overflow-hidden brand-theme" style={{ "--brand": brandColor } as React.CSSProperties}>
       {/* ========== CARTE PLEIN ECRAN ========== */}
       <div className="absolute inset-0">
         <GuestMap

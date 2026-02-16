@@ -208,6 +208,7 @@ export default function LandingPage() {
     ]).then(([prods, sett, promos]) => {
       setProducts(Array.isArray(prods) ? prods : []);
       setSettings(sett);
+      if (sett.restaurantName) document.title = sett.restaurantName;
       const activePromos = Array.isArray(promos) ? promos : [];
       setPromotions(activePromos);
       setLoading(false);

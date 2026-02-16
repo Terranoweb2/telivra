@@ -1,16 +1,29 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarProvider, useSidebar } from "@/lib/sidebar-context";
+import { getCachedSettings } from "@/lib/settings-cache";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { open, toggle, close } = useSidebar();
+  const [brandColor, setBrandColor] = useState("#ea580c");
+
+  useEffect(() => {
+    getCachedSettings().then((s) => {
+      if (s.buttonColor) setBrandColor(s.buttonColor);
+      if (s.restaurantName) document.title = s.restaurantName;
+    });
+  }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div
+      className="flex min-h-screen bg-gray-950 brand-theme"
+      style={{ "--brand": brandColor } as React.CSSProperties}
+    >
       <Sidebar open={open} onClose={close} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar onMenuToggle={toggle} />
