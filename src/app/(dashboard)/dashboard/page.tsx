@@ -78,13 +78,14 @@ export default function DashboardPage() {
         <PageHeader title="Dashboard" subtitle="Vue d'ensemble de votre activité" />
 
         {/* Recettes */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
           <StatCard
             icon={Wallet}
             value={revenue.today.revenue.toLocaleString()}
             label="Recette du jour"
             sublabel={`${revenue.today.orders} commande${revenue.today.orders > 1 ? "s" : ""}`}
             color="green"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
           <StatCard
             icon={BarChart3}
@@ -92,6 +93,7 @@ export default function DashboardPage() {
             label="Cette semaine"
             sublabel={`${revenue.week.orders} commande${revenue.week.orders > 1 ? "s" : ""}`}
             color="orange"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
           <StatCard
             icon={TrendingUp}
@@ -99,12 +101,14 @@ export default function DashboardPage() {
             label="Ce mois"
             sublabel={`${revenue.month.orders} commande${revenue.month.orders > 1 ? "s" : ""}`}
             color="purple"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
           <StatCard
             icon={ShoppingBag}
             value={revenue.totals.orders}
             label="Total commandes"
             color="orange"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
         </div>
 
@@ -115,51 +119,56 @@ export default function DashboardPage() {
               <ChefHat className="w-5 h-5 text-orange-400" />
               <h3 className="text-sm font-semibold text-white">Cuisine</h3>
             </div>
-            <div className="grid grid-cols-4 gap-3">
-              <StatCardCentered value={revenue.cookStats.pendingCook || 0} label="En attente" color="yellow" />
-              <StatCardCentered value={revenue.cookStats.preparing || 0} label="En cuisine" color="orange" />
-              <StatCardCentered value={revenue.cookStats.ready || 0} label="Prêtes" color="cyan" />
-              <StatCardCentered value={revenue.cookStats.prepared || 0} label="Préparées auj." color="green" />
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+              <StatCardCentered value={revenue.cookStats.pendingCook || 0} label="En attente" color="yellow" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
+              <StatCardCentered value={revenue.cookStats.preparing || 0} label="En cuisine" color="orange" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
+              <StatCardCentered value={revenue.cookStats.ready || 0} label="Prêtes" color="cyan" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
+              <StatCardCentered value={revenue.cookStats.prepared || 0} label="Préparées auj." color="green" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
             </div>
           </div>
         )}
 
         {/* Stats activité */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
           <StatCardBadge
             icon={Clock}
             value={revenue.totals.pending}
             label="En attente"
             color="yellow"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
           <StatCardBadge
             icon={Truck}
             value={revenue.totals.activeDeliveries}
             label="En livraison"
             color="purple"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
           <StatCardBadge
             icon={CheckCircle}
             value={revenue.totals.deliveredToday}
             label="Livrées auj."
             color="green"
+            className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
         </div>
 
         {/* Repartition paiement */}
         {revenue.paymentBreakdown && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0">
             <StatCardBadge
               icon={Wallet}
               value={(revenue.paymentBreakdown.cash?.revenue || 0).toLocaleString()}
               label={`Espèces (${revenue.paymentBreakdown.cash?.count || 0})`}
               color="yellow"
+              className="min-w-[10rem] shrink-0 flex-1 lg:min-w-0"
             />
             <StatCardBadge
               icon={CreditCard}
               value={(revenue.paymentBreakdown.online?.revenue || 0).toLocaleString()}
               label={`En ligne (${revenue.paymentBreakdown.online?.count || 0})`}
               color="cyan"
+              className="min-w-[10rem] shrink-0 flex-1 lg:min-w-0"
             />
           </div>
         )}

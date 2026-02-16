@@ -179,7 +179,7 @@ export function MobileNav() {
         "fixed bottom-3 left-3 right-3 z-30 lg:hidden transition-all duration-200",
         "translate-y-0 opacity-100"
       )}>
-        <div className="bg-gray-900/[0.97] backdrop-blur-xl border border-gray-800 rounded-2xl shadow-lg shadow-black/20" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="bg-gray-950 backdrop-blur-xl border border-gray-800/60 rounded-2xl shadow-xl shadow-black/30" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="flex items-stretch h-[3.2rem]">
             {items.map((item) => {
               const Icon = item.icon;

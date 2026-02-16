@@ -300,3 +300,10 @@ html:not(.dark) .backdrop-blur-sm .text-gray-400 {
 .brand-theme .focus\:border-orange-400:focus { border-color: var(--brand-light) !important; }
 .brand-theme .to-orange-700 { --tw-gradient-to: var(--brand-dark) !important; }
 .brand-theme .hover\:bg-orange-500\/10:hover { background-color: var(--brand-10) !important; }
+
+/* --- Mobile bottom nav: dark = plus foncé, light = blanc visible --- */
+html:not(.dark) nav .bg-gray-950 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+}
