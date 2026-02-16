@@ -198,6 +198,77 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {activeTab === "branding" && isAdmin && (
+            <div className="space-y-5 max-w-lg">
+              <h2 className="text-[15px] font-semibold text-white mb-4">Apparence & Branding</h2>
+
+              {/* Logo */}
+              <div>
+                <label className="block text-[13px] text-gray-400 mb-1.5">Logo du restaurant</label>
+                <div className="flex items-center gap-4">
+                  {logo && (
+                    <img src={logo} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-gray-700 bg-gray-800" />
+                  )}
+                  <div className="flex-1">
+                    <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setLogoUploading(true);
+                      try {
+                        const fd = new FormData(); fd.append("file", file);
+                        const res = await fetch("/api/upload", { method: "POST", body: fd });
+                        if (res.ok) { const { url } = await res.json(); setLogo(url); }
+                        else toast.error("Erreur upload");
+                      } catch { toast.error("Erreur réseau"); }
+                      setLogoUploading(false);
+                      if (e.target) e.target.value = "";
+                    }} />
+                    <button onClick={() => document.getElementById("logo-upload")?.click()} disabled={logoUploading}
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-[13px] text-gray-300 hover:border-orange-500/50 transition-colors">
+                      {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {logoUploading ? "Import..." : "Choisir un logo"}
+                    </button>
+                    {logo && <button onClick={() => setLogo("")} className="text-[11px] text-red-400 mt-1 hover:underline block">Supprimer</button>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Couleur boutons */}
+              <div>
+                <label className="block text-[13px] text-gray-400 mb-1.5">Couleur des boutons</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={buttonColor} onChange={(e) => setButtonColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-gray-700 cursor-pointer bg-transparent" />
+                  <input type="text" value={buttonColor} onChange={(e) => setButtonColor(e.target.value)}
+                    placeholder="#ea580c" className={inputClass + " flex-1"} />
+                </div>
+                <p className="text-[11px] text-gray-600 mt-1">Couleur principale des boutons et accents</p>
+              </div>
+
+              {/* Hero titre */}
+              <div>
+                <label className="block text-[13px] text-gray-400 mb-1.5">Titre du héro</label>
+                <input type="text" value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)}
+                  placeholder="Ex: Savourez nos plats, livrés chez vous" className={inputClass} />
+                <p className="text-[11px] text-gray-600 mt-1">Titre principal affiché sur la page d&apos;accueil</p>
+              </div>
+
+              {/* Hero sous-titre */}
+              <div>
+                <label className="block text-[13px] text-gray-400 mb-1.5">Sous-titre du héro</label>
+                <textarea value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)}
+                  placeholder="Ex: Découvrez notre menu et commandez vos repas préférés..."
+                  rows={3} className={inputClass + " resize-none"} />
+              </div>
+
+              <button onClick={saveSiteSettings} disabled={saving}
+                className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl text-[13px] font-semibold transition-colors">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Sauvegarder
+              </button>
+            </div>
+          )}
+
           {activeTab === "payment" && isAdmin && (
             <div className="space-y-4 max-w-lg">
               <h2 className="text-[15px] font-semibold text-white mb-4">Configuration paiement</h2>

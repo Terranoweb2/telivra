@@ -20,23 +20,28 @@ export async function GET(request: NextRequest) {
   }
   if (status) where.status = status;
 
-  const orders = await prisma.order.findMany({
-    where,
-    include: {
-      items: { include: { product: true } },
-      client: { select: { id: true, name: true, email: true } },
-      rating: true,
-      promotion: { select: { name: true } },
-      delivery: {
-        include: {
-          driver: { select: { id: true, name: true } },
-          positions: { orderBy: { timestamp: "desc" }, take: 20 },
+  try {
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: { include: { product: true } },
+        client: { select: { id: true, name: true, email: true } },
+        rating: true,
+        promotion: { select: { name: true } },
+        delivery: {
+          include: {
+            driver: { select: { id: true, name: true } },
+            positions: { orderBy: { timestamp: "desc" }, take: 20 },
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(orders);
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(orders);
+  } catch (err) {
+    console.error("[orders] GET error:", err);
+    return NextResponse.json([], { status: 200 });
+  }
 }
 
 export async function POST(request: NextRequest) {
