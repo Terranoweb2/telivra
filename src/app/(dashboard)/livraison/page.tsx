@@ -71,7 +71,6 @@ export default function CommanderPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promoIndex, setPromoIndex] = useState(0);
   const [showPromoDialog, setShowPromoDialog] = useState(false);
-  const [promoDismissed, setPromoDismissed] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -86,9 +85,8 @@ export default function CommanderPage() {
       setLoading(false);
       if (activePromos.length > 0) {
         try {
-          const dismissed = localStorage.getItem("promo-dialog-dismissed");
+          const dismissed = sessionStorage.getItem("promo-dialog-dismissed");
           if (!dismissed) { setTimeout(() => setShowPromoDialog(true), 500); }
-          else { setPromoDismissed(true); }
         } catch { setTimeout(() => setShowPromoDialog(true), 500); }
       }
     });
@@ -196,18 +194,6 @@ export default function CommanderPage() {
       >
         <ChefHat className="w-6 h-6 text-orange-400" />
       </PageHeader>
-
-      {/* Bandeau promo */}
-      {promoDismissed && promotions.length > 0 && (
-        <button onClick={() => setShowPromoDialog(true)}
-          className="w-full py-2.5 px-4 bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-between gap-3 hover:from-orange-500 hover:to-orange-400 transition-all">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🔥</span>
-            <span className="text-sm font-semibold text-white">{promotions.length} promo{promotions.length > 1 ? "s" : ""} en cours !</span>
-          </div>
-          <span className="text-xs text-orange-100 font-medium">Voir →</span>
-        </button>
-      )}
 
       {/* Recherche */}
       <div className="relative">
@@ -402,10 +388,10 @@ export default function CommanderPage() {
 
       {/* Dialog Promotions */}
       {showPromoDialog && promotions.length > 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+            <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
               <X className="w-4 h-4" />
             </button>
@@ -442,7 +428,7 @@ export default function CommanderPage() {
               })}
             </div>
             <div className="p-4 border-t border-gray-800">
-              <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+              <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
                 className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors">
                 C&apos;est compris !
               </button>

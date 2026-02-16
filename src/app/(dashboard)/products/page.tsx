@@ -107,6 +107,7 @@ export default function ProductsPage() {
   const [revenue, setRevenue] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
+  const [productSearch, setProductSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
 
   // Commandes: filtre + recherche + pagination
@@ -151,7 +152,7 @@ export default function ProductsPage() {
 
   // Reset page quand filtre change
   useEffect(() => { setOrderPage(1); }, [orderFilter, orderSearch]);
-  useEffect(() => { setProductPage(1); }, [productFilter]);
+  useEffect(() => { setProductPage(1); }, [productFilter, productSearch]);
 
   function loadData() {
     Promise.all([
@@ -406,8 +407,12 @@ export default function ProductsPage() {
 
   // Filtrer produits
   const filteredProducts = products.filter((p) => {
-    if (productFilter === "meals") return !p.isExtra;
-    if (productFilter === "extras") return p.isExtra;
+    if (productFilter === "meals" && p.isExtra) return false;
+    if (productFilter === "extras" && !p.isExtra) return false;
+    if (productSearch) {
+      const q = productSearch.toLowerCase();
+      if (!p.name.toLowerCase().includes(q) && !(p.description || "").toLowerCase().includes(q)) return false;
+    }
     return true;
   });
 
@@ -474,6 +479,14 @@ export default function ProductsPage() {
                 productFilter === "extras" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400")}>
               <Droplets className="w-3 h-3" /> Extras ({extrasCount})
             </button>
+          </div>
+
+          {/* Recherche repas */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input type="text" value={productSearch} onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Rechercher un repas ou extra..."
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
           </div>
 
           {/* Grille produits */}

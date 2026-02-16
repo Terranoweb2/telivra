@@ -75,7 +75,6 @@ export default function LandingPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promoIndex, setPromoIndex] = useState(0);
   const [showPromoDialog, setShowPromoDialog] = useState(false);
-  const [promoDismissed, setPromoDismissed] = useState(false);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(MEALS_PER_LOAD);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -210,11 +209,9 @@ export default function LandingPage() {
       // Afficher le dialog promo si des promos actives et pas encore vu
       if (activePromos.length > 0) {
         try {
-          const dismissed = localStorage.getItem("promo-dialog-dismissed");
+          const dismissed = sessionStorage.getItem("promo-dialog-dismissed");
           if (!dismissed) {
             setTimeout(() => setShowPromoDialog(true), 800);
-          } else {
-            setPromoDismissed(true);
           }
         } catch {
           setTimeout(() => setShowPromoDialog(true), 800);
@@ -444,38 +441,28 @@ export default function LandingPage() {
 
       {/* Menu — Plats uniquement */}
       <section id="menu" className="max-w-6xl mx-auto px-4 pb-40 scroll-mt-16">
-        <div className="flex items-center justify-between mb-5 pt-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center">
-              <UtensilsCrossed className="w-5 h-5 text-orange-500" />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">
-                Notre Menu
-              </h2>
-              <p className="text-xs text-gray-500">{meals.length} plat{meals.length > 1 ? "s" : ""} disponible{meals.length > 1 ? "s" : ""}</p>
+        <div className="sticky top-14 z-30 bg-gray-950 pb-3 pt-2 -mx-4 px-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center">
+                <UtensilsCrossed className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  Notre Menu
+                </h2>
+                <p className="text-xs text-gray-500">{meals.length} plat{meals.length > 1 ? "s" : ""} disponible{meals.length > 1 ? "s" : ""}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bandeau promo en bas (visible après fermeture du dialog) */}
-        {promoDismissed && promotions.length > 0 && (
-          <button onClick={() => { setShowPromoDialog(true); }}
-            className="w-full mb-4 py-2.5 px-4 bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-between gap-3 hover:from-orange-500 hover:to-orange-400 transition-all">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🔥</span>
-              <span className="text-sm font-semibold text-white">{promotions.length} promo{promotions.length > 1 ? "s" : ""} en cours !</span>
-            </div>
-            <span className="text-xs text-orange-100 font-medium">Voir →</span>
-          </button>
-        )}
-
-        {/* Recherche */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un plat..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+          {/* Recherche */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un plat..."
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+          </div>
         </div>
 
         {/* Grille repas */}
@@ -1121,10 +1108,10 @@ export default function LandingPage() {
 
       {/* Dialog Promotions */}
       {showPromoDialog && promotions.length > 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+            <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
               <X className="w-4 h-4" />
             </button>
@@ -1163,7 +1150,7 @@ export default function LandingPage() {
             </div>
 
             <div className="p-4 border-t border-gray-800">
-              <button onClick={() => { setShowPromoDialog(false); setPromoDismissed(true); try { localStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
+              <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
                 className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors">
                 Commander maintenant
               </button>
