@@ -385,7 +385,9 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
-            {settings?.logo ? (
+            {!settings ? (
+              <div className="w-8 h-8 bg-gray-800/60 rounded-lg animate-pulse" />
+            ) : settings.logo ? (
               <img src={settings.logo} alt={restaurantName} className="w-8 h-8 object-contain rounded-lg" />
             ) : (
               <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
@@ -393,7 +395,7 @@ export default function LandingPage() {
               </div>
             )}
             <span className="text-lg font-bold text-white">
-              {restaurantName}
+              {settings ? restaurantName : <span className="inline-block h-5 w-20 bg-gray-800/60 rounded-lg animate-pulse align-middle" />}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -417,10 +419,14 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 text-center">
         <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-white">
-          {settings?.heroTitle || <>Savourez nos plats,<br />livrés chez vous</>}
+          {settings ? (settings.heroTitle || <>Savourez nos plats,<br />livrés chez vous</>) : (
+            <span className="inline-block h-10 sm:h-14 w-72 sm:w-96 bg-gray-800/60 rounded-2xl animate-pulse" />
+          )}
         </h1>
         <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
-          {settings?.heroSubtitle || "Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible."}
+          {settings ? (settings.heroSubtitle || "Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible.") : (
+            <span className="inline-block h-5 w-80 sm:w-[28rem] bg-gray-800/40 rounded-xl animate-pulse" />
+          )}
         </p>
         <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full text-white text-sm font-semibold transition-colors">
           Voir le menu <ArrowDown className="w-4 h-4" />
