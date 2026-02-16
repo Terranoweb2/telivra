@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, Trash2, Filter, Loader2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, Loader2, AlertTriangle, Info, ShieldAlert, UtensilsCrossed, WifiOff, MapPin, Zap, BatteryLow, Siren, Wrench, ChefHat, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -15,30 +14,37 @@ interface Alert {
   message: string;
   isRead: boolean;
   createdAt: string;
+  data: any;
   device: { id: string; name: string; type: string } | null;
   geofence: { id: string; name: string } | null;
 }
 
 const severityConfig: Record<string, { icon: any; color: string; bg: string }> = {
-  INFO: { icon: Info, color: "text-orange-400", bg: "bg-orange-500/10" },
-  WARNING: { icon: AlertTriangle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+  INFO: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
+  WARNING: { icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-500/10" },
   CRITICAL: { icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500/10" },
 };
 
-const typeLabels: Record<string, string> = {
-  GEOFENCE_ENTER: "Entree geofence",
-  GEOFENCE_EXIT: "Sortie geofence",
-  SPEED_LIMIT: "Exces de vitesse",
-  LOW_BATTERY: "Batterie faible",
-  DEVICE_OFFLINE: "Appareil hors ligne",
-  SOS: "SOS",
-  MAINTENANCE: "Maintenance",
+const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
+  GEOFENCE_ENTER: { label: "Entrée géofence", icon: MapPin, color: "text-green-400" },
+  GEOFENCE_EXIT: { label: "Sortie géofence", icon: MapPin, color: "text-yellow-400" },
+  SPEED_LIMIT: { label: "Excès de vitesse", icon: Zap, color: "text-red-400" },
+  LOW_BATTERY: { label: "Batterie faible", icon: BatteryLow, color: "text-yellow-400" },
+  DEVICE_OFFLINE: { label: "Appareil hors ligne", icon: WifiOff, color: "text-gray-400" },
+  SOS: { label: "SOS", icon: Siren, color: "text-red-400" },
+  MAINTENANCE: { label: "Maintenance", icon: Wrench, color: "text-blue-400" },
+  ORDER_NOTIFICATION: { label: "Commande", icon: UtensilsCrossed, color: "text-orange-400" },
+  PROMOTION: { label: "Promotion", icon: Percent, color: "text-orange-400" },
 };
+
+function notifyBadgeUpdate() {
+  window.dispatchEvent(new Event("alerts-updated"));
+}
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>("orders");
 
   useEffect(() => {
     loadAlerts();
@@ -48,7 +54,9 @@ export default function AlertsPage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (filter === "unread") params.set("isRead", "false");
-    if (filter !== "all" && filter !== "unread") params.set("severity", filter);
+    if (filter === "orders") params.set("type", "ORDER_NOTIFICATION");
+    if (filter === "promotions") params.set("type", "PROMOTION");
+    if (["CRITICAL", "WARNING", "INFO"].includes(filter)) params.set("severity", filter);
 
     const res = await fetch(`/api/alerts?${params}`);
     const data = await res.json();
@@ -63,25 +71,44 @@ export default function AlertsPage() {
       body: JSON.stringify({ isRead: true }),
     });
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
+    notifyBadgeUpdate();
   }
 
   async function markAllRead() {
     await fetch("/api/alerts/mark-read", { method: "PUT" });
     setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
+    notifyBadgeUpdate();
   }
 
   async function deleteAlert(id: string) {
     await fetch(`/api/alerts/${id}`, { method: "DELETE" });
     setAlerts((prev) => prev.filter((a) => a.id !== id));
+    notifyBadgeUpdate();
   }
 
   const unreadCount = alerts.filter((a) => !a.isRead).length;
+  const orderCount = alerts.filter((a) => a.type === "ORDER_NOTIFICATION").length;
+
+  function formatDate(dateStr: string) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHrs = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMin < 1) return "À l'instant";
+    if (diffMin < 60) return `Il y a ${diffMin} min`;
+    if (diffHrs < 24) return `Il y a ${diffHrs}h`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  }
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Alertes"
-        subtitle={`${alerts.length} alerte(s) • ${unreadCount} non lue(s)`}
+        title="Notifications"
+        subtitle={`${alerts.length} notification(s) • ${unreadCount} non lue(s)`}
       >
         {unreadCount > 0 && (
           <button
@@ -93,10 +120,11 @@ export default function AlertsPage() {
         )}
       </PageHeader>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {[
           { key: "all", label: "Toutes" },
-          { key: "unread", label: "Non lues" },
+          { key: "unread", label: `Non lues (${unreadCount})` },
+          { key: "orders", label: `Commandes (${orderCount})` },
           { key: "CRITICAL", label: "Critiques" },
           { key: "WARNING", label: "Alertes" },
           { key: "INFO", label: "Info" },
@@ -121,68 +149,100 @@ export default function AlertsPage() {
           <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
         </div>
       ) : alerts.length === 0 ? (
-        <EmptyState icon={Bell} message="Aucune alerte" />
+        <EmptyState icon={Bell} message="Aucune notification" />
       ) : (
         <div className="space-y-2">
           {alerts.map((alert) => {
             const sev = severityConfig[alert.severity] || severityConfig.INFO;
-            const Icon = sev.icon;
+            const type = typeConfig[alert.type] || { label: alert.type, icon: Bell, color: "text-gray-400" };
+            const TypeIcon = type.icon;
+            const isOrder = alert.type === "ORDER_NOTIFICATION";
+
             return (
-              <Card
+              <div
                 key={alert.id}
                 className={cn(
-                  alert.isRead ? "border-gray-800" : "border-gray-700 bg-gray-900/80"
+                  "rounded-xl border p-3 transition-all",
+                  alert.isRead
+                    ? "bg-gray-900/40 border-gray-800"
+                    : "bg-gray-900/80 border-gray-700 shadow-sm"
                 )}
               >
-                <CardContent>
-                  <div className="flex items-start gap-3">
-                    <div className={cn("p-2 rounded-lg shrink-0", sev.bg)}>
-                      <Icon className={cn("w-4 h-4", sev.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className={cn("text-sm font-medium", alert.isRead ? "text-gray-300" : "text-white")}>
+                <div className="flex items-start gap-3">
+                  <div className={cn("p-2 rounded-lg shrink-0", sev.bg)}>
+                    <TypeIcon className={cn("w-4 h-4", type.color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn("text-sm font-medium truncate", alert.isRead ? "text-gray-300" : "text-white")}>
                             {alert.title}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {typeLabels[alert.type] || alert.type}
-                            {alert.device && ` • ${alert.device.name}`}
-                            {alert.geofence && ` • ${alert.geofence.name}`}
-                          </p>
+                          {!alert.isRead && (
+                            <span className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                          )}
                         </div>
-                        <span className="text-xs text-gray-600 whitespace-nowrap">
-                          {new Date(alert.createdAt).toLocaleString("fr-FR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded", sev.bg, type.color)}>
+                            {type.label}
+                          </span>
+                          {alert.device && (
+                            <span className="text-[11px] text-gray-600">
+                              {alert.device.name}
+                            </span>
+                          )}
+                          {alert.geofence && (
+                            <span className="text-[11px] text-gray-600">
+                              {alert.geofence.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-400 mt-1">{alert.message}</p>
+                      <span className="text-[11px] text-gray-600 whitespace-nowrap shrink-0">
+                        {formatDate(alert.createdAt)}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!alert.isRead && (
-                        <button
-                          onClick={() => markAsRead(alert.id)}
-                          className="p-1.5 text-gray-600 hover:text-green-400 transition-colors"
-                          title="Marquer comme lu"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteAlert(alert.id)}
-                        className="p-1.5 text-gray-600 hover:text-red-400 transition-colors"
-                        title="Supprimer"
+                    <p className="text-[13px] text-gray-400 mt-1.5 line-clamp-2">{alert.message}</p>
+                    {isOrder && alert.data?.orderId && (
+                      <a
+                        href="/cuisine"
+                        className="inline-flex items-center gap-1.5 mt-2 text-[12px] text-orange-400 hover:text-orange-300 font-medium transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                        <ChefHat className="w-3 h-3" />
+                        Accepter la commande
+                      </a>
+                    )}
+                    {alert.type === "PROMOTION" && (
+                      <a
+                        href="/livraison"
+                        className="inline-flex items-center gap-1.5 mt-2 text-[12px] text-orange-400 hover:text-orange-300 font-medium transition-colors"
+                      >
+                        <Percent className="w-3 h-3" />
+                        Voir les promotions
+                      </a>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {!alert.isRead && (
+                      <button
+                        onClick={() => markAsRead(alert.id)}
+                        className="p-1.5 text-gray-600 hover:text-green-400 transition-colors rounded-lg hover:bg-green-500/10"
+                        title="Marquer comme lu"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteAlert(alert.id)}
+                      className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>

@@ -26,10 +26,10 @@ const TrackMap = dynamic(() => import("@/components/map/delivery-track-map"), {
 const statusSteps = [
   { key: "PENDING", label: "En attente", icon: Clock },
   { key: "PREPARING", label: "En cuisine", icon: ChefHat },
-  { key: "READY", label: "Prete", icon: CheckCircle },
-  { key: "PICKED_UP", label: "Recuperee", icon: ShoppingBag },
+  { key: "READY", label: "Prête", icon: CheckCircle },
+  { key: "PICKED_UP", label: "Récupérée", icon: ShoppingBag },
   { key: "DELIVERING", label: "En livraison", icon: Truck },
-  { key: "DELIVERED", label: "Livree", icon: CheckCircle },
+  { key: "DELIVERED", label: "Livrée", icon: CheckCircle },
 ];
 
 function getStepIndex(status: string) {
@@ -101,7 +101,7 @@ function CookingCountdown({
             )}
           >
             {isOverdue
-              ? "Bientot pret !"
+              ? "Bientôt prêt !"
               : `${min}:${sec.toString().padStart(2, "0")}`}
           </span>
         </div>
@@ -124,8 +124,8 @@ function CookingCountdown({
       </div>
       <p className="text-xs text-gray-500">
         {isOverdue
-          ? "Votre repas devrait etre pret d'un instant a l'autre"
-          : "Votre repas est en preparation par notre cuisinier"}
+          ? "Votre repas devrait être prêt d'un instant a l'autre"
+          : "Votre repas est en préparation par notre cuisinier"}
       </p>
     </div>
   );
@@ -354,7 +354,7 @@ export default function OrderDetailPage() {
         />
       )}
 
-      {/* Commande prete */}
+      {/* Commande prête */}
       {isReady && (
         <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle className="w-6 h-6 text-emerald-400" />
@@ -429,11 +429,11 @@ export default function OrderDetailPage() {
             />
           </div>
           <div className="px-4 py-2 border-t border-gray-800 flex items-center justify-between text-xs text-gray-500">
-            <span>{departTime ? `Depart a ${fmtHour(departTime)}` : ""}</span>
+            <span>{departTime ? `Départ à ${fmtHour(departTime)}` : ""}</span>
             <span>
               {lastUpdate
                 ? `Maj ${fmtHour(lastUpdate)}`
-                : "Temps reel via WebSocket"}
+                : "Temps réel via WebSocket"}
             </span>
           </div>
         </Card>
@@ -448,7 +448,7 @@ export default function OrderDetailPage() {
           </p>
           {order.delivery.startTime && order.delivery.endTime && (
             <p className="text-xs text-gray-400 mt-1">
-              Livree en{" "}
+              Livrée en{" "}
               {Math.round(
                 (new Date(order.delivery.endTime).getTime() -
                   new Date(order.delivery.startTime).getTime()) /
@@ -479,7 +479,7 @@ export default function OrderDetailPage() {
                     : order.delivery.status === "DELIVERING"
                       ? "En route vers vous"
                       : order.delivery.status === "DELIVERED"
-                        ? "Livree avec succes"
+                        ? "Livrée avec succès"
                         : ""}
                 </p>
               </div>

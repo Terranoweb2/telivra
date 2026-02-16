@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { io, Socket } from "socket.io-client";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -23,14 +25,34 @@ const navItems = [
   { label: "Cuisine", href: "/cuisine", icon: ChefHat, roles: ["COOK", "ADMIN"] },
   { label: "Commander", href: "/livraison", icon: ShoppingBag, roles: ["CLIENT"] },
   { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER", "COOK"] },
-  { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER"] },
+  { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER", "COOK"] },
 ];
 
 const adminItems = [
   { label: "Repas", href: "/products", icon: Package },
   { label: "Utilisateurs", href: "/users", icon: Users },
+  { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
   { label: "Livreurs", href: "/drivers", icon: Truck },
 ];
+
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [660, 880];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.3);
+    });
+  } catch {}
+}
 
 interface SidebarProps {
   open: boolean;
@@ -41,6 +63,67 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const role = (session?.user as any)?.role;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevCountRef = useRef(0);
+  const socketRef = useRef<Socket | null>(null);
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const res = await fetch("/api/alerts/unread-count");
+      if (res.ok) {
+        const data = await res.json();
+        const newCount = data.count || 0;
+        if (newCount > prevCountRef.current && prevCountRef.current >= 0) {
+          playNotificationSound();
+        }
+        prevCountRef.current = newCount;
+        setUnreadCount(newCount);
+      }
+    } catch {}
+  }, []);
+
+  // Polling + custom events
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 30000);
+      const handleAlertsUpdated = () => fetchUnread();
+      window.addEventListener("alerts-updated", handleAlertsUpdated);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("alerts-updated", handleAlertsUpdated);
+      };
+    }
+  }, [status, fetchUnread]);
+
+  // Socket.IO temps réel pour notification instantanée
+  useEffect(() => {
+    if (status !== "authenticated" || !role) return;
+    const isCook = role === "COOK";
+    const isAdmin = role === "ADMIN";
+    if (!isCook && !isAdmin) return;
+
+    const socket = io({ path: "/socket.io", transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      if (isCook || isAdmin) socket.emit("subscribe:cook");
+    });
+
+    // Notification instantanée quand l'admin notifie les cuisiniers
+    socket.on("notification:new", () => {
+      playNotificationSound();
+      fetchUnread();
+    });
+
+    // Nouvelle commande = son aussi
+    socket.on("order:new", () => {
+      playNotificationSound();
+      fetchUnread();
+    });
+
+    return () => { socket.disconnect(); };
+  }, [status, role, fetchUnread]);
 
   if (status === "loading" || !role) return null;
 
@@ -78,6 +161,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             const isActive = item.href === "/livraison"
               ? pathname === "/livraison"
               : pathname === item.href || pathname.startsWith(item.href + "/");
+            const isBell = item.href === "/alerts";
             return (
               <Link key={item.href} href={item.href} onClick={onClose}
                 className={cn(
@@ -86,8 +170,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     ? "bg-orange-600/15 text-orange-400"
                     : "text-gray-400 hover:text-white hover:bg-white/5"
                 )}>
-                <item.icon className="w-[18px] h-[18px] shrink-0" />
+                <div className="relative shrink-0">
+                  <item.icon className="w-[18px] h-[18px]" />
+                  {isBell && unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </div>
                 {item.label}
+                {isBell && unreadCount > 0 && (
+                  <span className="ml-auto bg-red-500/20 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -124,7 +220,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   : "text-gray-400 hover:text-white hover:bg-white/5"
               )}>
               <Settings className="w-[18px] h-[18px] shrink-0" />
-              Parametres
+              Paramètres
             </Link>
           </div>
         </nav>

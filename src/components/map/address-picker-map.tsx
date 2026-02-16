@@ -1,19 +1,35 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { MapPin, Navigation, Search, Loader2, X } from "lucide-react";
+import { MapPin, Crosshair, Search, Loader2, X, Globe, Map, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import "leaflet/dist/leaflet.css";
 
 interface AddressPickerMapProps {
   onSelect: (lat: number, lng: number, address: string) => void;
   initialLat?: number;
   initialLng?: number;
   className?: string;
+  fullHeight?: boolean;
 }
 
-// Composant carte interne (chargé dynamiquement pour éviter SSR)
-function MapInner({ onSelect, initialLat, initialLng, className }: AddressPickerMapProps) {
+// Tuiles Google Maps (identiques à maps.google.com)
+const TILES = {
+  streets: "https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",       // Plan (routes, POI, labels)
+  satellite: "https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",     // Satellite seul
+  hybrid: "https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",        // Satellite + labels
+  terrain: "https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",       // Relief
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", // Dark (mode embarqué)
+};
+const GOOGLE_SUBDOMAINS = ["mt0", "mt1", "mt2", "mt3"];
+
+export default function AddressPickerMap({
+  onSelect,
+  initialLat,
+  initialLng,
+  className,
+  fullHeight,
+}: AddressPickerMapProps) {
   const { MapContainer, TileLayer, Marker, useMapEvents, useMap } = require("react-leaflet");
   const L = require("leaflet");
 
@@ -25,28 +41,28 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [locating, setLocating] = useState(false);
+  const [layer, setLayer] = useState<"streets" | "satellite">("streets");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapRef = useRef<any>(null);
 
-  // Icone personnalisée
+  // Pin Google Maps style (teardrop orange avec centre blanc)
   const icon = L.divIcon({
-    className: "custom-marker",
-    html: `<div style="width:32px;height:32px;background:#ea580c;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-        <circle cx="12" cy="10" r="3"></circle>
+    className: "",
+    html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));animation:markerDrop 0.3s ease-out">
+      <svg width="34" height="46" viewBox="0 0 34 46">
+        <path d="M17 0C7.6 0 0 7.6 0 17c0 11.9 17 29 17 29s17-17.1 17-29C34 7.6 26.4 0 17 0z" fill="#ea580c"/>
+        <circle cx="17" cy="17" r="6.5" fill="white"/>
+        <circle cx="17" cy="17" r="3" fill="#ea580c"/>
       </svg>
     </div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
+    iconSize: [34, 46],
+    iconAnchor: [17, 46],
   });
 
-  // Reverse geocoding Nominatim
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { "Accept-Language": "fr" } }
+        `/api/geocode/reverse?lat=${lat}&lon=${lng}`,
       );
       const data = await res.json();
       const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -59,31 +75,26 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
     }
   }, [onSelect]);
 
-  // Recherche de lieu
   const searchPlace = useCallback(async (query: string) => {
     if (!query.trim()) { setSuggestions([]); return; }
     setSearching(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-        { headers: { "Accept-Language": "fr" } }
+        `/api/geocode/search?q=${encodeURIComponent(query)}`,
       );
-      const data = await res.json();
-      setSuggestions(data);
+      setSuggestions(await res.json());
     } catch {
       setSuggestions([]);
     }
     setSearching(false);
   }, []);
 
-  // Debounce search
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchPlace(value), 300);
   }, [searchPlace]);
 
-  // Click on map
   function MapClickHandler() {
     useMapEvents({
       click(e: any) {
@@ -95,19 +106,29 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
     return null;
   }
 
-  // Fly to when position changes
-  function FlyTo() {
+  function MapController() {
     const map = useMap();
     useEffect(() => {
-      if (position) {
-        map.flyTo(position, 16, { duration: 0.5 });
-      }
       mapRef.current = map;
+      // Forcer Leaflet à recalculer la taille du conteneur (fix tiles dans modals/dialogs)
+      const timers = [100, 300, 600, 1000].map(ms =>
+        setTimeout(() => map.invalidateSize(), ms)
+      );
+      return () => timers.forEach(clearTimeout);
+    }, [map]);
+    useEffect(() => {
+      if (position) {
+        setTimeout(() => map.invalidateSize(), 50);
+        map.flyTo(position, 17, { duration: 0.5 });
+      }
     }, [map, position]);
+    // Recalculer quand on change de couche
+    useEffect(() => {
+      setTimeout(() => map.invalidateSize(), 100);
+    }, [map, layer]);
     return null;
   }
 
-  // Ma position
   function locateMe() {
     if (!navigator.geolocation) return;
     setLocating(true);
@@ -124,7 +145,13 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
     );
   }
 
-  // Sélectionner une suggestion
+  // Géolocalisation automatique au chargement (si pas de position initiale)
+  useEffect(() => {
+    if (!position && fullHeight) {
+      locateMe();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function selectSuggestion(item: any) {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
@@ -135,46 +162,174 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
     onSelect(lat, lng, item.display_name);
   }
 
-  // Centre par défaut (Cotonou, Bénin)
   const defaultCenter: [number, number] = [6.3703, 2.3912];
 
-  return (
-    <div className={cn("space-y-2", className)}>
-      {/* Barre de recherche */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 z-10" />
+  /* ====== BARRE DE RECHERCHE ====== */
+  const searchBar = (
+    <div className="relative">
+      <div className={cn(
+        "flex items-center rounded-xl overflow-hidden",
+        fullHeight
+          ? "bg-white shadow-[0_1px_4px_rgba(0,0,0,0.12)] border border-gray-100"
+          : "bg-gray-800 border border-gray-700"
+      )}>
+        <Search className={cn("w-4 h-4 ml-3.5 shrink-0", fullHeight ? "text-[#5f6368]" : "text-gray-500")} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => handleSearchInput(e.target.value)}
-          placeholder="Rechercher une adresse..."
-          className="w-full pl-10 pr-10 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+          placeholder="Rechercher un lieu..."
+          className={cn(
+            "flex-1 pl-2.5 pr-2 py-3 text-sm focus:outline-none bg-transparent",
+            fullHeight ? "text-gray-900 placeholder:text-[#9aa0a6]" : "text-white placeholder:text-gray-500"
+          )}
         />
+        {searching && <Loader2 className="w-4 h-4 text-orange-500 animate-spin mr-2 shrink-0" />}
         {searchQuery && (
-          <button onClick={() => { setSearchQuery(""); setSuggestions([]); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
-            <X className="w-4 h-4 text-gray-500" />
+          <button onClick={() => { setSearchQuery(""); setSuggestions([]); }} className="p-2 mr-0.5 shrink-0">
+            <X className={cn("w-4 h-4", fullHeight ? "text-[#5f6368]" : "text-gray-500")} />
           </button>
         )}
-        {searching && (
-          <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400 animate-spin z-10" />
+      </div>
+      {suggestions.length > 0 && (
+        <div className={cn(
+          "absolute top-full left-0 right-0 mt-1.5 rounded-xl overflow-hidden shadow-xl max-h-52 overflow-y-auto z-50",
+          fullHeight ? "bg-white border border-gray-100" : "bg-gray-900 border border-gray-700"
+        )}>
+          {suggestions.map((item: any, idx: number) => (
+            <button key={idx} onClick={() => selectSuggestion(item)}
+              className={cn(
+                "w-full text-left px-3.5 py-2.5 text-sm flex items-start gap-2.5 transition-colors",
+                fullHeight
+                  ? "text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                  : "text-gray-300 hover:bg-gray-800 border-b border-gray-800 last:border-0"
+              )}>
+              <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+              <span className="line-clamp-2">{item.display_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  /* ====== MODE PLEIN ECRAN (style Google Maps) ====== */
+  if (fullHeight) {
+    return (
+      <div className={cn("relative w-full", className)} style={{ height: "100%" }}>
+        {/* Carte */}
+        <div style={{ position: "absolute", inset: 0 }}>
+          <MapContainer
+            center={position || defaultCenter}
+            zoom={position ? 17 : 13}
+            style={{ height: "100%", width: "100%" }}
+            zoomControl={false}
+            attributionControl={false}
+          >
+            <TileLayer
+              key={layer}
+              url={layer === "streets" ? TILES.streets : TILES.hybrid}
+              subdomains={GOOGLE_SUBDOMAINS}
+              maxZoom={layer === "streets" ? 21 : 19}
+            />
+            <MapClickHandler />
+            <MapController />
+            {position && <Marker position={position} icon={icon} />}
+          </MapContainer>
+        </div>
+
+        {/* Recherche */}
+        <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 1000 }}>
+          {searchBar}
+        </div>
+
+        {/* Indication quand aucun point — cliquable pour géolocaliser */}
+        {!position && (
+          <div
+            style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 999 }}
+          >
+            <button
+              onClick={locateMe}
+              disabled={locating}
+              className="bg-white/95 backdrop-blur-sm text-gray-700 text-sm px-5 py-2.5 rounded-full shadow-lg font-medium flex items-center gap-2 hover:bg-white active:scale-95 transition-all"
+            >
+              {locating ? (
+                <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+              ) : (
+                <MapPin className="w-4 h-4 text-orange-500" />
+              )}
+              {locating ? "Localisation en cours..." : "Touchez pour placer le repère"}
+            </button>
+          </div>
         )}
 
-        {/* Suggestions */}
-        {suggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto">
-            {suggestions.map((item: any, idx: number) => (
-              <button key={idx} onClick={() => selectSuggestion(item)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-start gap-2 border-b border-gray-800 last:border-0">
-                <MapPin className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
-                <span className="line-clamp-2">{item.display_name}</span>
-              </button>
-            ))}
+        {/* Contrôles droite : zoom + couches + localisation */}
+        <div
+          style={{ position: "absolute", right: 12, bottom: address ? 72 : 16, zIndex: 1000 }}
+          className="flex flex-col gap-2"
+        >
+          {/* Zoom */}
+          <div className="bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] overflow-hidden">
+            <button
+              onClick={() => mapRef.current?.zoomIn()}
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors text-[#666]"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+            <div className="h-px bg-gray-200" />
+            <button
+              onClick={() => mapRef.current?.zoomOut()}
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors text-[#666]"
+            >
+              <Minus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Bascule Plan / Satellite */}
+          <button
+            onClick={() => setLayer(layer === "streets" ? "satellite" : "streets")}
+            className="w-10 h-10 bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            title={layer === "streets" ? "Vue satellite" : "Vue plan"}
+          >
+            {layer === "streets" ? (
+              <Globe className="w-4 h-4 text-[#666]" />
+            ) : (
+              <Map className="w-4 h-4 text-[#666]" />
+            )}
+          </button>
+
+          {/* Ma position */}
+          <button
+            onClick={locateMe}
+            disabled={locating}
+            className="w-10 h-10 bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            title="Ma position"
+          >
+            {locating ? (
+              <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+            ) : (
+              <Crosshair className="w-4 h-4 text-[#666]" />
+            )}
+          </button>
+        </div>
+
+        {/* Barre d'adresse en bas */}
+        {address && (
+          <div style={{ position: "absolute", bottom: 12, left: 12, right: 64, zIndex: 1000 }}>
+            <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-white rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.15)]">
+              <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{address}</p>
+            </div>
           </div>
         )}
       </div>
+    );
+  }
 
-      {/* Carte */}
+  /* ====== MODE NORMAL (intégré dans dark UI) ====== */
+  return (
+    <div className={cn("space-y-2", className)}>
+      {searchBar}
       <div className="relative rounded-xl overflow-hidden border border-gray-700" style={{ height: "250px" }}>
         <MapContainer
           center={position || defaultCenter}
@@ -182,28 +337,24 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://osm.org">OSM</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          />
+          <TileLayer url={TILES.dark} />
           <MapClickHandler />
-          <FlyTo />
+          <MapController />
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>
-
-        {/* Bouton Ma position */}
-        <button onClick={locateMe} disabled={locating}
+        <button
+          onClick={locateMe}
+          disabled={locating}
           className="absolute bottom-3 right-3 z-[400] p-2.5 bg-gray-900/90 hover:bg-gray-800 border border-gray-700 rounded-lg text-white transition-colors shadow-lg"
-          title="Ma position">
+          title="Ma position"
+        >
           {locating ? (
             <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
           ) : (
-            <Navigation className="w-4 h-4 text-orange-400" />
+            <Crosshair className="w-4 h-4 text-orange-400" />
           )}
         </button>
       </div>
-
-      {/* Adresse sélectionnée */}
       {address && (
         <div className="flex items-start gap-2 px-3 py-2 bg-orange-600/10 border border-orange-500/20 rounded-lg">
           <MapPin className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
@@ -213,7 +364,3 @@ function MapInner({ onSelect, initialLat, initialLng, className }: AddressPicker
     </div>
   );
 }
-
-// Export dynamique sans SSR
-const AddressPickerMap = dynamic(() => Promise.resolve(MapInner), { ssr: false });
-export default AddressPickerMap;

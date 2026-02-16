@@ -18,7 +18,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     },
   });
 
-  if (!device) return NextResponse.json({ error: "Appareil non trouve" }, { status: 404 });
+  if (!device) return NextResponse.json({ error: "Appareil non trouvé" }, { status: 404 });
   return NextResponse.json(device);
 }
 

@@ -8,8 +8,6 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const publicPaths = [
-    "/login",
-    "/register",
     "/api/auth",
     "/api/tracking",
     "/api/products",
@@ -18,17 +16,25 @@ export function middleware(request: NextRequest) {
     "/api/payments/callback",
     "/api/payments/webhook",
     "/api/settings",
+    "/api/geocode",
     "/track",
   ];
   const isPublic =
     pathname === "/" ||
     publicPaths.some((p) => pathname.startsWith(p));
 
-  if (!sessionCookie && !isPublic) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Toute page non-publique ou /login /register /forgot-password → rediriger vers /
+  if (!sessionCookie) {
+    if (pathname === "/login" || pathname === "/register" || pathname === "/forgot-password") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    if (!isPublic) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
-  if (sessionCookie && (pathname === "/login" || pathname === "/")) {
+  // Utilisateur connecté sur / → dashboard
+  if (sessionCookie && pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -36,5 +42,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|images|sounds|uploads).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|images|sounds|uploads|icons|sw\\.js|manifest\\.json|socket\\.io).*)"],
 };

@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
+import cron from "node-cron";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -75,5 +76,17 @@ app.prepare().then(() => {
 
   httpServer.listen(port, () => {
     console.log(`> Terrano GPS ready on http://${hostname}:${port}`);
+  });
+
+  // Cron quotidien à 8h — notifications promotions
+  cron.schedule("0 8 * * *", async () => {
+    console.log("[Cron] Envoi des notifications promotions...");
+    try {
+      const res = await fetch(`http://localhost:${port}/api/promotions/notify`, { method: "POST" });
+      const data = await res.json();
+      console.log("[Cron] Notifications promotions:", data);
+    } catch (err) {
+      console.error("[Cron] Erreur notifications promotions:", err);
+    }
   });
 });

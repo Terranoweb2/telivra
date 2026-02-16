@@ -104,6 +104,7 @@ function RoutingEngine({ from, to, onRouteFound }: {
   useEffect(() => {
     if (ref.current) { try { map.removeControl(ref.current); } catch {} ref.current = null; }
     const ctrl = (L as any).Routing.control({
+      router: new (L as any).Routing.OSRMv1({ serviceUrl: "https://router.project-osrm.org/route/v1" }),
       waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
       routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: false,
       createMarker: () => null,
@@ -162,7 +163,7 @@ export default function MainMap({ myPos, devices, destination, manualMarker, geo
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-      <MapContainer center={center} zoom={15} className="h-full w-full" zoomControl={false} style={{ background: "#1a1a2e" }}>
+      <MapContainer center={center} zoom={15} className="h-full w-full" zoomControl={false} style={{}}>
         <TileLayer attribution={tile.attr} url={tile.url} />
         <MapController myPos={myPos} isNavigating={isNavigating} />
         <CursorMode settingPos={settingPos} />
@@ -181,7 +182,7 @@ export default function MainMap({ myPos, devices, destination, manualMarker, geo
               <div className="text-sm">
                 <p className="font-semibold text-orange-600">Ma position</p>
                 <p className="text-gray-500 text-xs">{myPos[0].toFixed(6)}, {myPos[1].toFixed(6)}</p>
-                {accuracy !== null && accuracy > 0 && <p className="text-gray-400 text-xs">Precision: ±{accuracy}m</p>}
+                {accuracy !== null && accuracy > 0 && <p className="text-gray-400 text-xs">Précision: ±{accuracy}m</p>}
               </div>
             </Popup>
           </Marker>

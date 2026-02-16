@@ -10,11 +10,11 @@ export async function POST(request: NextRequest) {
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { delivery: true } });
   if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
-  if (order.delivery) return NextResponse.json({ error: "Commande deja prise" }, { status: 400 });
+  if (order.delivery) return NextResponse.json({ error: "Commande déjà prise" }, { status: 400 });
 
   // Le livreur ne peut accepter que les commandes READY (cuisine terminee)
   if (order.status !== "READY") {
-    return NextResponse.json({ error: "Commande pas encore prete (cuisine en cours)" }, { status: 400 });
+    return NextResponse.json({ error: "Commande pas encore prête (cuisine en cours)" }, { status: 400 });
   }
 
   const delivery = await prisma.delivery.create({

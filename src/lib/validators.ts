@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createDeviceSchema = z.object({
   name: z.string().min(1, "Nom requis"),
-  serialNumber: z.string().min(1, "Numero de serie requis"),
+  serialNumber: z.string().min(1, "Numéro de série requis"),
   type: z.enum(["VEHICLE", "PERSON", "ASSET"]),
   vehicle: z.object({
     brand: z.string().min(1),

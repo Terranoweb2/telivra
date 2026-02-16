@@ -40,10 +40,10 @@ export default function TripMap({ positions }: { positions: Position[] }) {
       <FitPolyline positions={positions} />
       <Polyline positions={coords} pathOptions={{ color: "#3B82F6", weight: 4, opacity: 0.8 }} />
       <CircleMarker center={[start.latitude, start.longitude]} radius={8} pathOptions={{ color: "#10B981", fillColor: "#10B981", fillOpacity: 1 }}>
-        <Popup>Depart - {new Date(start.timestamp).toLocaleTimeString("fr-FR")}</Popup>
+        <Popup>Départ - {new Date(start.timestamp).toLocaleTimeString("fr-FR")}</Popup>
       </CircleMarker>
       <CircleMarker center={[end.latitude, end.longitude]} radius={8} pathOptions={{ color: "#EF4444", fillColor: "#EF4444", fillOpacity: 1 }}>
-        <Popup>Arrivee - {new Date(end.timestamp).toLocaleTimeString("fr-FR")}</Popup>
+        <Popup>Arrivée - {new Date(end.timestamp).toLocaleTimeString("fr-FR")}</Popup>
       </CircleMarker>
     </MapContainer>
   );

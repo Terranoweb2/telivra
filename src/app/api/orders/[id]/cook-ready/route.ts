@@ -17,7 +17,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Cette commande n'est pas la votre" }, { status: 403 });
   }
   if (!["ACCEPTED", "PREPARING"].includes(order.status)) {
-    return NextResponse.json({ error: "Commande non en preparation" }, { status: 400 });
+    return NextResponse.json({ error: "Commande non en préparation" }, { status: 400 });
   }
 
   const updated = await prisma.order.update({

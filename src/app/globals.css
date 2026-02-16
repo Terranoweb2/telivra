@@ -43,6 +43,8 @@ html.dark .bg-gray-900\/\[0\.97\] { background-color: rgb(44 44 46 / 0.97) !impo
 html.dark .bg-gray-900\/95 { background-color: rgb(44 44 46 / 0.95) !important; }
 html.dark .bg-gray-900\/80 { background-color: rgb(44 44 46 / 0.85) !important; }
 html.dark .bg-gray-900\/50 { background-color: rgb(44 44 46 / 0.6) !important; }
+html.dark .bg-gray-900\/90 { background-color: rgb(44 44 46 / 0.9) !important; }
+html.dark .bg-gray-900\/60 { background-color: rgb(44 44 46 / 0.6) !important; }
 html.dark .bg-gray-800\/60 { background-color: rgb(58 58 60 / 0.6) !important; }
 html.dark .bg-gray-800\/50 { background-color: rgb(58 58 60 / 0.5) !important; }
 
@@ -90,6 +92,8 @@ html:not(.dark) .bg-gray-900\/\[0\.97\] { background-color: rgb(255 255 255 / 0.
 html:not(.dark) .bg-gray-900\/95 { background-color: rgb(255 255 255 / 0.95) !important; }
 html:not(.dark) .bg-gray-900\/80 { background-color: rgb(255 255 255 / 0.85) !important; }
 html:not(.dark) .bg-gray-900\/50 { background-color: rgb(255 255 255 / 0.6) !important; }
+html:not(.dark) .bg-gray-900\/90 { background-color: rgb(255 255 255 / 0.9) !important; }
+html:not(.dark) .bg-gray-900\/60 { background-color: rgb(255 255 255 / 0.6) !important; }
 html:not(.dark) .bg-gray-800\/60 { background-color: rgb(241 245 249 / 0.6) !important; }
 html:not(.dark) .bg-gray-800\/50 { background-color: rgb(241 245 249 / 0.5) !important; }
 
@@ -105,6 +109,8 @@ html:not(.dark) .bg-black\/40 { background-color: rgb(0 0 0 / 0.1) !important; }
 html:not(.dark) .border-gray-800 { border-color: #e2e8f0 !important; }
 html:not(.dark) .border-gray-800\/50 { border-color: rgb(226 232 240 / 0.6) !important; }
 html:not(.dark) .border-gray-700 { border-color: #cbd5e1 !important; }
+html.dark .border-gray-200 { border-color: #3a3a3c !important; }
+html:not(.dark) .border-gray-200 { border-color: #e2e8f0 !important; }
 html:not(.dark) .border-white\/\[0\.06\] { border-color: rgb(226 232 240 / 0.6) !important; }
 html:not(.dark) .border-white\/\[0\.08\] { border-color: rgb(226 232 240 / 0.8) !important; }
 
@@ -183,3 +189,24 @@ html:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 
 /* Map */
 .leaflet-container { background: #e2e8f0; }
 html.dark .leaflet-container { background: #2c2c2e; }
+/* Fix Tailwind vs Leaflet: Tailwind reset met max-width:100% sur les img, ce qui casse les tuiles */
+.leaflet-container img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px !important;
+  height: 256px !important;
+}
+.leaflet-container .leaflet-control-container img,
+.leaflet-container .leaflet-marker-icon {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* Hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

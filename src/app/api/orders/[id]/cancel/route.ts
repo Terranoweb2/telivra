@@ -16,8 +16,8 @@ export async function POST(
   });
 
   if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
-  if (order.status === "DELIVERED") return NextResponse.json({ error: "Commande deja livree" }, { status: 400 });
-  if (order.status === "CANCELLED") return NextResponse.json({ error: "Commande deja annulee" }, { status: 400 });
+  if (order.status === "DELIVERED") return NextResponse.json({ error: "Commande déjà livrée" }, { status: 400 });
+  if (order.status === "CANCELLED") return NextResponse.json({ error: "Commande déjà annulée" }, { status: 400 });
 
   // Raison obligatoire
   const reason = body.reason?.trim();
@@ -32,8 +32,15 @@ export async function POST(
   const isDriver = order.delivery?.driverId === userId;
   const isAdmin = userRole === "ADMIN";
 
+  const isCook = userRole === "COOK";
+
   if (order.status === "PENDING") {
-    if (!isClient && !isGuest && !isAdmin) {
+    // Client/guest peut annuler si paiement en especes
+    if (isClient || isGuest) {
+      if (order.paymentMethod !== "CASH") {
+        return NextResponse.json({ error: "Annulation impossible pour un paiement en ligne" }, { status: 400 });
+      }
+    } else if (!isAdmin && !isCook) {
       return NextResponse.json({ error: "Non autorise" }, { status: 403 });
     }
   } else {
@@ -41,12 +48,12 @@ export async function POST(
     const minutesSinceAccepted = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
 
     if (isDriver || isAdmin) {
-      // Livreur et admin peuvent annuler a tout moment (sauf livree)
+      // Livreur et admin peuvent annuler à tout moment (sauf livree)
     } else if ((isClient || isGuest) && minutesSinceAccepted <= 5) {
       // Client/Guest peut annuler dans les 5 minutes apres acceptation
     } else {
       return NextResponse.json(
-        { error: "Delai d'annulation depasse (5 minutes apres acceptation)" },
+        { error: "Délai d'annulation dépassé (5 minutes après acceptation)" },
         { status: 400 }
       );
     }

@@ -177,7 +177,7 @@ export default function GPSMap({ devices, manualMarker, geofences = [], classNam
                 <p>Statut: {statusLabels[device.status] || device.status}</p>
                 {device.position.speed != null && <p>Vitesse: {device.position.speed} km/h</p>}
                 {device.batteryLevel != null && <p>Batterie: {device.batteryLevel}%</p>}
-                <p>Mis a jour: {new Date(device.position.timestamp).toLocaleTimeString("fr-FR")}</p>
+                <p>Mis à jour: {new Date(device.position.timestamp).toLocaleTimeString("fr-FR")}</p>
               </div>
             </div>
           </Popup>

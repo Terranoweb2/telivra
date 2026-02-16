@@ -16,7 +16,7 @@ import {
   Bell,
   ChefHat,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const mobileItems: Record<string, { label: string; href: string; icon: any }[]> = {
   CLIENT: [
@@ -30,8 +30,8 @@ const mobileItems: Record<string, { label: string; href: string; icon: any }[]> 
   ],
   COOK: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
+    { label: "Alertes", href: "/alerts", icon: Bell },
   ],
   DEFAULT: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -42,20 +42,22 @@ const mobileItems: Record<string, { label: string; href: string; icon: any }[]> 
 
 const dropdownItems: Record<string, { label: string; href: string; icon: any }[]> = {
   CLIENT: [
-    { label: "Parametres", href: "/settings", icon: Settings },
+    { label: "Paramètres", href: "/settings", icon: Settings },
   ],
   DRIVER: [
-    { label: "Parametres", href: "/settings", icon: Settings },
+    { label: "Paramètres", href: "/settings", icon: Settings },
   ],
   COOK: [
-    { label: "Parametres", href: "/settings", icon: Settings },
+    { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
+    { label: "Paramètres", href: "/settings", icon: Settings },
   ],
   DEFAULT: [
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
+    { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
     { label: "Livreurs", href: "/drivers", icon: Truck },
     { label: "Alertes", href: "/alerts", icon: Bell },
     { label: "Utilisateurs", href: "/users", icon: Users },
-    { label: "Parametres", href: "/settings", icon: Settings },
+    { label: "Paramètres", href: "/settings", icon: Settings },
   ],
 };
 
@@ -65,12 +67,36 @@ export function MobileNav() {
   const role = (session?.user as any)?.role;
   const [showMenu, setShowMenu] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const lastScrollY = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || "Utilisateur";
   const userEmail = session?.user?.email || "";
   const initials = userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const res = await fetch("/api/alerts/unread-count");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 15000);
+      const handleAlertsUpdated = () => fetchUnread();
+      window.addEventListener("alerts-updated", handleAlertsUpdated);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("alerts-updated", handleAlertsUpdated);
+      };
+    }
+  }, [status, fetchUnread]);
 
   useEffect(() => {
     function handleScroll() {
@@ -127,14 +153,27 @@ export function MobileNav() {
             {extraItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isBell = item.href === "/alerts";
               return (
                 <Link key={item.href} href={item.href} onClick={() => setShowMenu(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-2.5 text-[13px] font-normal transition-colors",
                     isActive ? "text-orange-400 bg-orange-500/10" : "text-gray-300 active:bg-gray-800"
                   )}>
-                  <Icon className={cn("w-[18px] h-[18px]", isActive ? "text-orange-400" : "text-gray-500")} />
+                  <div className="relative">
+                    <Icon className={cn("w-[18px] h-[18px]", isActive ? "text-orange-400" : "text-gray-500")} />
+                    {isBell && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-bold rounded-full">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
                   {item.label}
+                  {isBell && unreadCount > 0 && (
+                    <span className="ml-auto bg-red-500/20 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -143,7 +182,7 @@ export function MobileNav() {
             <button onClick={() => signOut({ callbackUrl: "/login" })}
               className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-normal text-red-400 active:bg-gray-800 transition-colors w-full">
               <LogOut className="w-[18px] h-[18px]" />
-              Deconnexion
+              Déconnexion
             </button>
           </div>
         </div>
@@ -160,14 +199,22 @@ export function MobileNav() {
               const isActive = item.href === "/livraison"
                 ? pathname === "/livraison"
                 : pathname === item.href || pathname.startsWith(item.href + "/");
+              const isBell = item.href === "/alerts";
 
               return (
                 <Link key={item.href} href={item.href} onClick={() => setShowMenu(false)}
                   className="flex flex-col items-center justify-center flex-1 gap-[3px]">
-                  <Icon className={cn(
-                    "w-[24px] h-[24px] transition-colors",
-                    isActive ? "text-orange-500" : "text-gray-500"
-                  )} strokeWidth={isActive ? 2.1 : 1.5} />
+                  <div className="relative">
+                    <Icon className={cn(
+                      "w-[24px] h-[24px] transition-colors",
+                      isActive ? "text-orange-500" : "text-gray-500"
+                    )} strokeWidth={isActive ? 2.1 : 1.5} />
+                    {isBell && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-gray-900">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
                   <span className={cn(
                     "text-[10px] leading-none",
                     isActive ? "text-orange-500 font-semibold" : "text-gray-500 font-medium"

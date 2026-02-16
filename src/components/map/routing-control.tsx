@@ -12,6 +12,22 @@ interface Props {
   onRouteFound?: (summary: { totalDistance: number; totalTime: number }) => void;
 }
 
+function safeRemoveControl(map: L.Map, control: any) {
+  try {
+    if (control && map) {
+      if (control._line) {
+        try { map.removeLayer(control._line); } catch {}
+      }
+      if (control._alternatives) {
+        control._alternatives.forEach((alt: any) => {
+          try { map.removeLayer(alt); } catch {}
+        });
+      }
+      map.removeControl(control);
+    }
+  } catch {}
+}
+
 export default function RoutingControl({ from, to, onRouteFound }: Props) {
   const map = useMap();
   const routingRef = useRef<any>(null);
@@ -19,17 +35,19 @@ export default function RoutingControl({ from, to, onRouteFound }: Props) {
   useEffect(() => {
     if (!from || !to) {
       if (routingRef.current) {
-        map.removeControl(routingRef.current);
+        safeRemoveControl(map, routingRef.current);
         routingRef.current = null;
       }
       return;
     }
 
     if (routingRef.current) {
-      map.removeControl(routingRef.current);
+      safeRemoveControl(map, routingRef.current);
+      routingRef.current = null;
     }
 
     const control = (L as any).Routing.control({
+      router: new (L as any).Routing.OSRMv1({ serviceUrl: "https://router.project-osrm.org/route/v1" }),
       waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
       routeWhileDragging: true,
       addWaypoints: false,
@@ -68,10 +86,8 @@ export default function RoutingControl({ from, to, onRouteFound }: Props) {
     routingRef.current = control;
 
     return () => {
-      if (routingRef.current) {
-        try { map.removeControl(routingRef.current); } catch {}
-        routingRef.current = null;
-      }
+      safeRemoveControl(map, routingRef.current);
+      routingRef.current = null;
     };
   }, [from, to, map, onRouteFound]);
 

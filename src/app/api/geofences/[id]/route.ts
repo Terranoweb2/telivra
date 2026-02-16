@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const { id } = await params;
   const geofence = await prisma.geofence.findUnique({ where: { id }, include: { alerts: { take: 20, orderBy: { createdAt: "desc" } } } });
-  if (!geofence) return NextResponse.json({ error: "Non trouve" }, { status: 404 });
+  if (!geofence) return NextResponse.json({ error: "Non trouvé" }, { status: 404 });
   return NextResponse.json(geofence);
 }
 

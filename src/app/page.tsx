@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { signIn } from "next-auth/react";
 import {
   ShoppingBag, MapPin, CreditCard,
   Search, Plus, Minus, X, Loader2,
-  ClipboardList, LogIn,
+  ClipboardList, LogIn, UserPlus,
   UtensilsCrossed,
   ArrowDown, Phone, User, Timer, Droplets,
   Sun, Moon, Clock, Truck,
   ChevronLeft, ChevronRight,
+  HandMetal, MousePointerClick, MapPinned, CookingPot,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -39,11 +41,14 @@ interface CartItem {
 interface SiteSettings {
   restaurantName: string;
   defaultPaymentMethod: string;
+  paymentPhoneNumber: string | null;
   deliveryFee: number;
   currency: string;
 }
 
-type OrderStep = "menu" | "extras" | "info" | "payment";
+type OrderStep = "menu" | "extras" | "address" | "info" | "payment";
+
+const MEALS_PER_LOAD = 12;
 
 export default function LandingPage() {
   const router = useRouter();
@@ -51,8 +56,10 @@ export default function LandingPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(MEALS_PER_LOAD);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderStep, setOrderStep] = useState<OrderStep>("menu");
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Guest info
   const [guestName, setGuestName] = useState("");
@@ -63,6 +70,111 @@ export default function LandingPage() {
   const [note, setNote] = useState("");
   const [ordering, setOrdering] = useState(false);
 
+  // Détail produit
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Onboarding tour
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  const tourSteps = [
+    {
+      icon: <HandMetal className="w-7 h-7 text-orange-400" />,
+      title: "Bienvenue !",
+      desc: "Découvrez comment commander vos repas en quelques étapes simples.",
+    },
+    {
+      icon: <UtensilsCrossed className="w-7 h-7 text-orange-400" />,
+      title: "1. Choisissez vos plats",
+      desc: "Parcourez le menu et utilisez la recherche pour trouver vos plats favoris.",
+    },
+    {
+      icon: <MousePointerClick className="w-7 h-7 text-orange-400" />,
+      title: "2. Ajoutez au panier",
+      desc: "Appuyez sur le bouton + pour ajouter un plat. Ajustez les quantités avec + et −.",
+    },
+    {
+      icon: <MapPinned className="w-7 h-7 text-orange-400" />,
+      title: "3. Livraison",
+      desc: "Renseignez vos informations et sélectionnez votre adresse sur la carte interactive.",
+    },
+    {
+      icon: <CookingPot className="w-7 h-7 text-orange-400" />,
+      title: "4. Validez et savourez !",
+      desc: "Choisissez votre mode de paiement, validez et suivez votre commande en temps réel. Bon appétit !",
+    },
+  ];
+
+  function nextTourStep() {
+    if (tourStep < tourSteps.length - 1) {
+      setTourStep((s) => s + 1);
+    } else {
+      completeTour();
+    }
+  }
+
+  function completeTour() {
+    setShowTour(false);
+    setTourStep(0);
+    try { localStorage.setItem("onboarding-tour-seen", "1"); } catch {}
+  }
+
+  // Auth modal
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    const result = await signIn("credentials", {
+      email: authEmail,
+      password: authPassword,
+      redirect: false,
+    });
+    if (result?.error) {
+      setAuthError("Email ou mot de passe incorrect");
+      setAuthLoading(false);
+    } else {
+      toast.success("Connexion réussie");
+      router.push("/dashboard");
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: authName, email: authEmail, password: authPassword, phone: authPhone }),
+      });
+      if (res.ok) {
+        const result = await signIn("credentials", { email: authEmail, password: authPassword, redirect: false });
+        if (result?.error) {
+          setAuthError("Compte créé. Erreur de connexion automatique.");
+        } else {
+          toast.success("Compte créé avec succès !");
+          router.push("/dashboard");
+        }
+      } else {
+        const data = await res.json();
+        setAuthError(data.error || "Erreur lors de l'inscription");
+      }
+    } catch {
+      setAuthError("Erreur réseau");
+    }
+    setAuthLoading(false);
+  }
+
   useEffect(() => {
     Promise.all([
       fetch("/api/products").then((r) => r.json()),
@@ -71,6 +183,17 @@ export default function LandingPage() {
       setProducts(Array.isArray(prods) ? prods : []);
       setSettings(sett);
       setLoading(false);
+      // Auto-scroll vers le menu après chargement
+      setTimeout(() => {
+        const el = document.getElementById("menu");
+        if (el) el.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      // Afficher le tour d'onboarding pour les premiers visiteurs
+      try {
+        if (!localStorage.getItem("onboarding-tour-seen")) {
+          setTimeout(() => setShowTour(true), 1200);
+        }
+      } catch {}
     });
   }, []);
 
@@ -82,6 +205,29 @@ export default function LandingPage() {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  // Reset visible count quand recherche change
+  useEffect(() => { setVisibleCount(MEALS_PER_LOAD); }, [search]);
+
+  const paginatedMeals = filteredMeals.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredMeals.length;
+
+  // Infinite scroll avec IntersectionObserver
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + MEALS_PER_LOAD);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, filteredMeals.length]);
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -114,14 +260,15 @@ export default function LandingPage() {
   // Step navigation
   const stepsList: { id: OrderStep; label: string }[] = [
     ...(hasExtras ? [{ id: "extras" as const, label: "Suppléments" }] : []),
-    { id: "info" as const, label: "Livraison" },
+    { id: "address" as const, label: "Adresse" },
+    { id: "info" as const, label: "Vos infos" },
     { id: "payment" as const, label: "Paiement" },
   ];
   const currentStepIndex = stepsList.findIndex((s) => s.id === orderStep);
 
   function nextStep() {
     if (orderStep === "menu") {
-      setOrderStep(hasExtras ? "extras" : "info");
+      setOrderStep(hasExtras ? "extras" : "address");
     } else if (currentStepIndex < stepsList.length - 1) {
       setOrderStep(stepsList[currentStepIndex + 1].id);
     }
@@ -137,6 +284,7 @@ export default function LandingPage() {
 
   // Admin payment method
   const adminMethod = settings?.defaultPaymentMethod || "CASH";
+  const paymentPhone = settings?.paymentPhoneNumber || "";
 
   const handleAddressSelect = useCallback((lat: number, lng: number, addr: string) => {
     setAddressLat(lat);
@@ -166,16 +314,10 @@ export default function LandingPage() {
       });
       if (res.ok) {
         const order = await res.json();
-        if (method === "ONLINE") {
-          const payRes = await fetch("/api/payments/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId: order.id }),
-          });
-          if (payRes.ok) {
-            const { paymentUrl } = await payRes.json();
-            if (paymentUrl) { window.location.href = paymentUrl; return; }
-          }
+        if (method === "ONLINE" && paymentPhone) {
+          const ref = order.orderNumber;
+          const ussd = "*880*1*1*" + paymentPhone + "*" + paymentPhone + "*" + total + "*" + ref + "#";
+          window.location.href = "tel:" + encodeURIComponent(ussd);
         }
         toast.success("Commande passée avec succès !");
         setCart([]);
@@ -205,12 +347,21 @@ export default function LandingPage() {
               {restaurantName}
             </span>
           </div>
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 rounded-lg bg-gray-900/80 border border-gray-800 text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowAuth(true); setAuthMode("login"); setAuthError(""); }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <LogIn className="w-4 h-4" />
+              Connexion
+            </button>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-lg bg-gray-900/80 border border-gray-800 text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -248,12 +399,19 @@ export default function LandingPage() {
       </section>
 
       {/* Menu — Plats uniquement */}
-      <section id="menu" className="max-w-6xl mx-auto px-4 pb-40">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-white">
-            Notre Menu
-          </h2>
-          <span className="text-sm text-gray-500">{meals.length} plat{meals.length > 1 ? "s" : ""}</span>
+      <section id="menu" className="max-w-6xl mx-auto px-4 pb-40 scroll-mt-16">
+        <div className="flex items-center justify-between mb-5 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center">
+              <UtensilsCrossed className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
+                Notre Menu
+              </h2>
+              <p className="text-xs text-gray-500">{meals.length} plat{meals.length > 1 ? "s" : ""} disponible{meals.length > 1 ? "s" : ""}</p>
+            </div>
+          </div>
         </div>
 
         {/* Recherche */}
@@ -275,12 +433,12 @@ export default function LandingPage() {
             <p className="text-sm">Aucun plat trouvé</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredMeals.map((p) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {paginatedMeals.map((p) => {
               const count = getCartCount(p.id);
               return (
                 <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-colors">
-                  <div className="relative h-32 sm:h-36 flex items-center justify-center bg-gray-800">
+                  <div className="relative h-32 sm:h-36 flex items-center justify-center bg-gray-800 cursor-pointer" onClick={() => setSelectedProduct(p)}>
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
@@ -292,8 +450,8 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="p-3">
-                    <h3 className="text-sm font-semibold text-white truncate">{p.name}</h3>
-                    {p.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{p.description}</p>}
+                    <h3 className="text-sm font-semibold text-white truncate cursor-pointer hover:text-orange-400 transition-colors" onClick={() => setSelectedProduct(p)}>{p.name}</h3>
+                    {p.description && <div className="text-xs text-gray-500 mt-0.5 line-clamp-2 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: p.description }} />}
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">FCFA</span></p>
                       <div className="flex items-center gap-1.5">
@@ -314,6 +472,13 @@ export default function LandingPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Sentinel pour charger plus au scroll */}
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
           </div>
         )}
       </section>
@@ -345,7 +510,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setOrderStep("menu")} />
 
           {/* Bottom sheet */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[92vh] flex flex-col">
+          <div className={cn("absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 flex flex-col", orderStep === "address" ? "h-[92vh]" : "max-h-[92vh]")}>
             {/* Header de l'overlay */}
             <div className="p-4 pb-3 border-b border-gray-800/50">
               <div className="flex items-center justify-between mb-3">
@@ -375,7 +540,7 @@ export default function LandingPage() {
             </div>
 
             {/* Contenu scrollable */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className={cn("flex-1 min-h-0", orderStep === "address" ? "overflow-hidden relative" : "overflow-y-auto p-4")}>
 
               {/* ——— ÉTAPE : Suppléments ——— */}
               {orderStep === "extras" && (
@@ -384,7 +549,7 @@ export default function LandingPage() {
                     Ajoutez des boissons ou accompagnements à votre commande (optionnel)
                   </p>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {extras.map((p) => {
                       const count = getCartCount(p.id);
                       return (
@@ -398,7 +563,7 @@ export default function LandingPage() {
                           </div>
                           <div className="p-2.5">
                             <h4 className="text-sm font-semibold text-white truncate">{p.name}</h4>
-                            {p.description && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{p.description}</p>}
+                            {p.description && <div className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: p.description }} />}
                             <div className="flex items-center justify-between mt-2">
                               <p className="text-sm font-bold text-orange-400">{p.price.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">F</span></p>
                               <div className="flex items-center gap-1.5">
@@ -423,9 +588,22 @@ export default function LandingPage() {
                 </div>
               )}
 
-              {/* ——— ÉTAPE : Informations de livraison ——— */}
+              {/* ——— ÉTAPE : Adresse (carte plein écran) ——— */}
+              {orderStep === "address" && (
+                <div className="absolute inset-0">
+                  <AddressPickerMap onSelect={handleAddressSelect} fullHeight />
+                </div>
+              )}
+
+              {/* ——— ÉTAPE : Informations personnelles ——— */}
               {orderStep === "info" && (
                 <div className="space-y-3">
+                  {address && (
+                    <div className="flex items-start gap-2 p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
+                      <MapPin className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                      <p className="text-sm text-gray-300 line-clamp-2">{address}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500 mb-1.5 block">Votre nom *</label>
                     <div className="relative">
@@ -439,12 +617,17 @@ export default function LandingPage() {
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="+229 00 00 00 00"
-                        className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                        className={cn("w-full pl-10 pr-3 py-2.5 bg-gray-800 border rounded-xl text-white text-sm focus:outline-none",
+                          guestPhone.trim() && (guestPhone.replace(/\D/g, "").length < 8 || /^0+$/.test(guestPhone.replace(/\D/g, "")))
+                            ? "border-red-500/50 focus:border-red-500" : "border-gray-700 focus:border-orange-500"
+                        )} />
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1.5 block">Adresse de livraison *</label>
-                    <AddressPickerMap onSelect={handleAddressSelect} />
+                    {guestPhone.trim() && guestPhone.replace(/\D/g, "").length < 8 && (
+                      <p className="text-[11px] text-red-400 mt-1">Le numéro doit contenir au moins 8 chiffres</p>
+                    )}
+                    {guestPhone.trim() && guestPhone.replace(/\D/g, "").length >= 8 && /^0+$/.test(guestPhone.replace(/\D/g, "")) && (
+                      <p className="text-[11px] text-red-400 mt-1">Numéro de téléphone invalide</p>
+                    )}
                   </div>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note pour la commande (optionnel)"
                     className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm resize-none focus:outline-none focus:border-orange-500" />
@@ -530,13 +713,25 @@ export default function LandingPage() {
                 </button>
               )}
 
-              {/* Info : Suivant (disabled si incomplet) */}
-              {orderStep === "info" && (
-                <button onClick={nextStep} disabled={!infoValid}
+              {/* Address : Confirmer l'adresse */}
+              {orderStep === "address" && (
+                <button onClick={nextStep} disabled={!address || !addressLat || !addressLng}
                   className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                  Suivant <ChevronRight className="w-4 h-4" />
+                  Confirmer l&apos;adresse <ChevronRight className="w-4 h-4" />
                 </button>
               )}
+
+              {/* Info : Suivant (disabled si incomplet ou téléphone invalide) */}
+              {orderStep === "info" && (() => {
+                const digits = guestPhone.replace(/\D/g, "");
+                const phoneValid = digits.length >= 8 && !/^0+$/.test(digits);
+                return (
+                  <button onClick={nextStep} disabled={!guestName.trim() || !phoneValid}
+                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    Suivant <ChevronRight className="w-4 h-4" />
+                  </button>
+                );
+              })()}
 
               {/* Paiement : bouton(s) selon config admin */}
               {orderStep === "payment" && (
@@ -552,7 +747,7 @@ export default function LandingPage() {
                     <button onClick={() => placeOrder("ONLINE")} disabled={ordering}
                       className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                       {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      Payer en ligne — {total.toLocaleString()} FCFA
+                      Payer via MTN MoMo — {total.toLocaleString()} FCFA
                     </button>
                   )}
                   {adminMethod === "BOTH" && (
@@ -565,13 +760,267 @@ export default function LandingPage() {
                       <button onClick={() => placeOrder("ONLINE")} disabled={ordering}
                         className="w-full py-3 bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                         {ordering ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                        Payer en ligne — {total.toLocaleString()} FCFA
+                        Payer via MTN MoMo — {total.toLocaleString()} FCFA
                       </button>
                     </>
                   )}
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* Modal Connexion / Inscription                 */}
+      {/* ============================================ */}
+      {showAuth && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowAuth(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[85vh] flex flex-col">
+            <div className="p-4 pb-3 border-b border-gray-800/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+                    <UtensilsCrossed className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base font-bold text-white">{restaurantName}</span>
+                </div>
+                <button onClick={() => setShowAuth(false)} className="text-gray-400 hover:text-gray-300 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Tabs login / register */}
+              <div className="flex gap-1 mt-3 bg-gray-800 rounded-xl p-1">
+                <button
+                  onClick={() => { setAuthMode("login"); setAuthError(""); }}
+                  className={cn("flex-1 py-2 rounded-lg text-sm font-medium transition-colors", authMode === "login" ? "bg-orange-600 text-white" : "text-gray-400")}
+                >
+                  Connexion
+                </button>
+                <button
+                  onClick={() => { setAuthMode("register"); setAuthError(""); }}
+                  className={cn("flex-1 py-2 rounded-lg text-sm font-medium transition-colors", authMode === "register" ? "bg-orange-600 text-white" : "text-gray-400")}
+                >
+                  Inscription
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {authError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-[13px] mb-3">
+                  {authError}
+                </div>
+              )}
+
+              {authMode === "login" ? (
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Email</label>
+                    <input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required placeholder="votre@email.com"
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Mot de passe</label>
+                    <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <button type="submit" disabled={authLoading}
+                    className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
+                    {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                    Se connecter
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleRegister} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Nom complet</label>
+                    <input type="text" value={authName} onChange={(e) => setAuthName(e.target.value)} required placeholder="Votre nom"
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Email</label>
+                    <input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required placeholder="votre@email.com"
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Téléphone</label>
+                    <input type="tel" value={authPhone} onChange={(e) => setAuthPhone(e.target.value)} placeholder="+229 00 00 00 00"
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1.5 block">Mot de passe</label>
+                    <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required placeholder="••••••••" minLength={6}
+                      className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <button type="submit" disabled={authLoading}
+                    className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
+                    {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    Créer mon compte
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* Modal détail produit                          */}
+      {/* ============================================ */}
+      {selectedProduct && (() => {
+        const p = selectedProduct;
+        const count = getCartCount(p.id);
+        return (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedProduct(null)} />
+            <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[90vh] flex flex-col">
+              {/* Image */}
+              <div className="relative h-52 sm:h-64 bg-gray-800 rounded-t-3xl overflow-hidden shrink-0">
+                {p.image ? (
+                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <UtensilsCrossed className="w-16 h-16 text-gray-600" />
+                  </div>
+                )}
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/60 rounded-lg backdrop-blur-sm">
+                  <Timer className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs text-white font-medium">~{p.cookingTimeMin} min</span>
+                </div>
+              </div>
+
+              {/* Contenu */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <h2 className="text-xl font-bold text-white">{p.name}</h2>
+                {p.shopName && (
+                  <p className="text-xs text-gray-500 mt-1">{p.shopName}</p>
+                )}
+                <p className="text-lg font-bold text-orange-400 mt-2">
+                  {p.price.toLocaleString()} <span className="text-sm font-normal text-gray-500">FCFA</span>
+                </p>
+
+                {p.description && (
+                  <div className="mt-4 pt-4 border-t border-gray-800">
+                    <h4 className="text-sm font-semibold text-gray-300 mb-2">Description</h4>
+                    <div className="text-sm text-gray-400 leading-relaxed [&_*]:!m-0 [&_*]:!p-0 [&_p]:!mb-1" dangerouslySetInnerHTML={{ __html: p.description }} />
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <Timer className="w-4 h-4" />
+                    <span className="text-sm">Temps de préparation : ~{p.cookingTimeMin} min</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-800/50 shrink-0">
+                {count === 0 ? (
+                  <button
+                    onClick={() => { addToCart(p); toast.success(`${p.name} ajouté au panier`); }}
+                    className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Commander
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Quantité +/- */}
+                    <div className="flex items-center justify-center gap-4">
+                      <button onClick={() => removeFromCart(p.id)} className="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white transition-colors border border-gray-700">
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-xl text-white font-bold w-8 text-center">{count}</span>
+                      <button onClick={() => addToCart(p)} className="w-10 h-10 flex items-center justify-center bg-orange-600 hover:bg-orange-700 rounded-full text-white transition-colors">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {/* Actions */}
+                    <button
+                      onClick={() => { setSelectedProduct(null); nextStep(); }}
+                      className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Payer maintenant — {(cart.reduce((s, i) => s + i.product.price * i.quantity, 0)).toLocaleString()} FCFA
+                    </button>
+                    <button
+                      onClick={() => setSelectedProduct(null)}
+                      className="w-full py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Ajouter un autre repas
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============================================ */}
+      {/* Tour d'onboarding                             */}
+      {/* ============================================ */}
+      {showTour && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={completeTour} />
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 p-5 pb-8 animate-in slide-in-from-bottom duration-300">
+            {/* Progress dots */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex gap-1.5">
+                {tourSteps.map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-300",
+                      i <= tourStep ? "bg-orange-500 w-6" : "bg-gray-700 w-4"
+                    )}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={completeTour}
+                className="text-gray-500 hover:text-gray-300 text-xs font-medium transition-colors"
+              >
+                Passer
+              </button>
+            </div>
+
+            {/* Step content */}
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-14 h-14 bg-orange-600/15 rounded-2xl flex items-center justify-center shrink-0">
+                {tourSteps[tourStep].icon}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  {tourSteps[tourStep].title}
+                </h3>
+                <p className="text-sm text-gray-400 mt-1 leading-relaxed">
+                  {tourSteps[tourStep].desc}
+                </p>
+              </div>
+            </div>
+
+            {/* Action button */}
+            <button
+              onClick={nextTourStep}
+              className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+            >
+              {tourStep === tourSteps.length - 1 ? (
+                <>C&apos;est parti ! <ChevronRight className="w-4 h-4" /></>
+              ) : (
+                <>Suivant <ChevronRight className="w-4 h-4" /></>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -588,10 +1037,10 @@ export default function LandingPage() {
               <ShoppingBag className="w-[24px] h-[24px] text-orange-500 transition-colors" strokeWidth={2.1} />
               <span className="text-[10px] leading-none text-orange-500 font-semibold">Commander</span>
             </a>
-            <Link href="/login" className="flex flex-col items-center justify-center flex-1 gap-[3px]">
+            <button onClick={() => { setShowAuth(true); setAuthError(""); }} className="flex flex-col items-center justify-center flex-1 gap-[3px]">
               <LogIn className="w-[24px] h-[24px] text-gray-500 transition-colors" strokeWidth={1.5} />
               <span className="text-[10px] leading-none text-gray-500 font-medium">Connexion</span>
-            </Link>
+            </button>
           </div>
         </div>
       </nav>

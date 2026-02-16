@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
   // Mise à jour du nom
   if (name !== undefined) {
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return NextResponse.json({ error: "Le nom doit faire au moins 2 caracteres" }, { status: 400 });
+      return NextResponse.json({ error: "Le nom doit faire au moins 2 caractères" }, { status: 400 });
     }
 
     await prisma.user.update({
@@ -25,13 +25,13 @@ export async function PUT(request: NextRequest) {
       data: { name: name.trim() },
     });
 
-    return NextResponse.json({ ok: true, message: "Profil mis a jour" });
+    return NextResponse.json({ ok: true, message: "Profil mis à jour" });
   }
 
   // Changement de mot de passe
   if (currentPassword && newPassword) {
     if (typeof newPassword !== "string" || newPassword.length < 6) {
-      return NextResponse.json({ error: "Le nouveau mot de passe doit faire au moins 6 caracteres" }, { status: 400 });
+      return NextResponse.json({ error: "Le nouveau mot de passe doit faire au moins 6 caractères" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
       data: { hashedPassword },
     });
 
-    return NextResponse.json({ ok: true, message: "Mot de passe modifie" });
+    return NextResponse.json({ ok: true, message: "Mot de passe modifié" });
   }
 
   return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });

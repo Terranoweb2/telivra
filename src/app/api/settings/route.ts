@@ -9,25 +9,12 @@ export async function GET() {
       id: "default",
       restaurantName: "Mon Restaurant",
       defaultPaymentMethod: "BOTH",
-      fedapayEnvironment: "sandbox",
+      paymentPhoneNumber: null,
       deliveryFee: 0,
       currency: "XOF",
     });
   }
-  // Masquer les cles secretes pour les non-admin
-  const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (role !== "ADMIN") {
-    return NextResponse.json({
-      ...settings,
-      fedapaySecretKey: undefined,
-      fedapayPublicKey: settings.fedapayPublicKey ? "****" : null,
-    });
-  }
-  return NextResponse.json({
-    ...settings,
-    fedapaySecretKey: settings.fedapaySecretKey ? "****" : null,
-  });
+  return NextResponse.json(settings);
 }
 
 export async function PUT(request: NextRequest) {
@@ -40,22 +27,17 @@ export async function PUT(request: NextRequest) {
   const {
     restaurantName,
     defaultPaymentMethod,
-    fedapayPublicKey,
-    fedapaySecretKey,
-    fedapayEnvironment,
+    paymentPhoneNumber,
     deliveryFee,
     currency,
   } = body;
 
-  const data: any = {};
-  if (restaurantName !== undefined) data.restaurantName = restaurantName;
+  const data: Record<string, unknown> = {};
+  if (restaurantName !== undefined) data.restaurantName = String(restaurantName).slice(0, 100);
   if (defaultPaymentMethod !== undefined) data.defaultPaymentMethod = defaultPaymentMethod;
-  if (fedapayEnvironment !== undefined) data.fedapayEnvironment = fedapayEnvironment;
+  if (paymentPhoneNumber !== undefined) data.paymentPhoneNumber = paymentPhoneNumber ? String(paymentPhoneNumber).replace(/[^0-9+]/g, "").slice(0, 20) : null;
   if (deliveryFee !== undefined) data.deliveryFee = parseFloat(deliveryFee) || 0;
-  if (currency !== undefined) data.currency = currency;
-  // Ne mettre a jour les cles que si elles sont fournies et pas "****"
-  if (fedapayPublicKey && fedapayPublicKey !== "****") data.fedapayPublicKey = fedapayPublicKey;
-  if (fedapaySecretKey && fedapaySecretKey !== "****") data.fedapaySecretKey = fedapaySecretKey;
+  if (currency !== undefined) data.currency = String(currency).slice(0, 10);
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "default" },
@@ -63,8 +45,5 @@ export async function PUT(request: NextRequest) {
     update: data,
   });
 
-  return NextResponse.json({
-    ...settings,
-    fedapaySecretKey: settings.fedapaySecretKey ? "****" : null,
-  });
+  return NextResponse.json(settings);
 }

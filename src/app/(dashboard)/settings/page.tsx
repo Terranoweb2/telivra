@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store } from "lucide-react";
+import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,7 @@ export default function SettingsPage() {
     if (session?.user?.name) setProfileName(session.user.name);
   }, [session?.user?.name]);
 
-  // Securite
+  // Sécurité
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,9 +31,7 @@ export default function SettingsPage() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [restaurantName, setRestaurantName] = useState("");
   const [defaultPayment, setDefaultPayment] = useState("BOTH");
-  const [fedapayPublicKey, setFedapayPublicKey] = useState("");
-  const [fedapaySecretKey, setFedapaySecretKey] = useState("");
-  const [fedapayEnv, setFedapayEnv] = useState("sandbox");
+  const [paymentPhoneNumber, setPaymentPhoneNumber] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("0");
   const [currency, setCurrency] = useState("XOF");
 
@@ -43,9 +41,7 @@ export default function SettingsPage() {
         setSiteSettings(data);
         setRestaurantName(data.restaurantName || "");
         setDefaultPayment(data.defaultPaymentMethod || "BOTH");
-        setFedapayPublicKey(data.fedapayPublicKey || "");
-        setFedapaySecretKey(data.fedapaySecretKey || "");
-        setFedapayEnv(data.fedapayEnvironment || "sandbox");
+        setPaymentPhoneNumber(data.paymentPhoneNumber || "");
         setDeliveryFee(String(data.deliveryFee || 0));
         setCurrency(data.currency || "XOF");
       }).catch(() => {});
@@ -54,7 +50,7 @@ export default function SettingsPage() {
 
   async function saveProfile() {
     if (!profileName.trim() || profileName.trim().length < 2) {
-      toast.error("Le nom doit faire au moins 2 caracteres");
+      toast.error("Le nom doit faire au moins 2 caractères");
       return;
     }
     setSaving(true);
@@ -65,7 +61,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ name: profileName.trim() }),
       });
       if (res.ok) {
-        toast.success("Profil mis a jour");
+        toast.success("Profil mis à jour");
         await updateSession();
       } else {
         const err = await res.json().catch(() => null);
@@ -82,7 +78,7 @@ export default function SettingsPage() {
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Le nouveau mot de passe doit faire au moins 6 caracteres");
+      toast.error("Le nouveau mot de passe doit faire au moins 6 caractères");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -97,7 +93,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       if (res.ok) {
-        toast.success("Mot de passe modifie");
+        toast.success("Mot de passe modifié");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -113,14 +109,12 @@ export default function SettingsPage() {
   async function saveSiteSettings() {
     setSaving(true);
     try {
-      const body: any = { restaurantName, defaultPaymentMethod: defaultPayment, fedapayEnvironment: fedapayEnv, deliveryFee: parseFloat(deliveryFee) || 0, currency };
-      if (fedapayPublicKey && fedapayPublicKey !== "****") body.fedapayPublicKey = fedapayPublicKey;
-      if (fedapaySecretKey && fedapaySecretKey !== "****") body.fedapaySecretKey = fedapaySecretKey;
+      const body: any = { restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency };
       const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
         setSiteSettings(data);
-        toast.success("Parametres sauvegardes");
+        toast.success("Paramètres sauvegardés");
       } else {
         toast.error("Erreur lors de la sauvegarde");
       }
@@ -134,12 +128,12 @@ export default function SettingsPage() {
     { key: "profile", label: "Profil", icon: User },
     ...(isAdmin ? [{ key: "restaurant", label: "Restaurant", icon: Store }] : []),
     ...(isAdmin ? [{ key: "payment", label: "Paiement", icon: CreditCard }] : []),
-    { key: "security", label: "Securite", icon: Shield },
+    { key: "security", label: "Sécurité", icon: Shield },
   ];
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Parametres" subtitle="Gerez votre compte et vos preferences" />
+      <PageHeader title="Paramètres" subtitle="Gérez votre compte et vos préférences" />
 
       <PillTabGroup tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
@@ -155,7 +149,7 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Email</label>
                 <input type="email" defaultValue={session?.user?.email || ""} disabled className={cn(inputClass, "opacity-50")} />
-                <p className="text-[11px] text-gray-600 mt-1">L&apos;email ne peut pas etre modifie</p>
+                <p className="text-[11px] text-gray-600 mt-1">L&apos;email ne peut pas être modifié</p>
               </div>
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Role</label>
@@ -196,33 +190,22 @@ export default function SettingsPage() {
             <div className="space-y-4 max-w-lg">
               <h2 className="text-[15px] font-semibold text-white mb-4">Configuration paiement</h2>
               <div>
-                <label className="block text-[13px] text-gray-400 mb-1.5">Mode de paiement par defaut</label>
+                <label className="block text-[13px] text-gray-400 mb-1.5">Mode de paiement par défaut</label>
                 <select value={defaultPayment} onChange={(e) => setDefaultPayment(e.target.value)} className={selectClass}>
-                  <option value="CASH">Especes uniquement</option>
+                  <option value="CASH">Espèces uniquement</option>
                   <option value="ONLINE">En ligne uniquement</option>
-                  <option value="BOTH">Especes + En ligne</option>
+                  <option value="BOTH">Espèces + En ligne</option>
                 </select>
               </div>
               <div className="border-t border-white/[0.06] pt-4">
                 <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-orange-400" /> FedaPay
+                  <Phone className="w-4 h-4 text-orange-400" /> MTN Mobile Money
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[13px] text-gray-400 mb-1.5">Environnement</label>
-                    <select value={fedapayEnv} onChange={(e) => setFedapayEnv(e.target.value)} className={selectClass}>
-                      <option value="sandbox">Sandbox (test)</option>
-                      <option value="live">Live (production)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[13px] text-gray-400 mb-1.5">Cle publique</label>
-                    <input type="text" value={fedapayPublicKey} onChange={(e) => setFedapayPublicKey(e.target.value)} placeholder="pk_..." className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[13px] text-gray-400 mb-1.5">Cle secrete</label>
-                    <input type="password" value={fedapaySecretKey} onChange={(e) => setFedapaySecretKey(e.target.value)} placeholder="sk_..." className={inputClass} />
-                    <p className="text-[11px] text-gray-600 mt-1">Laissez vide pour conserver la cle actuelle</p>
+                    <label className="block text-[13px] text-gray-400 mb-1.5">Numéro de paiement</label>
+                    <input type="tel" value={paymentPhoneNumber} onChange={(e) => setPaymentPhoneNumber(e.target.value)} placeholder="Ex: 97000000" className={inputClass} />
+                    <p className="text-[11px] text-gray-600 mt-1">Les clients paieront sur ce numéro via MTN MoMo</p>
                   </div>
                 </div>
               </div>
@@ -243,7 +226,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Nouveau mot de passe</label>
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="6 caracteres minimum" className={inputClass} />
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="6 caractères minimum" className={inputClass} />
               </div>
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Confirmer</label>

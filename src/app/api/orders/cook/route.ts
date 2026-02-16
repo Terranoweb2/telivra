@@ -9,16 +9,18 @@ export async function GET(request: NextRequest) {
   if (role !== "COOK" && role !== "ADMIN") return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
 
   const cookId = (session.user as any).id;
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
+  const isAdmin = role === "ADMIN";
 
   let where: any;
-  if (status === "PENDING") {
-    where = { status: "PENDING" };
-  } else if (status === "PREPARING") {
-    where = { cookId, status: { in: ["ACCEPTED", "PREPARING"] } };
-  } else if (status === "READY") {
-    where = { cookId, status: "READY" };
+  if (isAdmin) {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    where = {
+      OR: [
+        { status: { in: ["PENDING", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERING"] } },
+        { status: { in: ["DELIVERED", "CANCELLED"] }, updatedAt: { gte: sevenDaysAgo } },
+      ],
+    };
   } else {
     where = {
       OR: [
@@ -33,8 +35,11 @@ export async function GET(request: NextRequest) {
     include: {
       items: { include: { product: true } },
       client: { select: { id: true, name: true } },
+      cook: { select: { id: true, name: true } },
+      rating: true,
     },
     orderBy: { createdAt: "desc" },
+    ...(isAdmin ? { take: 200 } : {}),
   });
 
   return NextResponse.json(orders);

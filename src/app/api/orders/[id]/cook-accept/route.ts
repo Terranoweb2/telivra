@@ -16,7 +16,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     include: { items: { include: { product: true } } },
   });
   if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
-  if (order.status !== "PENDING") return NextResponse.json({ error: "Commande deja prise en charge" }, { status: 400 });
+  if (order.status !== "PENDING") return NextResponse.json({ error: "Commande déjà prise en charge" }, { status: 400 });
 
   const updated = await prisma.order.update({
     where: { id },

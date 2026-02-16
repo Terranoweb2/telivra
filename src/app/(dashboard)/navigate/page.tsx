@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
-  Navigation, MapPin, Clock, Ruler, RotateCcw, Loader2, Search,
-  Locate, X, ChevronUp, ChevronDown, Gauge, ArrowRight,
-  CornerUpRight, CornerUpLeft, ArrowUp, CircleDot, Flag,
+  Navigation, MapPin, Clock, Ruler, Loader2, Phone,
+  ChevronUp, ChevronDown, Gauge, ArrowUp, Flag, User, Banknote,
+  Minimize2, Maximize2, CheckCircle, Truck, X, XCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { playSound } from "@/lib/sounds";
 
 const NavMap = dynamic(() => import("@/components/map/nav-map"), {
   ssr: false,
@@ -19,19 +20,22 @@ const NavMap = dynamic(() => import("@/components/map/nav-map"), {
   ),
 });
 
-interface SearchResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
 interface RouteStep {
   instruction: string;
   distance: number;
   time: number;
+  latLng: [number, number];
 }
 
 type NavState = "idle" | "planning" | "navigating";
+
+const cancelReasons = [
+  "Client injoignable",
+  "Adresse introuvable",
+  "Produit indisponible",
+  "Problème de véhicule",
+  "Autre",
+];
 
 export default function NavigatePage() {
   return (
@@ -43,77 +47,153 @@ export default function NavigatePage() {
 
 function NavigateContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [navState, setNavState] = useState<NavState>("idle");
   const [myPos, setMyPos] = useState<[number, number] | null>(null);
   const [destination, setDestination] = useState<[number, number] | null>(null);
   const [destName, setDestName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [orderAmount, setOrderAmount] = useState("");
+  const [orderId, setOrderId] = useState("");
   const [routeInfo, setRouteInfo] = useState<{ distance: number; time: number } | null>(null);
   const [routeSteps, setRouteSteps] = useState<RouteStep[]>([]);
-  const [showSteps, setShowSteps] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [heading, setHeading] = useState<number | null>(null);
   const [locating, setLocating] = useState(true);
-  const [geoError, setGeoError] = useState("");
-  const watchRef = useRef<number | null>(null);
-  const searchTimeout = useRef<any>(null);
+  const [selectedStepIdx, setSelectedStepIdx] = useState<number | null>(null);
+  const [infoCollapsed, setInfoCollapsed] = useState(true);
+  const [recentering, setRecentering] = useState(false);
+  const [deliveryId, setDeliveryId] = useState("");
+  const [deliveryStatus, setDeliveryStatus] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const arrivedSoundPlayed = useRef(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showPickupDialog, setShowPickupDialog] = useState(false);
 
-  // Destination depuis les parametres URL (?lat=&lng=&address=)
+  useEffect(() => {
+    if (deliveryStatus === "PICKING_UP") setShowPickupDialog(true);
+  }, [deliveryStatus]);
+  const watchRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sendPosRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const myPosRef = useRef<[number, number] | null>(null);
+  const speedRef = useRef(0);
+
+  // Reverse geocoding Nominatim
+  async function reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lon=${lng}`);
+      if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const data = await res.json();
+      if (data.display_name) {
+        // Raccourcir : garder les 3 premiers segments
+        const parts = data.display_name.split(", ");
+        return parts.slice(0, 3).join(", ");
+      }
+      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    } catch {
+      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+  }
+
+  // Lecture des params URL
   useEffect(() => {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
     const addr = searchParams.get("address");
+    const client = searchParams.get("client");
+    const phone = searchParams.get("phone");
+    const amount = searchParams.get("amount");
+    const oid = searchParams.get("orderId");
+
     if (lat && lng) {
       const latN = parseFloat(lat);
       const lngN = parseFloat(lng);
       if (!isNaN(latN) && !isNaN(lngN)) {
         setDestination([latN, lngN]);
-        setDestName(addr || `${latN.toFixed(5)}, ${lngN.toFixed(5)}`);
+        if (addr) {
+          setDestName(addr);
+        } else {
+          setDestName("Recherche de l'adresse...");
+          reverseGeocode(latN, lngN).then(setDestName);
+        }
         setNavState("planning");
       }
     }
+    if (client) setClientName(client);
+    if (phone) setClientPhone(phone);
+    if (amount && amount !== "0") setOrderAmount(amount);
+    if (oid) setOrderId(oid);
+    const did = searchParams.get("deliveryId");
+    const dstatus = searchParams.get("status");
+    if (did) setDeliveryId(did);
+    if (dstatus) setDeliveryStatus(dstatus);
   }, [searchParams]);
 
-  // Geolocalisation automatique
+  // Geolocalisation
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGeoError("Geolocalisation non supportee");
       setLocating(false);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setMyPos([pos.coords.latitude, pos.coords.longitude]);
         setLocating(false);
       },
-      (err) => {
-        setGeoError("Impossible d'obtenir votre position");
+      () => {
         setLocating(false);
-        // Position par defaut Lagos
-        setMyPos([6.5244, 3.3792]);
+        setMyPos([9.3, 2.3]);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
 
-  // Suivi continu de la position pendant la navigation
+  // Suivi GPS toutes les 5s (seulement hors navigation — watchPosition prend le relais)
+  useEffect(() => {
+    if (!navigator.geolocation || navState === "navigating") {
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      return;
+    }
+    intervalRef.current = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const p: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          setMyPos(p);
+          myPosRef.current = p;
+          if (pos.coords.heading !== null) setHeading(pos.coords.heading);
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 4000 }
+      );
+    }, 5000);
+    return () => {
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    };
+  }, [navState]);
+
+  // Suivi GPS rapide pendant navigation active
   useEffect(() => {
     if (navState !== "navigating" || !navigator.geolocation) return;
-
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setMyPos([pos.coords.latitude, pos.coords.longitude]);
-        setSpeed(pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0);
+        const p: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setMyPos(p);
+        myPosRef.current = p;
+        const spd = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+        setSpeed(spd);
+        speedRef.current = spd;
         if (pos.coords.heading !== null) setHeading(pos.coords.heading);
       },
       () => {},
       { enableHighAccuracy: true, maximumAge: 2000 }
     );
-
     return () => {
       if (watchRef.current !== null) {
         navigator.geolocation.clearWatch(watchRef.current);
@@ -122,66 +202,61 @@ function NavigateContent() {
     };
   }, [navState]);
 
-  // Recherche d'adresse (Nominatim)
-  function handleSearchInput(query: string) {
-    setSearchQuery(query);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    if (query.length < 3) {
-      setSearchResults([]);
+  // Envoi position au serveur toutes les 5s (pour le suivi client)
+  useEffect(() => {
+    if (!deliveryId || deliveryStatus === "DELIVERED" || deliveryStatus === "CANCELLED") {
+      if (sendPosRef.current) { clearInterval(sendPosRef.current); sendPosRef.current = null; }
       return;
     }
-    searchTimeout.current = setTimeout(async () => {
-      setSearching(true);
+    sendPosRef.current = setInterval(async () => {
+      const pos = myPosRef.current;
+      if (!pos) return;
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-          { headers: { "Accept-Language": "fr" } }
-        );
-        const data = await res.json();
-        setSearchResults(data);
-      } catch {
-        setSearchResults([]);
-      }
-      setSearching(false);
-    }, 400);
-  }
-
-  function selectDestination(result: SearchResult) {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    setDestination([lat, lng]);
-    setDestName(result.display_name.split(",").slice(0, 2).join(","));
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearch(false);
-    setNavState("planning");
-  }
+        await fetch(`/api/deliveries/${deliveryId}/position`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ latitude: pos[0], longitude: pos[1], speed: speedRef.current }),
+        });
+      } catch {}
+    }, 5000);
+    return () => {
+      if (sendPosRef.current) { clearInterval(sendPosRef.current); sendPosRef.current = null; }
+    };
+  }, [deliveryId, deliveryStatus]);
 
   function handleMapClick(lat: number, lng: number) {
     if (navState === "navigating") return;
     setDestination([lat, lng]);
-    setDestName(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setDestName("Recherche de l'adresse...");
+    reverseGeocode(lat, lng).then(setDestName);
     setNavState("planning");
+    setPanelExpanded(false);
+    setSelectedStepIdx(null);
   }
 
-  const handleRouteFound = useCallback((info: { distance: number; time: number; steps: RouteStep[] }) => {
+  const handleRouteFound = useCallback((info: { distance: number; time: number; steps: RouteStep[]; coords?: [number, number][] }) => {
     setRouteInfo({ distance: info.distance, time: info.time });
     setRouteSteps(info.steps || []);
+    setSelectedStepIdx(null);
+    // Son "arriving" quand le livreur est à moins de 200m de la destination
+    if (info.distance <= 200 && !arrivedSoundPlayed.current) {
+      arrivedSoundPlayed.current = true;
+      playSound("arriving");
+    }
   }, []);
 
   function startNavigation() {
     setNavState("navigating");
-    setShowSteps(false);
+    setPanelExpanded(false);
+    setSelectedStepIdx(null);
   }
 
   function stopNavigation() {
-    setNavState("idle");
-    setDestination(null);
-    setDestName("");
-    setRouteInfo(null);
-    setRouteSteps([]);
+    setNavState("planning");
     setSpeed(0);
     setHeading(null);
+    setPanelExpanded(false);
+    setSelectedStepIdx(null);
     if (watchRef.current !== null) {
       navigator.geolocation.clearWatch(watchRef.current);
       watchRef.current = null;
@@ -189,10 +264,82 @@ function NavigateContent() {
   }
 
   function recenter() {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation || recentering) return;
+    setSelectedStepIdx(null);
+    setRecentering(true);
     navigator.geolocation.getCurrentPosition((pos) => {
       setMyPos([pos.coords.latitude, pos.coords.longitude]);
-    }, () => {}, { enableHighAccuracy: true });
+      // Signaler au NavMap de reprendre le suivi automatique
+      window.dispatchEvent(new Event("nav-refollow"));
+      setTimeout(() => setRecentering(false), 800);
+    }, () => {
+      setTimeout(() => setRecentering(false), 800);
+    }, { enableHighAccuracy: true });
+  }
+
+  function selectStep(idx: number) {
+    setSelectedStepIdx(prev => prev === idx ? null : idx);
+  }
+
+  async function updateDeliveryStatus(status: string) {
+    if (!deliveryId || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      const estMin = routeInfo ? Math.round(routeInfo.time / 60) : undefined;
+      await fetch(`/api/deliveries/${deliveryId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          currentLat: myPos?.[0],
+          currentLng: myPos?.[1],
+          estimatedMinutes: status === "DELIVERING" ? estMin : undefined,
+        }),
+      });
+      if (status === "DELIVERED") {
+        playSound("delivered");
+        router.push("/livraison/order");
+      } else if (status === "DELIVERING") {
+        playSound("picked-up");
+        setDeliveryStatus(status);
+      } else {
+        setDeliveryStatus(status);
+      }
+    } catch {} finally {
+      setUpdatingStatus(false);
+    }
+  }
+
+  async function cancelOrder() {
+    if (!orderId) return;
+    if (!cancelReason) {
+      setCancelError("Veuillez sélectionner une raison");
+      return;
+    }
+    if (cancelReason === "Autre" && !customReason.trim()) {
+      setCancelError("Veuillez preciser la raison");
+      return;
+    }
+    setCancelling(true);
+    setCancelError("");
+    const reason = cancelReason === "Autre" ? customReason : cancelReason;
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      if (res.ok) {
+        setShowCancel(false);
+        router.push("/livraison/order");
+      } else {
+        const data = await res.json();
+        setCancelError(data.error || "Erreur lors de l'annulation");
+      }
+    } catch {
+      setCancelError("Erreur réseau");
+    }
+    setCancelling(false);
   }
 
   function formatDistance(m: number) {
@@ -213,12 +360,16 @@ function NavigateContent() {
     return now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   }
 
+  const highlightPos = selectedStepIdx !== null && routeSteps[selectedStepIdx]
+    ? routeSteps[selectedStepIdx].latLng
+    : null;
+
   if (locating) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-950 z-50">
         <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
         <p className="text-white text-lg">Localisation en cours...</p>
-        <p className="text-gray-500 text-sm mt-1">Autorisez l acces a votre position</p>
+        <p className="text-gray-500 text-sm mt-1">Autorisez l&apos;acces a votre position</p>
       </div>
     );
   }
@@ -232,199 +383,460 @@ function NavigateContent() {
           destination={destination}
           isNavigating={navState === "navigating"}
           heading={heading}
+          speed={speed}
+          highlightPos={highlightPos}
           onMapClick={handleMapClick}
           onRouteFound={handleRouteFound}
+          onRecenter={recenter}
+          recentering={recentering}
         />
       </div>
 
-      {/* Barre de recherche */}
-      <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-[1000]">
-        <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3">
-            {navState === "navigating" ? (
-              <>
-                <Navigation className="w-5 h-5 text-orange-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{destName}</p>
-                  {routeInfo && (
-                    <p className="text-xs text-gray-500">
-                      {formatDistance(routeInfo.distance)} · {formatTime(routeInfo.time)} · Arrivee {getETA(routeInfo.time)}
-                    </p>
-                  )}
-                </div>
-                <button onClick={stopNavigation} className="p-1.5 hover:bg-gray-100 rounded-full">
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </>
-            ) : (
-              <>
-                <Search className="w-5 h-5 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => setShowSearch(true)}
-                  placeholder="Rechercher un lieu..."
-                  className="flex-1 text-sm text-gray-900 placeholder-gray-400 outline-none bg-transparent"
-                />
-                {searchQuery && (
-                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="p-1">
-                    <X className="w-4 h-4 text-gray-400" />
-                  </button>
-                )}
-              </>
+      {/* ─── BANDEAU INFO COMMANDE ─── */}
+      <div className="absolute top-3 left-3 right-16 sm:left-4 sm:right-auto sm:w-[400px] z-[1000]">
+        {infoCollapsed ? (
+          /* ── Mode reduit : nom + montant + tel + expand ── */
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all duration-300 bg-gray-900/60 border border-gray-800"
+            style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+          >
+            <button onClick={() => setInfoCollapsed(false)} className="flex items-center gap-2 min-w-0 flex-1">
+              <User className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+              <span className="text-xs font-medium text-gray-800 truncate max-w-[100px]">{clientName || "Client"}</span>
+              {orderAmount && <span className="text-xs font-bold text-emerald-600">{Number(orderAmount).toLocaleString()} F</span>}
+            </button>
+            {clientPhone && (
+              <a
+                href={`tel:${clientPhone}`}
+                className="flex items-center gap-1 px-2 py-1 rounded-full text-white text-[10px] font-semibold shrink-0"
+                style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
+              >
+                <Phone className="w-3 h-3" />
+                {clientPhone}
+              </a>
             )}
+            <button onClick={() => setInfoCollapsed(false)} className="p-0.5 shrink-0">
+              <Maximize2 className="w-3 h-3 text-gray-400 animate-pulse" style={{ animationDuration: "2s" }} />
+            </button>
           </div>
+        ) : (
+          /* ── Mode complet ── */
+          <div
+            className="rounded-2xl shadow-lg overflow-hidden transition-all duration-300 bg-gray-900/60 border border-gray-800"
+            style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+          >
+            <div className="px-3.5 py-3">
+              {/* Ligne 1 : Client + montant + reduire */}
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                    <User className="w-3.5 h-3.5 text-gray-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-semibold text-gray-900 truncate block">
+                      {clientName || "Client"}
+                    </span>
+                    {orderId && <span className="text-[10px] text-gray-400 font-mono">#{orderId}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {orderAmount && (
+                    <span className="text-sm font-bold text-emerald-600">{Number(orderAmount).toLocaleString()} F</span>
+                  )}
+                  <button
+                    onClick={() => setInfoCollapsed(true)}
+                    className="relative p-1.5 rounded-md hover:bg-gray-100 transition-colors group"
+                  >
+                    <div className="absolute inset-0 rounded-md bg-orange-400/20 animate-ping" style={{ animationDuration: "3s" }} />
+                    <Minimize2 className="w-3.5 h-3.5 text-orange-500 relative z-10 animate-bounce" style={{ animationDuration: "2.5s" }} />
+                  </button>
+                </div>
+              </div>
 
-          {/* Resultats de recherche */}
-          {showSearch && searchResults.length > 0 && (
-            <div className="border-t border-gray-100 max-h-60 overflow-y-auto">
-              {searchResults.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => selectDestination(r)}
-                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 text-left transition-colors"
+              {/* Ligne 2 : Adresse */}
+              <div className="flex items-start gap-2 mb-2.5 pl-1">
+                <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{destName || "Destination non definie"}</p>
+              </div>
+
+              {/* Ligne 3 : Stats route */}
+              {routeInfo ? (
+                <div className="flex items-center gap-2 mb-2.5 pl-1">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                    <Ruler className="w-3 h-3 text-orange-500" />
+                    <span className="text-xs font-medium text-gray-800">{formatDistance(routeInfo.distance)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                    <Clock className="w-3 h-3 text-orange-500" />
+                    <span className="text-xs font-medium text-gray-800">{formatTime(routeInfo.time)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                    <Navigation className="w-3 h-3 text-orange-500" />
+                    <span className="text-xs text-gray-500">{getETA(routeInfo.time)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mb-2.5 pl-1">Calcul de l&apos;itineraire...</p>
+              )}
+
+              {/* Bouton Appeler */}
+              {clientPhone && (
+                <a
+                  href={`tel:${clientPhone}`}
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold text-white transition-colors shadow-sm"
+                  style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
                 >
-                  <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                  <span className="text-sm text-gray-700 line-clamp-2">{r.display_name}</span>
-                </button>
-              ))}
+                  <Phone className="w-3.5 h-3.5" />
+                  Appeler {clientPhone}
+                </a>
+              )}
             </div>
-          )}
-          {showSearch && searching && (
-            <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
-              <span className="text-sm text-gray-500">Recherche...</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Bouton recentrer */}
-      <button
-        onClick={recenter}
-        className="absolute right-3 z-[1000] bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors"
-        style={{ bottom: navState === "idle" ? "1.5rem" : navState === "planning" ? "10rem" : "11rem" }}
-      >
-        <Locate className="w-5 h-5 text-orange-600" />
-      </button>
-
-      {/* Panneau planification (quand destination selectionnee) */}
+      {/* ─── PANNEAU PLANIFICATION ─── */}
       {navState === "planning" && routeInfo && (
-        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-2xl shadow-2xl">
-          <div className="px-4 pt-3 pb-2">
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
-            <div className="flex items-center gap-3 mb-3">
-              <Flag className="w-5 h-5 text-red-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{destName}</p>
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-gray-900/90 border-t border-gray-800"
+          style={{ backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
+        >
+          {/* Poignee + toggle */}
+          <button
+            onClick={() => setPanelExpanded(!panelExpanded)}
+            className="w-full flex flex-col items-center pt-2.5 pb-1 cursor-pointer group"
+          >
+            <div className="relative">
+              <div className="w-10 h-1.5 rounded-full transition-colors bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400" />
+              <div className="absolute inset-0 w-10 h-1.5 rounded-full animate-pulse bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 opacity-50 blur-sm" style={{ animationDuration: "1.5s" }} />
+            </div>
+            <div className="mt-1 transition-transform duration-300 group-hover:scale-125">
+              {panelExpanded ? (
+                <ChevronDown className="w-4 h-4 text-orange-500" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-orange-500 animate-bounce" style={{ animationDuration: "1.5s" }} />
+              )}
+            </div>
+          </button>
+
+          {/* Infos compactes : destination + stats */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2.5 mb-2">
+              <Flag className="w-4 h-4 text-red-500 shrink-0" />
+              <p className="text-sm font-semibold text-gray-900 truncate flex-1">{destName}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <Ruler className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-sm font-semibold text-gray-700">{formatDistance(routeInfo.distance)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <Clock className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-sm font-semibold text-gray-700">{formatTime(routeInfo.time)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <Navigation className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-sm text-gray-600 font-medium">{getETA(routeInfo.time)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center gap-1.5">
-                <Ruler className="w-4 h-4 text-orange-500" />
-                <span className="text-sm font-semibold text-gray-900">{formatDistance(routeInfo.distance)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-semibold text-gray-900">{formatTime(routeInfo.time)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-purple-500" />
-                <span className="text-sm text-gray-600">Arrivee {getETA(routeInfo.time)}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 px-4 pb-4">
-            <button
-              onClick={startNavigation}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors"
-            >
-              <Navigation className="w-5 h-5" /> Demarrer
-            </button>
-            <button
-              onClick={() => setShowSteps(!showSteps)}
-              className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm transition-colors"
-            >
-              Etapes
-            </button>
-            <button
-              onClick={stopNavigation}
-              className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
-          {showSteps && routeSteps.length > 0 && (
-            <div className="border-t border-gray-100 max-h-48 overflow-y-auto px-4 py-2">
-              {routeSteps.map((step, i) => (
-                <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-orange-600">{i + 1}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-700">{step.instruction}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{formatDistance(step.distance)}</p>
+          {/* Contenu expandable : boutons + etapes */}
+          {panelExpanded && (
+            <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
+              <div className="flex gap-2">
+                {deliveryId && deliveryStatus === "PICKING_UP" && (
+                  <button
+                    onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
+                    disabled={updatingStatus}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
+                  >
+                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
+                    Récupérée
+                  </button>
+                )}
+                {deliveryId && deliveryStatus === "DELIVERING" && (
+                  <button
+                    onClick={() => updateDeliveryStatus("DELIVERED")}
+                    disabled={updatingStatus}
+                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
+                  >
+                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                    Livree
+                  </button>
+                )}
+                <button
+                  onClick={startNavigation}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold text-white transition-all shadow-md"
+                  style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
+                >
+                  <Navigation className="w-3.5 h-3.5" /> Naviguer
+                </button>
+                {deliveryId && orderId && deliveryStatus !== "DELIVERED" && deliveryStatus !== "CANCELLED" && !showCancel && (
+                  <button
+                    onClick={() => { setShowCancel(true); setCancelReason(""); setCustomReason(""); setCancelError(""); }}
+                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-200/60 bg-red-50/50 hover:bg-red-100/60 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <X className="w-3.5 h-3.5" /> Annuler
+                  </button>
+                )}
+              </div>
+              {/* Formulaire annulation */}
+              {showCancel && (
+                <div className="bg-white/50 border border-red-200/60 rounded-xl p-2.5 space-y-2">
+                  <p className="text-xs text-gray-800 font-medium">Confirmer l&apos;annulation ?</p>
+                  <select
+                    value={cancelReason}
+                    onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                    className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
+                  >
+                    <option value="">Selectionnez une raison</option>
+                    {cancelReasons.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  {cancelReason === "Autre" && (
+                    <textarea
+                      value={customReason}
+                      onChange={(e) => { setCustomReason(e.target.value); setCancelError(""); }}
+                      placeholder="Preciser la raison..."
+                      rows={2}
+                      className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
+                    />
+                  )}
+                  {cancelError && <p className="text-[10px] text-red-500">{cancelError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowCancel(false)}
+                      className="flex-1 py-2 bg-gray-100/60 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200/60 transition-colors">
+                      Non, continuer
+                    </button>
+                    <button onClick={cancelOrder} disabled={cancelling}
+                      className="flex-1 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                      {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                      Oui, annuler
+                    </button>
                   </div>
                 </div>
-              ))}
+              )}
+              {/* Liste des etapes */}
+              {routeSteps.length > 0 && (
+                <div className="max-h-44 overflow-y-auto pt-1">
+                  {routeSteps.map((step, i) => (
+                    <button
+                      key={i}
+                      onClick={() => selectStep(i)}
+                      className={`w-full flex items-start gap-2 py-2 text-left transition-colors rounded-lg px-1.5 ${
+                        selectedStepIdx === i ? "bg-orange-50/60" : "hover:bg-white/30"
+                      }`}
+                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.04)" } : {}}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200/60"
+                      }`}>
+                        <span className={`text-[10px] font-bold ${
+                          selectedStepIdx === i ? "text-white" : "text-gray-500"
+                        }`}>{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs ${
+                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-700"
+                        }`}>{step.instruction}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{formatDistance(step.distance)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Panneau navigation active */}
+      {/* ─── PANNEAU NAVIGATION ACTIVE ─── */}
       {navState === "navigating" && (
-        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-2xl shadow-2xl">
-          <div className="px-4 pt-3 pb-4">
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-gray-900/90 border-t border-gray-800"
+          style={{ backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
+        >
+          {/* Poignee + toggle */}
+          <button
+            onClick={() => setPanelExpanded(!panelExpanded)}
+            className="w-full flex flex-col items-center pt-2.5 pb-1 cursor-pointer group"
+          >
+            <div className="relative">
+              <div className="w-10 h-1.5 rounded-full transition-colors bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400" />
+              <div className="absolute inset-0 w-10 h-1.5 rounded-full animate-pulse bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 opacity-50 blur-sm" style={{ animationDuration: "1.5s" }} />
+            </div>
+            <div className="mt-1 transition-transform duration-300 group-hover:scale-125">
+              {panelExpanded ? (
+                <ChevronDown className="w-4 h-4 text-orange-500" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-orange-500 animate-bounce" style={{ animationDuration: "1.5s" }} />
+              )}
+            </div>
+          </button>
 
-            {/* Prochaine instruction */}
+          {/* Compact : instruction + stats */}
+          <div className="px-4 pb-3">
             {routeSteps.length > 0 && (
-              <div className="flex items-center gap-3 mb-4 p-3 bg-orange-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-3 mb-2.5">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}>
                   <ArrowUp className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{routeSteps[0]?.instruction}</p>
-                  <p className="text-xs text-orange-600">{formatDistance(routeSteps[0]?.distance || 0)}</p>
-                </div>
+                <p className="text-sm font-semibold text-gray-900 truncate flex-1">{routeSteps[0]?.instruction}</p>
+                <span className="text-sm font-medium text-orange-600 shrink-0">{formatDistance(routeSteps[0]?.distance || 0)}</span>
               </div>
             )}
-
-            {/* Stats de navigation */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <Gauge className="w-4 h-4 text-orange-500" />
-                </div>
-                <p className="text-xl font-bold text-gray-900">{speed}</p>
-                <p className="text-xs text-gray-500">km/h</p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <span className="text-sm font-semibold text-gray-700">{speed} km/h</span>
               </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <Ruler className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-xl font-bold text-gray-900">{routeInfo ? formatDistance(routeInfo.distance) : "--"}</p>
-                <p className="text-xs text-gray-500">restant</p>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <span className="text-sm font-semibold text-gray-700">{routeInfo ? formatDistance(routeInfo.distance) : "--"}</span>
               </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <Clock className="w-4 h-4 text-purple-500" />
-                </div>
-                <p className="text-xl font-bold text-gray-900">{routeInfo ? getETA(routeInfo.time) : "--"}</p>
-                <p className="text-xs text-gray-500">arrivee</p>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+                <span className="text-sm text-gray-600 font-medium">{routeInfo ? getETA(routeInfo.time) : "--"}</span>
               </div>
             </div>
           </div>
 
-          <div className="px-4 pb-4">
+          {/* Contenu expandable : boutons + etapes */}
+          {panelExpanded && (
+            <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
+              <div className="flex gap-2">
+                {deliveryId && deliveryStatus === "PICKING_UP" && (
+                  <button
+                    onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
+                    disabled={updatingStatus}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
+                  >
+                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
+                    Récupérée
+                  </button>
+                )}
+                {deliveryId && deliveryStatus === "DELIVERING" && (
+                  <button
+                    onClick={() => updateDeliveryStatus("DELIVERED")}
+                    disabled={updatingStatus}
+                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
+                  >
+                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                    Livree
+                  </button>
+                )}
+                <button
+                  onClick={stopNavigation}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <X className="w-3.5 h-3.5" /> Arrêter
+                </button>
+                {deliveryId && orderId && deliveryStatus !== "DELIVERED" && deliveryStatus !== "CANCELLED" && !showCancel && (
+                  <button
+                    onClick={() => { setShowCancel(true); setCancelReason(""); setCustomReason(""); setCancelError(""); }}
+                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-200/60 bg-red-50/50 hover:bg-red-100/60 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Annuler
+                  </button>
+                )}
+              </div>
+              {/* Formulaire annulation */}
+              {showCancel && (
+                <div className="bg-white/50 border border-red-200/60 rounded-xl p-2.5 space-y-2">
+                  <p className="text-xs text-gray-800 font-medium">Confirmer l&apos;annulation ?</p>
+                  <select
+                    value={cancelReason}
+                    onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
+                    className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
+                  >
+                    <option value="">Selectionnez une raison</option>
+                    {cancelReasons.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  {cancelReason === "Autre" && (
+                    <textarea
+                      value={customReason}
+                      onChange={(e) => { setCustomReason(e.target.value); setCancelError(""); }}
+                      placeholder="Preciser la raison..."
+                      rows={2}
+                      className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
+                    />
+                  )}
+                  {cancelError && <p className="text-[10px] text-red-500">{cancelError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowCancel(false)}
+                      className="flex-1 py-2 bg-gray-100/60 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200/60 transition-colors">
+                      Non, continuer
+                    </button>
+                    <button onClick={cancelOrder} disabled={cancelling}
+                      className="flex-1 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                      {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                      Oui, annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* Liste des etapes */}
+              {routeSteps.length > 0 && (
+                <div className="max-h-44 overflow-y-auto pt-1">
+                  {routeSteps.map((step, i) => (
+                    <button
+                      key={i}
+                      onClick={() => selectStep(i)}
+                      className={`w-full flex items-start gap-2 py-2 text-left transition-colors rounded-lg px-1.5 ${
+                        selectedStepIdx === i ? "bg-orange-50/60" : "hover:bg-white/30"
+                      }`}
+                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.04)" } : {}}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200/60"
+                      }`}>
+                        <span className={`text-[10px] font-bold ${
+                          selectedStepIdx === i ? "text-white" : "text-gray-500"
+                        }`}>{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs ${
+                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-700"
+                        }`}>{step.instruction}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{formatDistance(step.distance)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Dialog Recuperation */}
+      {showPickupDialog && deliveryStatus === "PICKING_UP" && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowPickupDialog(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl mx-4 max-w-sm w-full p-6 space-y-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Truck className="w-8 h-8 text-orange-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Commande à récupérer</h3>
+              <p className="text-sm text-gray-500 mt-1">Confirmez quand vous avez récupéré la commande au restaurant</p>
+            </div>
             <button
-              onClick={stopNavigation}
-              className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors"
+              onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
+              disabled={updatingStatus}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
             >
-              Arreter la navigation
+              {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              Commande récupérée
+            </button>
+            <button
+              onClick={() => setShowPickupDialog(false)}
+              className="w-full py-2.5 text-sm text-gray-500 hover:text-gray-700 font-medium"
+            >
+              Plus tard
             </button>
           </div>
         </div>

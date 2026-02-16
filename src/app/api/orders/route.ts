@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { calculateEffectivePrice, findBestPromotion } from "@/lib/pricing";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -13,7 +14,6 @@ export async function GET(request: NextRequest) {
 
   let where: any = {};
   if (asDriver || role === "DRIVER") {
-    // Mode livreur: afficher les commandes assignees a ce livreur
     where = { delivery: { driverId: userId } };
   } else {
     where = { clientId: userId };
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     include: {
       items: { include: { product: true } },
       client: { select: { id: true, name: true, email: true } },
+      rating: true,
+      promotion: { select: { name: true } },
       delivery: {
         include: {
           driver: { select: { id: true, name: true } },
@@ -51,19 +53,42 @@ export async function POST(request: NextRequest) {
   const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
   const productMap = new Map(products.map((p) => [p.id, p]));
 
+  // Charger les promotions actives
+  const now = new Date();
+  const activePromotions = await prisma.promotion.findMany({
+    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+    include: { products: true },
+  });
+
   let totalAmount = 0;
+  let totalDiscount = 0;
+  let appliedPromotionId: string | null = null;
+
   const orderItems = items.map((i: any) => {
     const product = productMap.get(i.productId);
     if (!product) throw new Error("Produit introuvable");
-    const price = product.price * i.quantity;
-    totalAmount += price;
-    return { productId: i.productId, quantity: i.quantity, price };
+
+    const effectivePrice = calculateEffectivePrice(product, activePromotions);
+    const originalTotal = product.price * i.quantity;
+    const discountedTotal = effectivePrice * i.quantity;
+
+    totalAmount += discountedTotal;
+    totalDiscount += originalTotal - discountedTotal;
+
+    if (!appliedPromotionId) {
+      const bestPromo = findBestPromotion(product, activePromotions);
+      if (bestPromo) appliedPromotionId = bestPromo.id;
+    }
+
+    return { productId: i.productId, quantity: i.quantity, price: discountedTotal };
   });
 
   const order = await prisma.order.create({
     data: {
       clientId: (session.user as any).id,
       totalAmount: Math.round(totalAmount * 100) / 100,
+      discountAmount: Math.round(totalDiscount * 100) / 100,
+      promotionId: appliedPromotionId,
       deliveryAddress,
       deliveryLat,
       deliveryLng,
@@ -77,7 +102,6 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Notifier les cuisiniers (pas les livreurs — le livreur sera notifie quand la cuisine est prete)
   const io = (global as any).io;
   if (io) {
     io.to("cooks").emit("order:new", {

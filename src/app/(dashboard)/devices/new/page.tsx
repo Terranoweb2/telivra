@@ -59,7 +59,7 @@ export default function NewDevicePage() {
       router.push("/devices");
     } else {
       const data = await res.json();
-      setError(data.error?.fieldErrors ? "Verifiez les champs" : "Erreur lors de la creation");
+      setError(data.error?.fieldErrors ? "Vérifiez les champs" : "Erreur lors de la création");
       setLoading(false);
     }
   }
@@ -89,7 +89,7 @@ export default function NewDevicePage() {
               <input name="name" required placeholder="Ex: Tracker Toyota" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Numero de serie</label>
+              <label className={labelClass}>Numéro de série</label>
               <input name="serialNumber" required placeholder="Ex: TRK-001" className={inputClass} />
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function NewDevicePage() {
                     type === t ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
                   }`}
                 >
-                  {t === "VEHICLE" ? "Vehicule" : t === "PERSON" ? "Personne" : "Asset"}
+                  {t === "VEHICLE" ? "Véhicule" : t === "PERSON" ? "Personne" : "Asset"}
                 </button>
               ))}
             </div>
@@ -114,7 +114,7 @@ export default function NewDevicePage() {
 
         {type === "VEHICLE" && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 space-y-4">
-            <h2 className="text-white font-semibold">Details du vehicule</h2>
+            <h2 className="text-white font-semibold">Détails du véhicule</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={labelClass}>Marque</label><input name="brand" required placeholder="Toyota" className={inputClass} /></div>
               <div><label className={labelClass}>Modele</label><input name="model" required placeholder="Hilux" className={inputClass} /></div>
@@ -126,7 +126,7 @@ export default function NewDevicePage() {
                 <select name="fuelType" className={inputClass}>
                   <option value="GASOLINE">Essence</option>
                   <option value="DIESEL">Diesel</option>
-                  <option value="ELECTRIC">Electrique</option>
+                  <option value="ELECTRIC">Électrique</option>
                   <option value="HYBRID">Hybride</option>
                 </select>
               </div>
@@ -136,11 +136,11 @@ export default function NewDevicePage() {
 
         {type === "PERSON" && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 space-y-4">
-            <h2 className="text-white font-semibold">Details de la personne</h2>
+            <h2 className="text-white font-semibold">Détails de la personne</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={labelClass}>Prenom</label><input name="firstName" required placeholder="Jean" className={inputClass} /></div>
               <div><label className={labelClass}>Nom</label><input name="lastName" required placeholder="Dupont" className={inputClass} /></div>
-              <div><label className={labelClass}>Telephone</label><input name="phone" placeholder="+33 6 12 34 56 78" className={inputClass} /></div>
+              <div><label className={labelClass}>Téléphone</label><input name="phone" placeholder="+33 6 12 34 56 78" className={inputClass} /></div>
               <div><label className={labelClass}>Email</label><input name="personEmail" type="email" placeholder="jean@mail.com" className={inputClass} /></div>
               <div className="sm:col-span-2"><label className={labelClass}>Role</label><input name="personRole" placeholder="Livreur, Technicien..." className={inputClass} /></div>
             </div>
@@ -149,10 +149,10 @@ export default function NewDevicePage() {
 
         {type === "ASSET" && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 space-y-4">
-            <h2 className="text-white font-semibold">Details de l'asset</h2>
+            <h2 className="text-white font-semibold">Détails de l'asset</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={labelClass}>Nom</label><input name="assetName" required placeholder="Generateur" className={inputClass} /></div>
-              <div><label className={labelClass}>Categorie</label><input name="category" required placeholder="Equipement" className={inputClass} /></div>
+              <div><label className={labelClass}>Catégorie</label><input name="category" required placeholder="Équipement" className={inputClass} /></div>
               <div><label className={labelClass}>Valeur (EUR)</label><input name="value" type="number" step="0.01" placeholder="5000" className={inputClass} /></div>
               <div className="sm:col-span-2"><label className={labelClass}>Description</label><input name="description" placeholder="Description..." className={inputClass} /></div>
             </div>
@@ -165,7 +165,7 @@ export default function NewDevicePage() {
           className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Creation..." : "Creer l'appareil"}
+          {loading ? "Création..." : "Créer l'appareil"}
         </button>
       </form>
     </div>

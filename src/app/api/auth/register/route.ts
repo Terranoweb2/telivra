@@ -11,12 +11,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (password.length < 6) {
-      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caracteres" }, { status: 400 });
+      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caractères" }, { status: 400 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json({ error: "Cet email est deja utilise" }, { status: 409 });
+      return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
     }
 
     const hashedPassword = await hash(password, 12);

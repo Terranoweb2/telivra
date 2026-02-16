@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       // Ne pas reveler si l'email existe ou non
-      return NextResponse.json({ message: "Si ce compte existe, un code a ete envoye" });
+      return NextResponse.json({ message: "Si ce compte existe, un code a été envoyé" });
     }
 
     // Generer un code a 6 chiffres
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Log le code pour l'admin (visible dans PM2 logs)
     console.log(`[RESET PASSWORD] Code pour ${email}: ${code} (expire dans 15 min)`);
 
-    return NextResponse.json({ message: "Si ce compte existe, un code a ete envoye" });
+    return NextResponse.json({ message: "Si ce compte existe, un code a été envoyé" });
   } catch (err) {
     console.error("Erreur forgot-password:", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

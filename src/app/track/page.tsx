@@ -3,30 +3,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Phone, Search, Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle,
+  Search, Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Hash,
   MapPin, ClipboardList, Map, LogIn, ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400", icon: Clock },
-  ACCEPTED: { label: "Acceptee", color: "bg-orange-500/20 text-orange-400", icon: CheckCircle },
+  ACCEPTED: { label: "Acceptée", color: "bg-orange-500/20 text-orange-400", icon: CheckCircle },
   PICKING_UP: { label: "Recuperation", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag },
   DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck },
-  DELIVERED: { label: "Livree", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
-  CANCELLED: { label: "Annulee", color: "bg-red-500/20 text-red-400", icon: XCircle },
+  DELIVERED: { label: "Livrée", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
+  CANCELLED: { label: "Annulée", color: "bg-red-500/20 text-red-400", icon: XCircle },
 };
 
 export default function TrackPage() {
-  const [phone, setPhone] = useState("");
+  const [ref, setRef] = useState("");
   const [orders, setOrders] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function searchOrders() {
-    if (!phone || phone.length < 8) return;
+    if (!ref || ref.trim().length < 3) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/orders/track?phone=${encodeURIComponent(phone)}`);
+      const res = await fetch("/api/orders/track?ref=" + encodeURIComponent(ref.trim()));
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } finally {
@@ -49,23 +49,23 @@ export default function TrackPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
         {/* Recherche par telephone */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-1">Retrouvez vos commandes</h2>
-          <p className="text-xs text-gray-500 mb-4">Entrez le numero de telephone utilise lors de la commande</p>
+          <h2 className="text-sm font-semibold text-white mb-1">Suivre une commande</h2>
+          <p className="text-xs text-gray-500 mb-4">Entrez la référence de votre commande (ex: REF-ABC123)</p>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type="text"
+                value={ref}
+                onChange={(e) => setRef(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                placeholder="+229 00 00 00 00"
-                className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500"
+                placeholder="REF-ABC123"
+                className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 uppercase"
               />
             </div>
             <button
               onClick={searchOrders}
-              disabled={loading || phone.length < 8}
+              disabled={loading || ref.trim().length < 3}
               className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -79,11 +79,11 @@ export default function TrackPage() {
           orders.length === 0 ? (
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
               <ClipboardList className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Aucune commande trouvee pour ce numero</p>
+              <p className="text-gray-400 text-sm">Aucune commande trouvée pour ce numéro</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-400">{orders.length} commande{orders.length > 1 ? "s" : ""} trouvee{orders.length > 1 ? "s" : ""}</p>
+              <p className="text-sm text-gray-400">{orders.length} commande{orders.length > 1 ? "s" : ""} trouvée{orders.length > 1 ? "s" : ""}</p>
               {orders.map((order) => {
                 const st = statusConfig[order.status] || statusConfig.PENDING;
                 const Icon = st.icon;
@@ -95,7 +95,7 @@ export default function TrackPage() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="text-sm font-semibold text-white">Commande #{order.id.slice(-6)}</p>
+                        <p className="text-sm font-semibold text-white">{order.orderNumber || "CMD-" + order.id.slice(-6)}</p>
                         <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
                       </div>
                       <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", st.color)}>

@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const delivery = await prisma.delivery.findUnique({
     where: { id },
     include: {
-      order: { include: { items: { include: { product: true } }, client: { select: { id: true, name: true } } } },
+      order: { include: { items: { include: { product: true } }, client: { select: { id: true, name: true } }, rating: true } },
       driver: { select: { id: true, name: true } },
       positions: { orderBy: { timestamp: "asc" } },
     },

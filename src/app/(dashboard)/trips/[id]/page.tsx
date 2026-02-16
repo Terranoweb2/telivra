@@ -23,7 +23,7 @@ export default function TripDetailPage() {
   }, [id]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
-  if (!trip) return <div className="text-center py-12 text-gray-400">Trajet non trouve</div>;
+  if (!trip) return <div className="text-center py-12 text-gray-400">Trajet non trouvé</div>;
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
@@ -43,7 +43,7 @@ export default function TripDetailPage() {
           <p className="text-white font-bold text-lg">{trip.distanceKm} km</p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Clock className="w-3.5 h-3.5" />Duree</div>
+          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Clock className="w-3.5 h-3.5" />Durée</div>
           <p className="text-white font-bold text-lg">{trip.durationMinutes} min</p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">

@@ -29,7 +29,7 @@ export default function DeviceDetailPage() {
   }
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
-  if (!device) return <div className="text-center py-12 text-gray-400">Appareil non trouve</div>;
+  if (!device) return <div className="text-center py-12 text-gray-400">Appareil non trouvé</div>;
 
   const entityInfo =
     device.type === "VEHICLE" && device.vehicle
@@ -76,7 +76,7 @@ export default function DeviceDetailPage() {
           </div>
         )}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Derniere activite</p>
+          <p className="text-xs text-gray-500 mb-1">Dernière activité</p>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400" />
             <span className="text-white text-sm">{device.lastSeen ? new Date(device.lastSeen).toLocaleString("fr-FR") : "Jamais"}</span>
@@ -87,7 +87,7 @@ export default function DeviceDetailPage() {
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
           <entityInfo.icon className="w-5 h-5 text-orange-400" />
-          <h2 className="text-white font-semibold">Details</h2>
+          <h2 className="text-white font-semibold">Détails</h2>
         </div>
         <div className="space-y-2">
           {entityInfo.lines.filter(Boolean).map((line: string, i: number) => (
@@ -98,7 +98,7 @@ export default function DeviceDetailPage() {
 
       {lastPos && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
-          <h2 className="text-white font-semibold mb-3">Derniere position</h2>
+          <h2 className="text-white font-semibold mb-3">Dernière position</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <div><p className="text-gray-500 text-xs">Latitude</p><p className="text-white">{lastPos.latitude.toFixed(6)}</p></div>
             <div><p className="text-gray-500 text-xs">Longitude</p><p className="text-white">{lastPos.longitude.toFixed(6)}</p></div>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Eye, Wifi,
   MapPin, User, Bell, X, ChevronDown, ChefHat, Timer, Navigation,
@@ -10,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
+import { playSound } from "@/lib/sounds";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -18,7 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 
 const cancelReasons = [
   "Changement d'avis",
-  "Delai trop long",
+  "Délai trop long",
   "Commande en double",
   "Adresse incorrecte",
   "Autre",
@@ -28,39 +30,9 @@ const driverCancelReasons = [
   "Client injoignable",
   "Adresse introuvable",
   "Produit indisponible",
-  "Probleme de vehicule",
+  "Problème de véhicule",
   "Autre",
 ];
-
-function playSound(type: "new-order" | "accepted") {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    if (type === "new-order") {
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
-      osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
-    } else {
-      osc.frequency.setValueAtTime(523, ctx.currentTime);
-      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15);
-      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.6);
-    }
-
-    setTimeout(() => ctx.close(), 1000);
-  } catch {}
-}
 
 function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: string; cookingTimeMin: number }) {
   const [remaining, setRemaining] = useState(0);
@@ -89,10 +61,10 @@ function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: 
         <div className="flex items-center gap-2">
           <Timer className={cn("w-4 h-4", isOverdue ? "text-red-400" : "text-orange-400")} />
           <span className={cn("text-sm font-semibold", isOverdue ? "text-red-400" : "text-white")}>
-            {isOverdue ? "Temps ecoule !" : `${min}:${sec.toString().padStart(2, "0")}`}
+            {isOverdue ? "Temps écoulé !" : `${min}:${sec.toString().padStart(2, "0")}`}
           </span>
         </div>
-        <span className="text-xs text-gray-500">{cookingTimeMin} min prevues</span>
+        <span className="text-xs text-gray-500">{cookingTimeMin} min prévues</span>
       </div>
       <div className="w-full bg-gray-800 rounded-full h-2">
         <div
@@ -110,13 +82,25 @@ function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: 
 type Tab = "pending" | "active" | "delivered";
 
 export default function CommandesPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const role = (session?.user as any)?.role || "CLIENT";
   const clientId = (session?.user as any)?.id;
   const isCook = role === "COOK";
   const isDriver = role === "DRIVER" || role === "ADMIN";
 
-  const [tab, setTab] = useState<Tab>(isCook ? "pending" : "active");
+  const [tab, setTab] = useState<Tab>("pending");
+
+  // Sync tab with role once session loads
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      const r = (session?.user as any)?.role || "CLIENT";
+      if (r === "COOK") setTab("pending");
+      else setTab("pending");
+    }
+  }, [sessionStatus, session]);
   const [orders, setOrders] = useState<any[]>([]);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,17 +174,12 @@ export default function CommandesPage() {
       playSound("new-order");
       setTimeout(() => setNewAlert(false), 5000);
     }, [isCook, isDriver, loadData]),
-    onOrderReady: useCallback((data: any) => {
-      if (isCook) { loadData(); return; }
-      if (!isDriver) return;
-      setPendingOrders((prev) => {
-        if (prev.find((o: any) => o.id === data.orderId)) return prev;
-        return [{ id: data.orderId, ...data, client: { name: data.clientName } }, ...prev];
-      });
+    onOrderReady: useCallback(() => {
+      loadData();
       setNewAlert(true);
-      playSound("new-order");
+      playSound("order-ready");
       setTimeout(() => setNewAlert(false), 5000);
-    }, [isCook, isDriver, loadData]),
+    }, [loadData]),
     onAccepted: useCallback(() => {
       playSound("accepted");
       loadData();
@@ -225,6 +204,15 @@ export default function CommandesPage() {
       }),
     });
     if (res.ok) {
+      const delivery = await res.json();
+      // Trouver la commande pour construire l'URL de navigation
+      const order = orders.find((o: any) => o.id === orderId) || pendingOrders.find((o: any) => o.id === orderId);
+      if (order && delivery?.id) {
+        const navUrl = "/navigate?lat=" + order.deliveryLat + "&lng=" + order.deliveryLng + "&address=" + encodeURIComponent(order.deliveryAddress || "") + "&client=" + encodeURIComponent(order.client?.name || order.guestName || "Client") + "&phone=" + encodeURIComponent(order.guestPhone || "") + "&amount=" + (order.totalAmount || 0) + "&orderId=" + (order.id as string).slice(-6) + "&deliveryId=" + delivery.id + "&status=PICKING_UP";
+        toast.success("Livraison acceptée");
+        router.push(navUrl);
+        return;
+      }
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
       await loadData();
       setTab("active");
@@ -302,7 +290,7 @@ export default function CommandesPage() {
     setCustomReason("");
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
+  if (!mounted || loading || sessionStatus === "loading") return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   // === Filtrage par onglet selon le role ===
   const pendingList = isCook
@@ -328,12 +316,12 @@ export default function CommandesPage() {
     ? [
         { key: "pending", label: "Nouvelles", count: pendingList.length, icon: Bell },
         { key: "active", label: "En cuisine", count: activeList.length, icon: ChefHat },
-        { key: "delivered", label: "Pretes", count: deliveredList.length, icon: CheckCircle },
+        { key: "delivered", label: "Prêtes", count: deliveredList.length, icon: CheckCircle },
       ]
     : [
-        { key: "pending", label: isDriver ? "Pretes" : "En attente", count: pendingList.length },
+        { key: "pending", label: isDriver ? "Prêtes" : "En attente", count: pendingList.length },
         { key: "active", label: "En cours", count: activeList.length },
-        { key: "delivered", label: "Livrees", count: deliveredList.length },
+        { key: "delivered", label: "Livrées", count: deliveredList.length },
       ];
 
   const currentList = tab === "pending" ? pendingList : tab === "active" ? activeList : deliveredList;
@@ -341,24 +329,25 @@ export default function CommandesPage() {
   // Peut annuler?
   function canCancelOrder(order: any) {
     if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
-    if (isDriver) return true;
-    if (order.status === "PENDING") return true;
-    const acceptedAt = order.delivery?.startTime || order.updatedAt;
-    const minutes = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
-    return minutes <= 5;
+    // Admin et cook peuvent annuler les commandes non acceptees
+    if (isDriver || isCook) {
+      return order.status === "PENDING";
+    }
+    // Client connecte : uniquement PENDING + especes
+    return order.status === "PENDING" && order.paymentMethod === "CASH";
   }
 
   const reasonsList = isDriver ? driverCancelReasons : cancelReasons;
 
   const emptyMessage = isCook
-    ? (tab === "pending" ? "Aucune nouvelle commande" : tab === "active" ? "Aucune commande en preparation" : "Aucune commande prete")
+    ? (tab === "pending" ? "Aucune nouvelle commande" : tab === "active" ? "Aucune commande en préparation" : "Aucune commande prête")
     : tab === "pending"
-      ? (isDriver ? "Aucune commande prete" : "Aucune commande en attente")
+      ? (isDriver ? "Aucune commande prête" : "Aucune commande en attente")
       : tab === "active"
         ? "Aucune commande en cours"
-        : "Aucune commande livree";
+        : "Aucune commande livrée";
 
-  const subtitle = isCook ? "Gerez les commandes a preparer" : isDriver ? "Gerez vos livraisons" : "Suivez vos commandes";
+  const subtitle = isCook ? "Gérez les commandes à préparer" : isDriver ? "Gérez vos livraisons" : "Suivez vos commandes";
 
   return (
     <div className="space-y-4">
@@ -378,7 +367,7 @@ export default function CommandesPage() {
         )}>
           <Bell className={cn("w-5 h-5", isCook ? "text-orange-400" : "text-green-400")} />
           <p className={cn("text-sm font-medium", isCook ? "text-orange-400" : "text-green-400")}>
-            {isCook ? "Nouvelle commande !" : isDriver ? "Commande prete a livrer !" : "Nouvelle commande disponible !"}
+            {isCook ? "Nouvelle commande !" : isDriver ? "Commande prête à livrer !" : "Nouvelle commande disponible !"}
           </p>
         </div>
       )}
@@ -396,7 +385,7 @@ export default function CommandesPage() {
           {currentList.map((order) => {
             const orderStatus = isDriver ? (order.delivery?.status || order.status) : order.status;
             const href = isDriver && order.delivery
-              ? `/livraison/driver/${order.delivery.id}`
+              ? `/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}&deliveryId=${order.delivery.id}&status=${order.delivery.status}`
               : `/livraison/order/${order.id}`;
 
             // === COOK: onglet Nouvelles — bouton Accepter ===
@@ -443,7 +432,7 @@ export default function CommandesPage() {
                       className="w-full sm:w-auto py-2.5 px-6 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
                     >
                       {accepting === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChefHat className="w-4 h-4" />}
-                      Accepter et preparer
+                      Accepter et préparer
                     </button>
                   </CardContent>
                 </Card>
@@ -491,7 +480,7 @@ export default function CommandesPage() {
               );
             }
 
-            // === COOK: onglet Pretes ===
+            // === COOK: onglet Prêtes ===
             if (tab === "delivered" && isCook) {
               return (
                 <Card key={order.id}>
@@ -502,7 +491,7 @@ export default function CommandesPage() {
                           Commande #{(order.id as string).slice(-6)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {order.client?.name || order.guestName || "Client"} - Prete a {order.cookReadyAt ? new Date(order.cookReadyAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                          {order.client?.name || order.guestName || "Client"} - Prête à {order.cookReadyAt ? new Date(order.cookReadyAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : ""}
                         </p>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400">
@@ -515,12 +504,15 @@ export default function CommandesPage() {
                       ))}
                     </div>
                     <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                    {order.discountAmount > 0 && (
+                      <p className="text-[10px] text-green-400 font-medium">-{order.discountAmount?.toLocaleString()} FCFA économisé</p>
+                    )}
                   </CardContent>
                 </Card>
               );
             }
 
-            // === DRIVER: onglet Pretes — bouton accepter livraison ===
+            // === DRIVER: onglet Prêtes — bouton accepter livraison ===
             if (tab === "pending" && isDriver) {
               return (
                 <Card key={order.id}>
@@ -542,7 +534,12 @@ export default function CommandesPage() {
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm font-bold text-orange-400 shrink-0">{order.totalAmount?.toLocaleString()} FCFA</span>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</span>
+                        {order.discountAmount > 0 && (
+                          <p className="text-[9px] text-green-400">-{order.discountAmount?.toLocaleString()} éco.</p>
+                        )}
+                      </div>
                     </div>
                     <div className="text-xs text-gray-400 mb-3">
                       {order.items?.map((i: any) => (
@@ -556,7 +553,7 @@ export default function CommandesPage() {
                       </button>
                       {order.deliveryLat && order.deliveryLng && (
                         <Link
-                          href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}`}
+                          href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                           className="py-2.5 px-3 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Navigation className="w-4 h-4" />
@@ -599,7 +596,12 @@ export default function CommandesPage() {
                       <p className="text-xs text-red-400 mt-1">Raison: {order.cancelReason}</p>
                     )}
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
-                      <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                      <div>
+                        <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
+                        {order.discountAmount > 0 && (
+                          <p className="text-[10px] text-green-400 font-medium">-{order.discountAmount?.toLocaleString()} FCFA économisé{order.promotion?.name ? ` (${order.promotion.name})` : ""}</p>
+                        )}
+                      </div>
                       {tab === "active" && (
                         <span className="flex items-center gap-1 text-xs text-green-400">
                           <Eye className="w-3 h-3" /> {isDriver ? "Voir la carte" : "Suivre en direct"}
@@ -611,7 +613,7 @@ export default function CommandesPage() {
                   {/* Bouton itineraire pour livreur/admin */}
                   {isDriver && order.deliveryLat && order.deliveryLng && (tab === "active" || tab === "delivered") && (
                     <Link
-                      href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}`}
+                      href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                       className="mt-2 w-full py-2 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Navigation className="w-3.5 h-3.5" />

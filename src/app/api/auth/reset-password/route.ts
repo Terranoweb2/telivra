@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (newPassword.length < 6) {
-      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caracteres" }, { status: 400 });
+      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caractères" }, { status: 400 });
     }
 
     // Verifier le code
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!resetCode) {
-      return NextResponse.json({ error: "Code invalide ou expire" }, { status: 400 });
+      return NextResponse.json({ error: "Code invalide ou expiré" }, { status: 400 });
     }
 
     // Marquer le code comme utilise
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       data: { hashedPassword },
     });
 
-    return NextResponse.json({ message: "Mot de passe mis a jour avec succes" });
+    return NextResponse.json({ message: "Mot de passe mis à jour avec succès" });
   } catch (err) {
     console.error("Erreur reset-password:", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

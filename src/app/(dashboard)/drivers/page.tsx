@@ -43,7 +43,7 @@ export default function DriversPage() {
         <StatCardCentered
           icon={CheckCircle}
           value={totalCompleted}
-          label="Livrees"
+          label="Livrées"
           color="green"
         />
         <StatCardCentered
@@ -84,7 +84,7 @@ export default function DriversPage() {
                 <Card className="bg-gray-800/50 border-0">
                   <CardContent className="p-2 text-center">
                     <p className="text-sm font-bold text-white">{driver.stats.completed}</p>
-                    <p className="text-[10px] text-gray-500">Livrees</p>
+                    <p className="text-[10px] text-gray-500">Livrées</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-gray-800/50 border-0">
@@ -98,7 +98,7 @@ export default function DriversPage() {
           </Card>
         ))}
         {drivers.length === 0 && (
-          <EmptyState icon={Truck} message="Aucun livreur enregistre" />
+          <EmptyState icon={Truck} message="Aucun livreur enregistré" />
         )}
       </div>
     </div>

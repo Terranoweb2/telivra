@@ -17,7 +17,7 @@ interface TabGroupProps {
 
 export function TabGroup({ tabs, active, onChange, className }: TabGroupProps) {
   return (
-    <div className={cn("flex bg-gray-900 border border-gray-800 rounded-xl p-1", className)}>
+    <div className={cn("flex bg-gray-900 border border-gray-800 rounded-xl p-1 overflow-x-auto scrollbar-hide", className)}>
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = active === tab.key;
@@ -26,11 +26,11 @@ export function TabGroup({ tabs, active, onChange, className }: TabGroupProps) {
             key={tab.key}
             onClick={() => onChange(tab.key)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              "flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
               isActive ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white"
             )}
           >
-            {Icon && <Icon className="w-4 h-4" />}
+            {Icon && <Icon className="w-4 h-4 shrink-0" />}
             {tab.label}
             {tab.count !== undefined && (
               <span className={cn(

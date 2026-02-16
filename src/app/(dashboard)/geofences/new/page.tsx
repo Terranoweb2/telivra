@@ -64,7 +64,7 @@ export default function NewGeofencePage() {
         router.push("/geofences");
       } else {
         const err = await res.json();
-        alert(err.error || "Erreur lors de la creation");
+        alert(err.error || "Erreur lors de la création");
       }
     } finally {
       setSaving(false);
@@ -134,7 +134,7 @@ export default function NewGeofencePage() {
 
           {type === "CIRCLE" && (
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Rayon (metres)</label>
+              <label className="block text-sm text-gray-400 mb-1">Rayon (mètres)</label>
               <input
                 type="number"
                 value={radiusMeters}

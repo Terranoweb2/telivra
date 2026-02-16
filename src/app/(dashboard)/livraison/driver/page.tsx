@@ -162,11 +162,11 @@ export default function DriverPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white">Espace Livreur</h1>
-          <p className="text-gray-400 text-sm mt-1">Gerez vos livraisons</p>
+          <p className="text-gray-400 text-sm mt-1">Gérez vos livraisons</p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600/20 rounded-full">
           <Wifi className="w-3 h-3 text-green-400 animate-pulse" />
-          <span className="text-[10px] text-green-400 font-medium">Connecte</span>
+          <span className="text-[10px] text-green-400 font-medium">Connecté</span>
         </div>
       </div>
 

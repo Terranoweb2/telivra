@@ -3,14 +3,20 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const ref = searchParams.get("ref");
   const phone = searchParams.get("phone");
 
-  if (!phone || phone.length < 8) {
-    return NextResponse.json({ error: "Numero de telephone invalide" }, { status: 400 });
+  const where: any = {};
+  if (ref && ref.trim().length >= 3) {
+    where.orderNumber = { contains: ref.trim().toUpperCase(), mode: "insensitive" };
+  } else if (phone && phone.length >= 8) {
+    where.guestPhone = phone;
+  } else {
+    return NextResponse.json({ error: "Référence ou téléphone requis" }, { status: 400 });
   }
 
   const orders = await prisma.order.findMany({
-    where: { guestPhone: phone },
+    where,
     include: {
       items: { include: { product: true } },
       delivery: {

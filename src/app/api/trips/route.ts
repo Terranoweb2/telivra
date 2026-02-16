@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const existing = await prisma.trip.findFirst({
     where: { deviceId, status: "IN_PROGRESS" },
   });
-  if (existing) return NextResponse.json({ error: "Un trajet est deja en cours" }, { status: 409 });
+  if (existing) return NextResponse.json({ error: "Un trajet est déjà en cours" }, { status: 409 });
 
   const trip = await prisma.trip.create({
     data: {

@@ -124,7 +124,7 @@ export default function UsersPage() {
                 <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
                   <span>{user._count?.clientOrders || 0} commandes</span>
                   <span>{user._count?.driverDeliveries || 0} livraisons</span>
-                  {user.role === "COOK" && <span className="text-amber-400/70">{user._count?.cookOrders || 0} plats prepares</span>}
+                  {user.role === "COOK" && <span className="text-amber-400/70">{user._count?.cookOrders || 0} plats préparés</span>}
                   <span>Inscrit le {new Date(user.createdAt).toLocaleDateString("fr-FR")}</span>
                 </div>
               </CardContent>

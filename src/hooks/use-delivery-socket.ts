@@ -27,7 +27,7 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
   useEffect(() => {
     const socket = io({
       path: "/socket.io",
-      transports: ["websocket", "polling"],
+      transports: ["polling"],
     });
     socketRef.current = socket;
 
@@ -47,7 +47,7 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       }
     });
 
-    // Position du livreur mise a jour
+    // Position du livreur mise à jour
     socket.on("delivery:position", (data) => {
       handlersRef.current.onPosition?.(data);
     });
@@ -57,7 +57,7 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       handlersRef.current.onStatusChange?.(data);
     });
 
-    // Livraison acceptee par un livreur
+    // Livraison acceptée par un livreur
     socket.on("delivery:accepted", (data) => {
       handlersRef.current.onAccepted?.(data);
     });
@@ -77,7 +77,7 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       handlersRef.current.onCookAccepted?.(data);
     });
 
-    // Commande prete (cuisine terminee — pour livreurs et client)
+    // Commande prête (cuisine terminee — pour livreurs et client)
     socket.on("order:ready", (data) => {
       handlersRef.current.onOrderReady?.(data);
     });

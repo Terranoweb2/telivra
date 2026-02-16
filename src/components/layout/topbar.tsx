@@ -84,11 +84,11 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
               <div className="p-1.5">
                 <Link href="/settings" onClick={() => setShowDropdown(false)}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
-                  <Settings className="w-4 h-4" /> Parametres
+                  <Settings className="w-4 h-4" /> Paramètres
                 </Link>
                 <button onClick={() => signOut({ callbackUrl: "/login" })}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full">
-                  <LogOut className="w-4 h-4" /> Deconnexion
+                  <LogOut className="w-4 h-4" /> Déconnexion
                 </button>
               </div>
             </div>

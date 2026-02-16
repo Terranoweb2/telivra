@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 const ALLOWED_FIELDS = [
   "name", "description", "price", "category", "shopName",
   "image", "isAvailable", "cookingTimeMin", "isExtra", "paymentMethod",
+  "discountPercent", "discountAmount",
 ];
 
 const VALID_CATEGORIES = ["RESTAURANT", "GROCERY", "PHARMACY", "ELECTRONICS", "OTHER"];
@@ -42,11 +43,23 @@ export async function PUT(
   if (data.isAvailable !== undefined) {
     data.isAvailable = data.isAvailable !== false;
   }
+  if (data.discountPercent !== undefined) {
+    data.discountPercent = data.discountPercent ? parseFloat(data.discountPercent) : null;
+    if (data.discountPercent !== null && (data.discountPercent < 0 || data.discountPercent > 100)) {
+      return NextResponse.json({ error: "Pourcentage invalide (0-100)" }, { status: 400 });
+    }
+  }
+  if (data.discountAmount !== undefined) {
+    data.discountAmount = data.discountAmount ? parseFloat(data.discountAmount) : null;
+    if (data.discountAmount !== null && data.discountAmount < 0) {
+      return NextResponse.json({ error: "Montant remise invalide" }, { status: 400 });
+    }
+  }
   if (data.category && !VALID_CATEGORIES.includes(data.category)) {
-    return NextResponse.json({ error: "Categorie invalide" }, { status: 400 });
+    return NextResponse.json({ error: "Catégorie invalide" }, { status: 400 });
   }
   if (data.paymentMethod && !VALID_PAYMENT_METHODS.includes(data.paymentMethod)) {
-    return NextResponse.json({ error: "Methode de paiement invalide" }, { status: 400 });
+    return NextResponse.json({ error: "Méthode de paiement invalide" }, { status: 400 });
   }
 
   try {

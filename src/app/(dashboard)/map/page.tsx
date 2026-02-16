@@ -135,8 +135,7 @@ export default function MapPage() {
       setSearching(true);
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-          { headers: { "Accept-Language": "fr" } }
+          `/api/geocode/search?q=${encodeURIComponent(query)}`
         );
         setSearchResults(await res.json());
       } catch { setSearchResults([]); }
@@ -198,7 +197,7 @@ export default function MapPage() {
   function viewPosition() {
     const lat = parseFloat(trackLat); const lng = parseFloat(trackLng);
     if (isNaN(lat) || isNaN(lng)) return setTrackMsg("Coordonnees invalides");
-    setManualMarker({ lat, lng }); setTrackMsg(`Position affichee: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setManualMarker({ lat, lng }); setTrackMsg(`Position affichée: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
   }
   async function sendPosition() {
     const lat = parseFloat(trackLat); const lng = parseFloat(trackLng);
@@ -210,9 +209,9 @@ export default function MapPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serialNumber: trackSerial, latitude: lat, longitude: lng, speed: 0 }),
       });
-      if (res.ok) { setTrackMsg("Position envoyee !"); setManualMarker({ lat, lng }); refresh(); }
+      if (res.ok) { setTrackMsg("Position envoyée !"); setManualMarker({ lat, lng }); refresh(); }
       else { const err = await res.json(); setTrackMsg(err.error || "Erreur"); }
-    } catch { setTrackMsg("Erreur reseau"); }
+    } catch { setTrackMsg("Erreur réseau"); }
     setSending(false);
   }
 
@@ -420,14 +419,14 @@ export default function MapPage() {
             <div className="flex items-center gap-4 mb-3">
               <div className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-orange-500" /><span className="text-sm font-semibold text-gray-900">{fmt(routeInfo.distance)}</span></div>
               <div className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-green-500" /><span className="text-sm font-semibold text-gray-900">{fmtTime(routeInfo.time)}</span></div>
-              <div className="flex items-center gap-1.5"><Navigation className="w-4 h-4 text-purple-500" /><span className="text-sm text-gray-500">Arrivee {eta(routeInfo.time)}</span></div>
+              <div className="flex items-center gap-1.5"><Navigation className="w-4 h-4 text-purple-500" /><span className="text-sm text-gray-500">Arrivée {eta(routeInfo.time)}</span></div>
             </div>
           </div>
           <div className="flex gap-2 px-4 pb-4">
             <button onClick={startNav} className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold">
-              <Navigation className="w-5 h-5" /> Demarrer
+              <Navigation className="w-5 h-5" /> Démarrer
             </button>
-            <button onClick={() => setShowSteps(!showSteps)} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm">Etapes</button>
+            <button onClick={() => setShowSteps(!showSteps)} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm">Étapes</button>
             <button onClick={stopNav} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm"><X className="w-5 h-5" /></button>
           </div>
           {showSteps && routeSteps.length > 0 && (
@@ -459,7 +458,7 @@ export default function MapPage() {
               <div className="text-center"><Ruler className="w-4 h-4 text-green-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{routeInfo ? fmt(routeInfo.distance) : "--"}</p><p className="text-xs text-gray-500">restant</p></div>
               <div className="text-center"><Clock className="w-4 h-4 text-purple-500 mx-auto mb-0.5" /><p className="text-xl font-bold text-gray-900">{routeInfo ? eta(routeInfo.time) : "--"}</p><p className="text-xs text-gray-500">arrivee</p></div>
             </div>
-            <button onClick={stopNav} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold">Arreter la navigation</button>
+            <button onClick={stopNav} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold">Arrêter la navigation</button>
           </div>
         </div>
       )}

@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 export async function GET() {
   const session = await auth();
   if (!session?.user || (session.user as any).role !== "ADMIN")
-    return NextResponse.json({ error: "Non autorise" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -14,14 +14,15 @@ export async function GET() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [
-    todayOrders, weekOrders, monthOrders, allOrders,
+    todayDelivered, weekDelivered, monthDelivered, allOrders,
     pendingCount, activeDeliveries, deliveredToday,
     preparingCount, readyCount, pendingCookCount, preparedToday,
-    cashOrders, onlineOrders,
+    cashDelivered, onlineDelivered,
   ] = await Promise.all([
-    prisma.order.findMany({ where: { createdAt: { gte: todayStart } }, select: { totalAmount: true, status: true } }),
-    prisma.order.findMany({ where: { createdAt: { gte: weekStart } }, select: { totalAmount: true, status: true } }),
-    prisma.order.findMany({ where: { createdAt: { gte: monthStart } }, select: { totalAmount: true, status: true } }),
+    // Recettes = seulement les commandes DELIVERED
+    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: todayStart } }, select: { totalAmount: true } }),
+    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: weekStart } }, select: { totalAmount: true } }),
+    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: monthStart } }, select: { totalAmount: true } }),
     prisma.order.count(),
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.delivery.count({ where: { status: { in: ["PICKING_UP", "DELIVERING"] } } }),
@@ -31,18 +32,23 @@ export async function GET() {
     prisma.order.count({ where: { status: "READY" } }),
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.order.count({ where: { status: { in: ["READY", "PICKED_UP", "DELIVERING", "DELIVERED"] }, cookReadyAt: { gte: todayStart } } }),
-    // Payment breakdown
+    // Payment breakdown — seulement DELIVERED
     prisma.order.findMany({
-      where: { createdAt: { gte: monthStart }, status: { not: "CANCELLED" }, paymentMethod: "CASH" },
+      where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "CASH" },
       select: { totalAmount: true },
     }),
     prisma.order.findMany({
-      where: { createdAt: { gte: monthStart }, status: { not: "CANCELLED" }, paymentMethod: "ONLINE" },
+      where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "ONLINE" },
       select: { totalAmount: true },
     }),
   ]);
 
-  // Revenue par jour (7 derniers jours)
+  // Nombre total de commandes (livrées) pour chaque période
+  const todayOrdersCount = await prisma.order.count({ where: { createdAt: { gte: todayStart } } });
+  const weekOrdersCount = await prisma.order.count({ where: { createdAt: { gte: weekStart } } });
+  const monthOrdersCount = await prisma.order.count({ where: { createdAt: { gte: monthStart } } });
+
+  // Revenue par jour (7 derniers jours) — seulement DELIVERED
   const dailyRevenue = [];
   for (let i = 6; i >= 0; i--) {
     const dayStart = new Date(todayStart);
@@ -50,7 +56,7 @@ export async function GET() {
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
     const orders = await prisma.order.findMany({
-      where: { createdAt: { gte: dayStart, lt: dayEnd }, status: { not: "CANCELLED" } },
+      where: { createdAt: { gte: dayStart, lt: dayEnd }, status: "DELIVERED" },
       select: { totalAmount: true },
     });
     dailyRevenue.push({
@@ -64,9 +70,9 @@ export async function GET() {
   const sum = (orders: { totalAmount: number }[]) => Math.round(orders.reduce((s, o) => s + o.totalAmount, 0));
 
   return NextResponse.json({
-    today: { revenue: sum(todayOrders), orders: todayOrders.length },
-    week: { revenue: sum(weekOrders), orders: weekOrders.length },
-    month: { revenue: sum(monthOrders), orders: monthOrders.length },
+    today: { revenue: sum(todayDelivered), orders: todayOrdersCount },
+    week: { revenue: sum(weekDelivered), orders: weekOrdersCount },
+    month: { revenue: sum(monthDelivered), orders: monthOrdersCount },
     totals: { orders: allOrders, pending: pendingCount, activeDeliveries, deliveredToday },
     dailyRevenue,
     cookStats: {
@@ -76,8 +82,8 @@ export async function GET() {
       prepared: preparedToday,
     },
     paymentBreakdown: {
-      cash: { revenue: sum(cashOrders), count: cashOrders.length },
-      online: { revenue: sum(onlineOrders), count: onlineOrders.length },
+      cash: { revenue: sum(cashDelivered), count: cashDelivered.length },
+      online: { revenue: sum(onlineDelivered), count: onlineDelivered.length },
     },
   });
 }

@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     },
   });
 
-  if (!trip) return NextResponse.json({ error: "Trajet non trouve" }, { status: 404 });
+  if (!trip) return NextResponse.json({ error: "Trajet non trouvé" }, { status: 404 });
   return NextResponse.json(trip);
 }
 
