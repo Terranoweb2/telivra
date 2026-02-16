@@ -307,3 +307,13 @@ html:not(.dark) nav .bg-gray-950 {
   border-color: #e2e8f0 !important;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
 }
+
+/* --- Smooth horizontal scroll avec snap --- */
+.scrollbar-hide {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.scrollbar-hide > * {
+  scroll-snap-align: start;
+}
