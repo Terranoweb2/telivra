@@ -470,7 +470,7 @@ export default function TrackDetailPage() {
               <div className="px-4 pb-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>{order.items?.length || 0} article(s)</span>
+                  <span>{order.items?.length || 0} repas</span>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-orange-600">{((order.totalAmount || 0) + deliveryFee).toLocaleString()} FCFA</p>

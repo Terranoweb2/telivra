@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { LogOut, Menu, Settings, ChevronDown, Sun, Moon } from "lucide-react";
 import { AlertBell } from "./alert-bell";
+import { getCachedSettings } from "@/lib/settings-cache";
 
 interface TopBarProps {
   onMenuToggle: () => void;
@@ -16,9 +17,16 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [showDropdown, setShowDropdown] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [brandName, setBrandName] = useState("Terrano");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    getCachedSettings().then((s) => {
+      if (s.restaurantName) setBrandName(s.restaurantName);
+    });
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -43,7 +51,7 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
           className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg hidden lg:block">
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-white font-semibold text-sm lg:hidden">Terrano</span>
+        <span className="text-white font-semibold text-sm lg:hidden">{brandName}</span>
       </div>
 
       <div className="flex items-center gap-2">

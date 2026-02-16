@@ -1168,7 +1168,7 @@ export default function LandingPage() {
                         <div className="text-sm text-gray-400 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
                       )}
                       <p className="text-xs text-gray-500 mt-2">
-                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} article(s)`}
+                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} repas`}
                       </p>
                     </div>
                   </div>
