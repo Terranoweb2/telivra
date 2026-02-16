@@ -224,3 +224,63 @@ html:not(.dark) .backdrop-blur-sm[class*="bg-black"] {
 html:not(.dark) .backdrop-blur-sm .text-gray-400 {
   color: #334155 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Brand theme — override orange avec couleur admin
+   Usage: <div class="brand-theme" style="--brand: #ea580c">
+   ═══════════════════════════════════════════════════════════ */
+.brand-theme {
+  --brand: #ea580c;
+  --brand-light: color-mix(in srgb, var(--brand) 85%, white);
+  --brand-dark: color-mix(in srgb, var(--brand) 80%, black);
+  --brand-20: color-mix(in srgb, var(--brand) 20%, transparent);
+  --brand-15: color-mix(in srgb, var(--brand) 15%, transparent);
+  --brand-10: color-mix(in srgb, var(--brand) 10%, transparent);
+  --brand-50: color-mix(in srgb, var(--brand) 50%, transparent);
+  --brand-30: color-mix(in srgb, var(--brand) 30%, transparent);
+  --brand-pale: color-mix(in srgb, var(--brand) 30%, white);
+}
+
+/* Backgrounds */
+.brand-theme .bg-orange-600 { background-color: var(--brand) !important; }
+.brand-theme .bg-orange-500 { background-color: var(--brand-light) !important; }
+.brand-theme .bg-orange-700 { background-color: var(--brand-dark) !important; }
+.brand-theme .bg-orange-600\/20 { background-color: var(--brand-20) !important; }
+.brand-theme .bg-orange-600\/15 { background-color: var(--brand-15) !important; }
+.brand-theme .bg-orange-600\/10 { background-color: var(--brand-10) !important; }
+
+/* Text */
+.brand-theme .text-orange-500 { color: var(--brand) !important; }
+.brand-theme .text-orange-400 { color: var(--brand-light) !important; }
+.brand-theme .text-orange-300 { color: var(--brand-light) !important; }
+.brand-theme .text-orange-100 { color: var(--brand-pale) !important; }
+
+/* Borders */
+.brand-theme .border-orange-500 { border-color: var(--brand) !important; }
+.brand-theme .border-orange-500\/50 { border-color: var(--brand-50) !important; }
+.brand-theme .border-orange-600\/30 { border-color: var(--brand-30) !important; }
+
+/* Gradients */
+.brand-theme .from-orange-600 { --tw-gradient-from: var(--brand) !important; }
+.brand-theme .from-orange-500 { --tw-gradient-from: var(--brand-light) !important; }
+.brand-theme .to-orange-500 { --tw-gradient-to: var(--brand-light) !important; }
+.brand-theme .to-orange-400 { --tw-gradient-to: var(--brand-light) !important; }
+
+/* Shadow */
+.brand-theme .shadow-orange-600\/20 { --tw-shadow-color: var(--brand-20) !important; }
+
+/* Focus */
+.brand-theme .focus\:border-orange-500:focus { border-color: var(--brand) !important; }
+.brand-theme .focus\:border-orange-500\/50:focus { border-color: var(--brand-50) !important; }
+
+/* Hover backgrounds */
+.brand-theme .hover\:bg-orange-500:hover { background-color: var(--brand-light) !important; }
+.brand-theme .hover\:bg-orange-700:hover { background-color: var(--brand-dark) !important; }
+.brand-theme .hover\:bg-orange-600:hover { background-color: var(--brand) !important; }
+
+/* Hover gradients */
+.brand-theme .hover\:from-orange-500:hover { --tw-gradient-from: var(--brand-light) !important; }
+.brand-theme .hover\:to-orange-400:hover { --tw-gradient-to: var(--brand-light) !important; }
+
+/* Hover borders */
+.brand-theme .hover\:border-orange-500\/50:hover { border-color: var(--brand-50) !important; }

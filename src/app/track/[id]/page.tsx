@@ -468,9 +468,7 @@ export default function TrackDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</p>
-                  {order.discountAmount > 0 && (
-                    <p className="text-[10px] text-green-600 font-medium">-{order.discountAmount?.toLocaleString()} éco.</p>
-                  )}
+
                 </div>
               </div>
             )}
@@ -538,12 +536,21 @@ export default function TrackDetailPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Détails</h3>
                   <div className="space-y-1.5">
-                    {order.items?.map((item: any) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{item.quantity}x {item.product?.name}</span>
-                        <span className="text-gray-800 font-medium">{item.price?.toLocaleString()} FCFA</span>
-                      </div>
-                    ))}
+                    {order.items?.map((item: any) => {
+                      const originalTotal = (item.product?.price || 0) * item.quantity;
+                      const hasItemDiscount = originalTotal > item.price && item.price > 0;
+                      return (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-600">{item.quantity}x {item.product?.name}</span>
+                          <span className="text-gray-800 font-medium">
+                            {hasItemDiscount && (
+                              <span className="text-gray-400 line-through text-xs mr-1.5">{originalTotal.toLocaleString()}</span>
+                            )}
+                            {item.price?.toLocaleString()} FCFA
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="border-t border-gray-200 mt-2 pt-2 space-y-1.5">
                     {deliveryFee > 0 && (
@@ -552,12 +559,7 @@ export default function TrackDetailPage() {
                         <span>{deliveryFee.toLocaleString()} FCFA</span>
                       </div>
                     )}
-                    {order.discountAmount > 0 && (
-                      <div className="flex justify-between text-xs text-green-600 font-medium">
-                        <span>Réduction{order.promotion?.name ? ` (${order.promotion.name})` : ""}</span>
-                        <span>-{order.discountAmount?.toLocaleString()} FCFA</span>
-                      </div>
-                    )}
+
                     <div className="flex justify-between text-sm font-bold text-gray-900">
                       <span>Total</span>
                       <span className="text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</span>

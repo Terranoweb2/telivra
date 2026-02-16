@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getCachedSettings } from "@/lib/settings-cache";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -52,6 +53,7 @@ interface SiteSettings {
   defaultPaymentMethod: string;
   deliveryFee: number;
   currency: string;
+  buttonColor: string | null;
 }
 
 export default function CommanderPage() {
@@ -75,7 +77,7 @@ export default function CommanderPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/products").then((r) => r.json()),
-      fetch("/api/settings").then((r) => r.json()).catch(() => null),
+      getCachedSettings(),
       fetch("/api/promotions").then((r) => r.json()).catch(() => []),
     ]).then(([prods, sett, promos]) => {
       setProducts(Array.isArray(prods) ? prods : []);
@@ -186,7 +188,7 @@ export default function CommanderPage() {
   }
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-24 brand-theme" style={{ "--brand": settings?.buttonColor || "#ea580c" } as React.CSSProperties}>
       <PageHeader
         title="Commander"
         subtitle="Choisissez vos repas et passez commande"

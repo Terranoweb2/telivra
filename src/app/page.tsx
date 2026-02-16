@@ -380,7 +380,7 @@ export default function LandingPage() {
   const restaurantName = settings?.restaurantName || "Terrano";
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-950 text-white brand-theme" style={{ "--brand": settings?.buttonColor || "#ea580c" } as React.CSSProperties}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
@@ -422,8 +422,7 @@ export default function LandingPage() {
         <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
           {settings?.heroSubtitle || "Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible."}
         </p>
-        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-full text-white text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ backgroundColor: settings?.buttonColor || "#ea580c" }}>
+        <a href="#menu" className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full text-white text-sm font-semibold transition-colors">
           Voir le menu <ArrowDown className="w-4 h-4" />
         </a>
 

@@ -501,16 +501,23 @@ export default function OrderDetailPage() {
         <CardContent>
           <p className="text-sm font-semibold text-white mb-2">Articles</p>
           <div className="space-y-2">
-            {order.items?.map((item: any) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-gray-300">
-                  {item.quantity}x {item.product?.name}
-                </span>
-                <span className="text-gray-400">
-                  {item.price?.toLocaleString()} FCFA
-                </span>
-              </div>
-            ))}
+            {order.items?.map((item: any) => {
+              const originalTotal = (item.product?.price || 0) * item.quantity;
+              const hasItemDiscount = originalTotal > item.price && item.price > 0;
+              return (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-gray-300">
+                    {item.quantity}x {item.product?.name}
+                  </span>
+                  <span className="text-gray-400">
+                    {hasItemDiscount && (
+                      <span className="text-gray-600 line-through text-xs mr-1.5">{originalTotal.toLocaleString()}</span>
+                    )}
+                    <span className={hasItemDiscount ? "text-green-400 font-medium" : ""}>{item.price?.toLocaleString()} FCFA</span>
+                  </span>
+                </div>
+              );
+            })}
             <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-gray-800">
               <span>Total</span>
               <span>{order.totalAmount?.toLocaleString()} FCFA</span>

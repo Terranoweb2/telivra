@@ -504,9 +504,7 @@ export default function CommandesPage() {
                       ))}
                     </div>
                     <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
-                    {order.discountAmount > 0 && (
-                      <p className="text-[10px] text-green-400 font-medium">-{order.discountAmount?.toLocaleString()} FCFA économisé</p>
-                    )}
+
                   </CardContent>
                 </Card>
               );
@@ -536,9 +534,7 @@ export default function CommandesPage() {
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</span>
-                        {order.discountAmount > 0 && (
-                          <p className="text-[9px] text-green-400">-{order.discountAmount?.toLocaleString()} éco.</p>
-                        )}
+
                       </div>
                     </div>
                     <div className="text-xs text-gray-400 mb-3">
@@ -598,9 +594,7 @@ export default function CommandesPage() {
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800">
                       <div>
                         <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
-                        {order.discountAmount > 0 && (
-                          <p className="text-[10px] text-green-400 font-medium">-{order.discountAmount?.toLocaleString()} FCFA économisé{order.promotion?.name ? ` (${order.promotion.name})` : ""}</p>
-                        )}
+
                       </div>
                       {tab === "active" && (
                         <span className="flex items-center gap-1 text-xs text-green-400">
