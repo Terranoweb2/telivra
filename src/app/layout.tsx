@@ -30,7 +30,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
           {children}
-          <Toaster position="top-center" richColors closeButton duration={3000} />
+          <Toaster position="top-center" richColors closeButton duration={4000}
+              toastOptions={{
+                classNames: {
+                  toast: "!bg-gray-900 !border-gray-800 !text-white",
+                  description: "!text-gray-400",
+                  actionButton: "!bg-orange-600 !text-white",
+                  cancelButton: "!bg-gray-800 !text-gray-300",
+                  closeButton: "!bg-gray-800 !text-gray-400 !border-gray-700",
+                },
+              }} />
           <ServiceWorkerRegister />
           <OfflineIndicator />
         </ThemeProvider>

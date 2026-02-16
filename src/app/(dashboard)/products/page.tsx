@@ -206,6 +206,7 @@ export default function ProductsPage() {
       if (res.ok) {
         const { url } = await res.json();
         setForm((prev) => ({ ...prev, image: url }));
+        setImagePreview(url);
         toast.success("Image importée");
       } else {
         const err = await res.json().catch(() => null);
@@ -311,9 +312,17 @@ export default function ProductsPage() {
   }
 
   function confirmDeleteProduct(id: string, name: string) {
-    toast.warning(`Supprimer "${name}" ?`, {
-      description: "Cette action est irreversible",
-      action: { label: "Supprimer", onClick: () => deleteProduct(id) },
+    toast(`Supprimer "${name}" ?`, {
+      description: "Cette action est irréversible.",
+      duration: Infinity,
+      classNames: {
+        toast: "!bg-gray-900 !border-red-600/30 !border",
+        title: "!text-white !font-semibold",
+        description: "!text-gray-400",
+        actionButton: "!bg-red-600 !text-white !font-semibold !rounded-lg !px-3 !py-1.5 hover:!bg-red-700",
+        cancelButton: "!bg-gray-800 !text-gray-300 !font-medium !rounded-lg !px-3 !py-1.5 hover:!bg-gray-700",
+      },
+      action: { label: "Oui, supprimer", onClick: () => deleteProduct(id) },
       cancel: { label: "Annuler", onClick: () => {} },
     });
   }
@@ -373,9 +382,17 @@ export default function ProductsPage() {
   }
 
   function confirmDeletePromo(id: string, name: string) {
-    toast.warning(`Supprimer "${name}" ?`, {
-      description: "Cette action est irréversible",
-      action: { label: "Supprimer", onClick: async () => {
+    toast(`Supprimer la promo "${name}" ?`, {
+      description: "Cette action est irréversible.",
+      duration: Infinity,
+      classNames: {
+        toast: "!bg-gray-900 !border-red-600/30 !border",
+        title: "!text-white !font-semibold",
+        description: "!text-gray-400",
+        actionButton: "!bg-red-600 !text-white !font-semibold !rounded-lg !px-3 !py-1.5 hover:!bg-red-700",
+        cancelButton: "!bg-gray-800 !text-gray-300 !font-medium !rounded-lg !px-3 !py-1.5 hover:!bg-gray-700",
+      },
+      action: { label: "Oui, supprimer", onClick: async () => {
         try {
           const res = await fetch(`/api/promotions/${id}`, { method: "DELETE" });
           if (res.ok) { toast.success("Promotion supprimée"); loadData(); }
@@ -574,7 +591,7 @@ export default function ProductsPage() {
                 return (
                   <Card key={promo.id}>
                     <CardContent className="p-3 space-y-2">
-                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img src={imgs[0]} alt={promo.name} className="w-full h-32 object-cover rounded-lg" /> : null; })()}
+                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img src={imgs[0]} alt={promo.name} className="w-full aspect-[16/9] object-cover rounded-lg" /> : null; })()}
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-semibold text-white">{promo.name}</p>
@@ -685,7 +702,7 @@ export default function ProductsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -842,7 +859,7 @@ export default function ProductsPage() {
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {promoImages.map((img, i) => (
                   <div key={i} className="relative group">
-                    <img src={img} alt="" className="w-full aspect-video object-cover rounded-lg border border-gray-700" />
+                    <img src={img} alt="" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
                     <button type="button" onClick={() => setPromoImages(prev => prev.filter((_, j) => j !== i))}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
                       <X className="w-3 h-3" />

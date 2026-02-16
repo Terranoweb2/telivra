@@ -1133,7 +1133,7 @@ export default function LandingPage() {
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
                     {currentImg && (
                       <div className="relative">
-                        <img src={currentImg} alt={promo.name} className="w-full max-h-64 object-contain bg-black/20" />
+                        <img src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
                         {allImgs.length > 1 && (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
