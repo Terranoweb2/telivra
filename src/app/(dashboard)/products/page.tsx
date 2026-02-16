@@ -2,16 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-  Loader2, Package, Plus, Trash2, ShoppingBag, TrendingUp,
-  Clock, CheckCircle, Truck, XCircle, Store, Search,
+  Loader2, Package, Plus, Trash2, Search,
   UtensilsCrossed, ShoppingCart, Pill, Smartphone,
-  Timer, Droplets, CreditCard, Edit2, X, Save,
+  Timer, Droplets, Edit2, X, Save,
   ImageIcon, Link2, Upload, Bold, Italic, Underline, List,
-  Percent, Calendar, Tag,
+  Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { orderStatusLabels, paymentMethodLabels } from "@/lib/order-status";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCardCentered, StatCardBadge } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -20,11 +18,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StarRating } from "@/components/ui/star-rating";
 import { Dialog } from "@/components/ui/dialog";
 
-type Tab = "products" | "orders" | "revenue" | "promotions";
+type Tab = "products" | "promotions";
 type ProductFilter = "all" | "meals" | "extras";
 type ImageMode = "link" | "upload";
 type DialogMode = "add" | "edit";
-type OrderFilter = "all" | "PENDING" | "PREPARING" | "READY" | "DELIVERING" | "DELIVERED" | "CANCELLED";
 
 const categoryConfig: Record<string, { label: string; icon: any }> = {
   RESTAURANT: { label: "Restaurant", icon: UtensilsCrossed },
@@ -36,7 +33,6 @@ const categoryConfig: Record<string, { label: string; icon: any }> = {
 
 const inputClass = "px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500";
 
-const ORDERS_PER_PAGE = 20;
 const PRODUCTS_PER_PAGE = 18;
 
 function RichTextArea({ initialValue, onChange }: { initialValue: string; onChange: (html: string) => void }) {
@@ -103,17 +99,10 @@ export default function ProductsPage() {
     if (t && ["products", "promotions", "orders", "revenue"].includes(t)) setTab(t);
   }, []);
   const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [revenue, setRevenue] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
   const [productSearch, setProductSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
-
-  // Commandes: filtre + recherche + pagination
-  const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
-  const [orderSearch, setOrderSearch] = useState("");
-  const [orderPage, setOrderPage] = useState(1);
 
   // Dialog ajout/edition
   const [showDialog, setShowDialog] = useState(false);
@@ -131,13 +120,13 @@ export default function ProductsPage() {
   const [promoDialogMode, setPromoDialogMode] = useState<DialogMode>("add");
   const [editPromoId, setEditPromoId] = useState<string | null>(null);
   const [promoForm, setPromoForm] = useState({
-    name: "", description: "", image: "",
+    name: "", description: "",
     discountType: "PERCENTAGE", discountValue: "",
     startDate: "", endDate: "",
     isActive: true, appliesToAll: true,
     productIds: [] as string[],
   });
-  const [promoImagePreview, setPromoImagePreview] = useState<string | null>(null);
+  const [promoImages, setPromoImages] = useState<string[]>([]);
   const [promoImageMode, setPromoImageMode] = useState<ImageMode>("upload");
   const promoFileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -151,19 +140,14 @@ export default function ProductsPage() {
   }, []);
 
   // Reset page quand filtre change
-  useEffect(() => { setOrderPage(1); }, [orderFilter, orderSearch]);
   useEffect(() => { setProductPage(1); }, [productFilter, productSearch]);
 
   function loadData() {
     Promise.all([
       fetch("/api/products").then((r) => r.json()),
-      fetch("/api/orders").then((r) => r.json()),
-      fetch("/api/stats/revenue").then((r) => r.json()),
       fetch("/api/promotions?all=true").then((r) => r.json()),
-    ]).then(([p, o, r, promos]) => {
+    ]).then(([p, promos]) => {
       setProducts(Array.isArray(p) ? p : []);
-      setOrders(Array.isArray(o) ? o : []);
-      setRevenue(r);
       setPromotions(Array.isArray(promos) ? promos : []);
       setLoading(false);
     });
@@ -337,8 +321,8 @@ export default function ProductsPage() {
 
   // ── Promotions helpers ──
   function resetPromoForm() {
-    setPromoForm({ name: "", description: "", image: "", discountType: "PERCENTAGE", discountValue: "", startDate: "", endDate: "", isActive: true, appliesToAll: true, productIds: [] });
-    setPromoImagePreview(null);
+    setPromoForm({ name: "", description: "", discountType: "PERCENTAGE", discountValue: "", startDate: "", endDate: "", isActive: true, appliesToAll: true, productIds: [] });
+    setPromoImages([]);
     setPromoImageMode("upload");
     setEditPromoId(null);
     setPromoDialogMode("add");
@@ -348,15 +332,16 @@ export default function ProductsPage() {
     setPromoDialogMode("edit");
     setEditPromoId(promo.id);
     setPromoForm({
-      name: promo.name || "", description: promo.description || "", image: promo.image || "",
+      name: promo.name || "", description: promo.description || "",
       discountType: promo.discountType || "PERCENTAGE", discountValue: String(promo.discountValue || ""),
       startDate: promo.startDate ? new Date(promo.startDate).toISOString().slice(0, 16) : "",
       endDate: promo.endDate ? new Date(promo.endDate).toISOString().slice(0, 16) : "",
       isActive: promo.isActive !== false, appliesToAll: promo.appliesToAll === true,
       productIds: promo.products?.map((pp: any) => pp.productId || pp.product?.id) || [],
     });
-    if (promo.image) { setPromoImagePreview(promo.image); setPromoImageMode(promo.image.startsWith("/uploads/") ? "upload" : "link"); }
-    else { setPromoImagePreview(null); setPromoImageMode("upload"); }
+    const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : [];
+    setPromoImages(imgs);
+    setPromoImageMode("upload");
     setShowPromoDialog(true);
   }
 
@@ -365,7 +350,7 @@ export default function ProductsPage() {
     try {
       const fd = new FormData(); fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (res.ok) { const { url } = await res.json(); setPromoForm((prev) => ({ ...prev, image: url })); toast.success("Image importée"); }
+      if (res.ok) { const { url } = await res.json(); setPromoImages((prev) => [...prev, url]); toast.success("Image ajoutée"); }
       else { const err = await res.json().catch(() => null); toast.error(err?.error || "Erreur import"); }
     } catch { toast.error("Erreur réseau"); }
     setUploading(false);
@@ -375,7 +360,7 @@ export default function ProductsPage() {
     if (!promoForm.name || !promoForm.discountValue || !promoForm.startDate || !promoForm.endDate) { toast.error("Remplissez les champs requis"); return; }
     setSaving(true);
     try {
-      const body = { ...promoForm, discountValue: parseFloat(promoForm.discountValue) };
+      const body = { ...promoForm, image: promoImages.length > 0 ? JSON.stringify(promoImages) : null, discountValue: parseFloat(promoForm.discountValue) };
       const url = promoDialogMode === "edit" ? `/api/promotions/${editPromoId}` : "/api/promotions";
       const method = promoDialogMode === "edit" ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -387,13 +372,18 @@ export default function ProductsPage() {
     setSaving(false);
   }
 
-  async function deletePromo(id: string, name: string) {
-    if (!confirm(`Supprimer la promotion "${name}" ?`)) return;
-    try {
-      const res = await fetch(`/api/promotions/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("Promotion supprimée"); loadData(); }
-      else toast.error("Erreur");
-    } catch { toast.error("Erreur réseau"); }
+  function confirmDeletePromo(id: string, name: string) {
+    toast.warning(`Supprimer "${name}" ?`, {
+      description: "Cette action est irréversible",
+      action: { label: "Supprimer", onClick: async () => {
+        try {
+          const res = await fetch(`/api/promotions/${id}`, { method: "DELETE" });
+          if (res.ok) { toast.success("Promotion supprimée"); loadData(); }
+          else toast.error("Erreur");
+        } catch { toast.error("Erreur réseau"); }
+      }},
+      cancel: { label: "Annuler", onClick: () => {} },
+    });
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
@@ -401,8 +391,6 @@ export default function ProductsPage() {
   const tabItems: { key: Tab; label: string }[] = [
     { key: "products", label: "Repas" },
     { key: "promotions", label: "Promotions" },
-    { key: "orders", label: "Commandes" },
-    { key: "revenue", label: "Recettes" },
   ];
 
   // Filtrer produits
@@ -421,19 +409,7 @@ export default function ProductsPage() {
   const totalProductPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice((productPage - 1) * PRODUCTS_PER_PAGE, productPage * PRODUCTS_PER_PAGE);
 
-  // Filtrer commandes
-  const filteredOrders = orders.filter((o) => {
-    if (orderFilter !== "all" && o.status !== orderFilter) return false;
-    if (orderSearch) {
-      const q = orderSearch.toLowerCase();
-      const clientName = (o.client?.name || o.guestName || "").toLowerCase();
-      const orderId = o.id.toLowerCase();
-      if (!clientName.includes(q) && !orderId.includes(q)) return false;
-    }
-    return true;
-  });
-  const totalOrderPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
-  const paginatedOrders = filteredOrders.slice((orderPage - 1) * ORDERS_PER_PAGE, orderPage * ORDERS_PER_PAGE);
+
 
   return (
     <div className="space-y-4">
@@ -598,7 +574,7 @@ export default function ProductsPage() {
                 return (
                   <Card key={promo.id}>
                     <CardContent className="p-3 space-y-2">
-                      {promo.image && <img src={promo.image} alt={promo.name} className="w-full h-32 object-cover rounded-lg" />}
+                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img src={imgs[0]} alt={promo.name} className="w-full h-32 object-cover rounded-lg" /> : null; })()}
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-semibold text-white">{promo.name}</p>
@@ -613,7 +589,7 @@ export default function ProductsPage() {
                       <p className="text-[10px] text-gray-500">{promo.appliesToAll ? "Tous les repas et extras" : `${promo.products?.length || 0} repas/extra(s)`}</p>
                       <div className="flex items-center gap-1 pt-1.5 border-t border-gray-800">
                         <button onClick={() => openEditPromo(promo)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded transition-colors"><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={() => deletePromo(promo.id, promo.name)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => confirmDeletePromo(promo.id, promo.name)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </CardContent>
                   </Card>
@@ -624,210 +600,6 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* === COMMANDES === */}
-      {tab === "orders" && (
-        <div className="space-y-3">
-          {/* Recherche + filtres */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                placeholder="Rechercher par client ou ID..."
-                className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
-              />
-            </div>
-            <select
-              value={orderFilter}
-              onChange={(e) => setOrderFilter(e.target.value as OrderFilter)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
-            >
-              <option value="all">Tous les statuts ({orders.length})</option>
-              {Object.entries(orderStatusLabels).map(([key, val]) => {
-                const count = orders.filter((o) => o.status === key).length;
-                return count > 0 ? <option key={key} value={key}>{val.label} ({count})</option> : null;
-              })}
-            </select>
-          </div>
-
-          {/* Liste */}
-          {paginatedOrders.length === 0 ? (
-            <EmptyState icon={ShoppingBag} message="Aucune commande trouvée" />
-          ) : (
-            paginatedOrders.map((order: any) => {
-              const st = orderStatusLabels[order.status] || orderStatusLabels.PENDING;
-              return (
-                <Card key={order.id}>
-                  <CardContent>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          {order.client?.name || order.guestName || `#${order.id.slice(-6)}`}
-                        </p>
-                        <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {order.paymentMethod === "ONLINE" && (
-                          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
-                            order.paymentStatus === "PAID" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400")}>
-                            {order.paymentStatus === "PAID" ? "Payé" : "En attente"}
-                          </span>
-                        )}
-                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium", st.color)}>{st.label}</span>
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-400 space-y-0.5 mb-2">
-                      {order.items?.map((item: any) => (
-                        <p key={item.id}>{item.quantity}x {item.product?.name}</p>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
-                        <span className="text-[10px] text-gray-600">
-                          {order.paymentMethod === "ONLINE" ? "En ligne" : "Espèces"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {order.cook && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
-                            <UtensilsCrossed className="w-3 h-3" /> {order.cook.name}
-                          </span>
-                        )}
-                        {order.delivery?.driver && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
-                            <Truck className="w-3 h-3" /> {order.delivery.driver.name}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-
-          {/* Pagination */}
-          {totalOrderPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button
-                onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
-                disabled={orderPage === 1}
-                className="px-3 py-1.5 bg-gray-800 text-gray-400 rounded-lg text-xs disabled:opacity-30 hover:bg-gray-700 transition-colors"
-              >
-                Précédent
-              </button>
-              <span className="text-xs text-gray-500">
-                Page {orderPage} / {totalOrderPages} ({filteredOrders.length} résultats)
-              </span>
-              <button
-                onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
-                disabled={orderPage === totalOrderPages}
-                className="px-3 py-1.5 bg-gray-800 text-gray-400 rounded-lg text-xs disabled:opacity-30 hover:bg-gray-700 transition-colors"
-              >
-                Suivant
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* === RECETTES === */}
-      {tab === "revenue" && revenue && (
-        <div className="space-y-4">
-          {/* Cards recettes */}
-          <div className="grid grid-cols-3 gap-3">
-            <StatCardCentered
-              icon={TrendingUp}
-              value={`${revenue.today.revenue.toLocaleString()}`}
-              label={`Aujourd\u2019hui - ${revenue.today.orders} cmd`}
-              color="green"
-            />
-            <StatCardCentered
-              icon={TrendingUp}
-              value={`${revenue.week.revenue.toLocaleString()}`}
-              label={`Cette semaine - ${revenue.week.orders} cmd`}
-              color="orange"
-            />
-            <StatCardCentered
-              icon={TrendingUp}
-              value={`${revenue.month.revenue.toLocaleString()}`}
-              label={`Ce mois - ${revenue.month.orders} cmd`}
-              color="purple"
-            />
-          </div>
-
-          {/* Repartition paiement */}
-          {revenue.paymentBreakdown && (
-            <Card>
-              <CardContent>
-                <h3 className="text-sm font-semibold text-white mb-3">Repartition par mode de paiement</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-800 rounded-lg p-3 text-center">
-                    <p className="text-xs text-gray-400 mb-1">Espèces</p>
-                    <p className="text-lg font-bold text-yellow-400">{(revenue.paymentBreakdown.cash?.revenue || 0).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-600">{revenue.paymentBreakdown.cash?.count || 0} commandes</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-3 text-center">
-                    <p className="text-xs text-gray-400 mb-1">En ligne</p>
-                    <p className="text-lg font-bold text-cyan-400">{(revenue.paymentBreakdown.online?.revenue || 0).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-600">{revenue.paymentBreakdown.online?.count || 0} commandes</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Stats cuisine */}
-          {revenue.cookStats && (
-            <Card>
-              <CardContent>
-                <h3 className="text-sm font-semibold text-white mb-3">Activité cuisine aujourd&apos;hui</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <StatCardBadge icon={UtensilsCrossed} value={revenue.cookStats.prepared || 0} label="Préparées" color="orange" />
-                  <StatCardBadge icon={Clock} value={revenue.cookStats.preparing || 0} label="En cuisine" color="yellow" />
-                  <StatCardBadge icon={CheckCircle} value={revenue.cookStats.ready || 0} label="Prêtes" color="green" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Graphique 7 jours */}
-          <Card>
-            <CardContent>
-              <h3 className="text-sm font-semibold text-white mb-4">Recettes des 7 derniers jours</h3>
-              <div className="flex items-end justify-between gap-2 h-40">
-                {revenue.dailyRevenue?.map((day: any) => {
-                  const maxRevenue = Math.max(...revenue.dailyRevenue.map((d: any) => d.revenue), 1);
-                  const height = (day.revenue / maxRevenue) * 100;
-                  return (
-                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                      <p className="text-[9px] text-gray-500">{day.revenue > 0 ? `${(day.revenue / 1000).toFixed(0)}k` : "0"}</p>
-                      <div className="w-full bg-gray-800 rounded-t-lg relative" style={{ height: "120px" }}>
-                        <div
-                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-lg transition-all"
-                          style={{ height: `${Math.max(height, 2)}%` }}
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-500">{day.label}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats globales */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatCardBadge icon={Clock} value={revenue.totals.pending} label="En attente" color="yellow" />
-            <StatCardBadge icon={Truck} value={revenue.totals.activeDeliveries} label="Livraisons en cours" color="purple" />
-            <StatCardBadge icon={CheckCircle} value={revenue.totals.deliveredToday} label="Livrées aujourd&apos;hui" color="green" />
-            <StatCardBadge icon={ShoppingBag} value={revenue.totals.orders} label="Total commandes" color="orange" />
-          </div>
-        </div>
-      )}
 
       {/* ============================================ */}
       {/* Dialog Ajout / Edition de repas              */}
@@ -973,7 +745,7 @@ export default function ProductsPage() {
         </div>
       </Dialog>
       {/* Dialog Promotion */}
-      <Dialog open={showPromoDialog} onClose={() => { setShowPromoDialog(false); resetPromoForm(); }} title={promoDialogMode === "edit" ? "Modifier la promotion" : "Nouvelle promotion"}>
+      <Dialog open={showPromoDialog} onClose={() => { setShowPromoDialog(false); resetPromoForm(); }} title={promoDialogMode === "edit" ? "Modifier la promotion" : "Nouvelle promotion"} size="lg">
         <div className="space-y-4">
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Nom *</label>
@@ -1042,7 +814,7 @@ export default function ProductsPage() {
             </div>
           )}
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Bannière promotionnelle</label>
+            <label className="text-xs text-gray-400 mb-1 block">Bannières promotionnelles</label>
             <div className="flex gap-2 mb-2">
               <button type="button" onClick={() => setPromoImageMode("upload")} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors", promoImageMode === "upload" ? "bg-orange-600/20 text-orange-400 border border-orange-600/30" : "bg-gray-800 text-gray-400 border border-gray-700")}>
                 <Upload className="w-3 h-3" /> Upload
@@ -1053,16 +825,31 @@ export default function ProductsPage() {
             </div>
             {promoImageMode === "upload" ? (
               <div>
-                <input ref={promoFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { setPromoImagePreview(URL.createObjectURL(file)); handlePromoFileUpload(file); } }} />
-                <button type="button" onClick={() => promoFileRef.current?.click()} className="w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 text-xs hover:border-orange-500/50 transition-colors">
-                  {uploading ? "Import en cours..." : "Cliquez pour choisir une image"}
+                <input ref={promoFileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { const files = e.target.files; if (files) Array.from(files).forEach(f => handlePromoFileUpload(f)); if (e.target) e.target.value = ""; }} />
+                <button type="button" onClick={() => promoFileRef.current?.click()} disabled={uploading}
+                  className="w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 text-xs hover:border-orange-500/50 transition-colors flex items-center justify-center gap-2">
+                  {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Import en cours...</> : "Cliquez pour choisir des images"}
                 </button>
               </div>
             ) : (
-              <input type="text" placeholder="https://..." value={promoForm.image} onChange={(e) => { setPromoForm((prev) => ({ ...prev, image: e.target.value })); if (e.target.value) setPromoImagePreview(e.target.value); }} className={inputClass + " w-full"} />
+              <div className="flex gap-2">
+                <input type="text" placeholder="https://..." id="promo-url-input" className={inputClass + " flex-1"} />
+                <button type="button" onClick={() => { const inp = document.getElementById("promo-url-input") as HTMLInputElement; if (inp?.value) { setPromoImages(prev => [...prev, inp.value]); inp.value = ""; } }}
+                  className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-medium transition-colors">Ajouter</button>
+              </div>
             )}
-            {(promoImagePreview || promoForm.image) && (
-              <img src={promoImagePreview || promoForm.image} alt="Preview" className="mt-2 w-full h-24 object-cover rounded-lg border border-gray-700" />
+            {promoImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {promoImages.map((img, i) => (
+                  <div key={i} className="relative group">
+                    <img src={img} alt="" className="w-full aspect-video object-cover rounded-lg border border-gray-700" />
+                    <button type="button" onClick={() => setPromoImages(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           <button onClick={handlePromoSubmit} disabled={saving || !promoForm.name || !promoForm.discountValue || !promoForm.startDate || !promoForm.endDate}

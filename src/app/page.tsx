@@ -73,7 +73,7 @@ export default function LandingPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [promoIndex, setPromoIndex] = useState(0);
+  const [imgCounter, setImgCounter] = useState(0);
   const [showPromoDialog, setShowPromoDialog] = useState(false);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(MEALS_PER_LOAD);
@@ -231,12 +231,11 @@ export default function LandingPage() {
     });
   }, []);
 
-  // Auto-rotate promo carousel
+  // Auto-rotate promo images (3s)
   useEffect(() => {
-    if (promotions.length <= 1) return;
-    const iv = setInterval(() => setPromoIndex((i) => (i + 1) % promotions.length), 5000);
+    const iv = setInterval(() => setImgCounter((c) => c + 1), 3000);
     return () => clearInterval(iv);
-  }, [promotions.length]);
+  }, []);
 
   const meals = products.filter((p) => !p.isExtra);
   const extras = products.filter((p) => p.isExtra);
@@ -1110,7 +1109,7 @@ export default function LandingPage() {
       {showPromoDialog && promotions.length > 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
               <X className="w-4 h-4" />
@@ -1118,16 +1117,26 @@ export default function LandingPage() {
 
             <div className="space-y-0">
               {promotions.map((promo: any, idx: number) => {
-                const bannerImg = promo.image || (!promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null);
+                const promoImgs = (() => { if (!promo.image) return []; try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })();
+              const fallbackImg = !promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null;
+              const allImgs = promoImgs.length > 0 ? promoImgs : fallbackImg ? [fallbackImg] : [];
+              const currentImg = allImgs.length > 0 ? allImgs[imgCounter % allImgs.length] : null;
                 return (
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
-                    {bannerImg && (
-                      <div className="relative h-44">
-                        <img src={bannerImg} alt={promo.name} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
+                    {currentImg && (
+                      <div className="relative">
+                        <img src={currentImg} alt={promo.name} className="w-full max-h-64 object-contain bg-black/20" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
+                        {allImgs.length > 1 && (
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                            {allImgs.map((_: any, i: number) => (
+                              <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-colors", i === imgCounter % allImgs.length ? "bg-orange-500" : "bg-white/40")} />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className={cn("px-5 pb-5", bannerImg ? "-mt-12 relative z-10" : "pt-5")}>
+                    <div className={cn("px-5 pb-5", currentImg ? "-mt-8 relative z-10" : "pt-5")}>
                       <div className="flex items-center gap-3 mb-2">
                         <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-bold">
                           -{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"}

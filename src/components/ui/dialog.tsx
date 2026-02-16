@@ -8,9 +8,10 @@ interface DialogProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  size?: "md" | "lg";
 }
 
-export function Dialog({ open, onClose, title, children }: DialogProps) {
+export function Dialog({ open, onClose, title, children, size = "md" }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
         onClick={onClose}
       />
       {/* Content */}
-      <div className="relative w-full max-w-lg mx-4 max-h-[90vh] bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl flex flex-col">
+      <div className={`relative w-full ${size === "lg" ? "max-w-2xl" : "max-w-lg"} mx-4 max-h-[90vh] bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl flex flex-col`}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/50">
           <h2 className="text-[15px] font-semibold text-white">{title}</h2>
