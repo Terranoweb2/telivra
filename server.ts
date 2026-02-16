@@ -1,4 +1,6 @@
-import { createServer } from "node:http";
+import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { join, extname } from "node:path";
 import next from "next";
 import { Server } from "socket.io";
 import cron from "node-cron";
@@ -11,7 +13,31 @@ const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const httpServer = createServer(handler);
+  const MIME: Record<string, string> = {
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+    ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+    ".ico": "image/x-icon", ".mp3": "audio/mpeg", ".wav": "audio/wav",
+  };
+
+  const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
+    // Servir les fichiers uploadés directement (évite le 404 Next.js post-build)
+    if (req.url && req.url.startsWith("/uploads/")) {
+      const safePath = req.url.split("?")[0].replace(/\.\.\//g, "");
+      const filePath = join(process.cwd(), "public", safePath);
+      if (existsSync(filePath)) {
+        const stat = statSync(filePath);
+        const ext = extname(filePath).toLowerCase();
+        res.writeHead(200, {
+          "Content-Type": MIME[ext] || "application/octet-stream",
+          "Content-Length": stat.size,
+          "Cache-Control": "public, max-age=31536000, immutable",
+        });
+        createReadStream(filePath).pipe(res);
+        return;
+      }
+    }
+    handler(req, res);
+  });
   const io = new Server(httpServer, {
     cors: { origin: "*" },
     path: "/socket.io",

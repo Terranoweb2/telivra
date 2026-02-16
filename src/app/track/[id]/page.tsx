@@ -467,7 +467,7 @@ export default function TrackDetailPage() {
                   <span>{order.items?.length || 0} article(s)</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</p>
+                  <p className="text-sm font-bold text-orange-600">{((order.totalAmount || 0) + deliveryFee).toLocaleString()} FCFA</p>
 
                 </div>
               </div>
@@ -562,7 +562,7 @@ export default function TrackDetailPage() {
 
                     <div className="flex justify-between text-sm font-bold text-gray-900">
                       <span>Total</span>
-                      <span className="text-orange-600">{order.totalAmount?.toLocaleString()} FCFA</span>
+                      <span className="text-orange-600">{((order.totalAmount || 0) + deliveryFee).toLocaleString()} FCFA</span>
                     </div>
                   </div>
                 </div>
