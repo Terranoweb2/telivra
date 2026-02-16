@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "sonner";
+import { ThemedToaster } from "@/components/themed-toaster";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { OfflineIndicator } from "@/components/offline-indicator";
@@ -30,16 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
           {children}
-          <Toaster position="top-center" richColors closeButton duration={4000}
-              toastOptions={{
-                classNames: {
-                  toast: "!bg-gray-900 !border-gray-800 !text-white",
-                  description: "!text-gray-400",
-                  actionButton: "!bg-orange-600 !text-white",
-                  cancelButton: "!bg-gray-800 !text-gray-300",
-                  closeButton: "!bg-gray-800 !text-gray-400 !border-gray-700",
-                },
-              }} />
+          <ThemedToaster />
           <ServiceWorkerRegister />
           <OfflineIndicator />
         </ThemeProvider>
