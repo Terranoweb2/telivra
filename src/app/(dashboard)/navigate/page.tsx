@@ -877,7 +877,7 @@ function NavigateContent() {
             onTyping={() => chatEmitTyping("Livreur", "DRIVER")}
             onStopTyping={chatStopTyping}
             disabled={!chatEnabled}
-            otherPartyName={clientName || `Commande #${orderId.slice(-6)}`}
+            otherPartyName={clientName ? `${clientName} (${clientPhone || ""})` : clientPhone || "Client"}
             orderNumber={orderId.slice(-8).toUpperCase()}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}

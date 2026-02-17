@@ -69,8 +69,10 @@ export function GlobalDriverChat() {
   if (!isDriver || !delivery || hasOwnChat) return null;
 
   const clientName = delivery.order?.client?.name
-    || delivery.order?.guestName
-    || `#${delivery.order?.orderNumber || orderId.slice(-6)}`;
+    ? `${delivery.order.client.name} (${delivery.order.client.phone || ""})`
+    : delivery.order?.guestName
+    ? `${delivery.order.guestName} (${delivery.order.guestPhone || ""})`
+    : delivery.order?.guestPhone || "Client";
 
   return (
     <>

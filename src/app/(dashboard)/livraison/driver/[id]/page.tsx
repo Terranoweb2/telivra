@@ -362,7 +362,7 @@ export default function DriverDeliveryDetail() {
             onTyping={() => chatEmitTyping(delivery?.driver?.name || "Livreur", "DRIVER")}
             onStopTyping={chatStopTyping}
             disabled={!chatEnabled}
-            otherPartyName={order?.client?.name || (order?.guestName ? `${order.guestName} (${order.orderNumber || ""})` : `#${order?.orderNumber || ""}`)}
+            otherPartyName={order?.client?.name ? `${order.client.name} (${order.client.phone || ""})` : order?.guestName ? `${order.guestName} (${order.guestPhone || ""})` : order?.guestPhone || "Client"}
             orderNumber={order?.orderNumber}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}
