@@ -15,7 +15,7 @@ export function ChatButton({ onClick, unreadCount = 0, disabled = false }: ChatB
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full shadow-2xl",
+        "fixed bottom-20 right-4 z-[1001] w-14 h-14 rounded-full shadow-2xl",
         "flex items-center justify-center transition-all active:scale-90",
         "lg:bottom-6",
         disabled

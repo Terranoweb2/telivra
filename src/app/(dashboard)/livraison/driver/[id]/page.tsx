@@ -394,9 +394,9 @@ export default function DriverDeliveryDetail() {
                 <CheckCircle className="w-4 h-4" /> Marquer comme livrée
               </button>
             )}
-            {order?.guestPhone && !order?.client && (
+            {(order?.client?.phone || order?.guestPhone) && (
               <a
-                href={`tel:${order.guestPhone}`}
+                href={`tel:${order?.client?.phone || order?.guestPhone}`}
                 className="w-12 h-12 bg-green-600 hover:bg-green-700 active:scale-95 rounded-xl flex items-center justify-center transition-all shadow-lg shrink-0"
               >
                 <Phone className="w-5 h-5 text-white" />
