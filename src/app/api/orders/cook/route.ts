@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     };
   }
 
+  try {
   const orders = await prisma.order.findMany({
     where,
     include: {
@@ -43,4 +44,8 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(orders);
+  } catch (err) {
+    console.error("[orders/cook] error:", err);
+    return NextResponse.json([], { status: 200 });
+  }
 }
