@@ -36,6 +36,8 @@ app.prepare().then(() => {
         return;
       }
     }
+    // Ne pas passer les requetes socket.io a Next.js (sinon 308 redirect)
+    if (req.url && req.url.startsWith("/socket.io")) return;
     handler(req, res);
   });
   const io = new Server(httpServer, {
