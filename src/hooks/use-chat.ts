@@ -12,6 +12,7 @@ interface ChatMessage {
   guestName: string | null;
   isRead: boolean;
   createdAt: string;
+  fileUrl?: string | null;
   user?: { id: string; name: string; role: string } | null;
 }
 
@@ -28,34 +29,37 @@ export function useChat({ orderId, enabled = true }: UseChatOptions) {
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadMessages = useCallback(async (cursor?: string) => {
+    if (!orderId) return;
     try {
       const url = cursor
         ? `/api/messages/${orderId}?cursor=${encodeURIComponent(cursor)}&limit=50`
         : `/api/messages/${orderId}?limit=50`;
       const res = await fetch(url);
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn("[Chat] Load messages failed:", res.status);
+        return;
+      }
       const data = await res.json();
-
       if (cursor) {
         setMessages((prev) => [...data.messages, ...prev]);
       } else {
-        setMessages(data.messages);
+        setMessages(data.messages || []);
       }
       setHasMore(data.hasMore);
       setNextCursor(data.nextCursor);
-    } catch {
-      // silencieux
+    } catch (e) {
+      console.warn("[Chat] Load error:", e);
     } finally {
       setLoading(false);
     }
   }, [orderId]);
 
   const sendMessage = useCallback(async (content: string, fileUrl?: string) => {
-    if (!content.trim() || sending) return false;
+    if ((!content.trim() && !fileUrl) || sending) return false;
     setSending(true);
     try {
       const res = await fetch(`/api/messages/${orderId}`, {
@@ -80,24 +84,26 @@ export function useChat({ orderId, enabled = true }: UseChatOptions) {
   }, [orderId]);
 
   const loadMore = useCallback(() => {
-    if (hasMore && nextCursor) {
-      loadMessages(nextCursor);
-    }
+    if (hasMore && nextCursor) loadMessages(nextCursor);
   }, [hasMore, nextCursor, loadMessages]);
 
   useEffect(() => {
-    if (!enabled || !orderId) return;
+    if (!enabled || !orderId) {
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
     loadMessages();
 
-    const socket = io({ path: "/socket.io", transports: ["polling"] });
-    socketRef.current = socket;
+    const s = io({ path: "/socket.io", transports: ["polling", "websocket"] });
+    setSocket(s);
 
-    socket.on("connect", () => {
-      socket.emit("subscribe:chat", orderId);
+    s.on("connect", () => {
+      s.emit("subscribe:chat", orderId);
     });
 
-    socket.on("chat:message", (msg: ChatMessage) => {
+    s.on("chat:message", (msg: ChatMessage) => {
       if (msg.orderId !== orderId) return;
       setMessages((prev) => {
         if (prev.find((m) => m.id === msg.id)) return prev;
@@ -105,61 +111,43 @@ export function useChat({ orderId, enabled = true }: UseChatOptions) {
       });
     });
 
-    socket.on("chat:typing", (data: { orderId: string; name: string }) => {
-      if (data.orderId === orderId) {
-        setTypingUser(data.name);
-      }
+    s.on("chat:typing", (data: { orderId: string; name: string }) => {
+      if (data.orderId === orderId) setTypingUser(data.name);
     });
 
-    socket.on("chat:stop-typing", (data: { orderId: string }) => {
-      if (data.orderId === orderId) {
-        setTypingUser(null);
-      }
+    s.on("chat:stop-typing", (data: { orderId: string }) => {
+      if (data.orderId === orderId) setTypingUser(null);
     });
 
-    socket.on("chat:read", () => {
+    s.on("chat:read", () => {
       setMessages((prev) => prev.map((m) => ({ ...m, isRead: true })));
     });
 
     return () => {
-      socket.emit("unsubscribe:chat", orderId);
-      socket.disconnect();
+      s.emit("unsubscribe:chat", orderId);
+      s.disconnect();
+      setSocket(null);
     };
-  }, [orderId, enabled, loadMessages]);
+  }, [orderId, enabled]);
 
   const emitTyping = useCallback((name: string, sender: string) => {
-    const socket = socketRef.current;
     if (!socket?.connected) return;
-
     socket.emit("chat:typing", { orderId, sender, name });
-
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
       socket.emit("chat:stop-typing", { orderId });
     }, 3000);
-  }, [orderId]);
+  }, [orderId, socket]);
 
   const stopTyping = useCallback(() => {
-    const socket = socketRef.current;
     if (!socket?.connected) return;
     socket.emit("chat:stop-typing", { orderId });
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
-  }, [orderId]);
+  }, [orderId, socket]);
 
   return {
-    messages,
-    loading,
-    sending,
-    unreadCount,
-    setUnreadCount,
-    typingUser,
-    hasMore,
-    sendMessage,
-    markAsRead,
-    loadMore,
-    emitTyping,
-    stopTyping,
-    socket: socketRef.current,
+    messages, loading, sending, unreadCount, setUnreadCount,
+    typingUser, hasMore, sendMessage, markAsRead, loadMore,
+    emitTyping, stopTyping, socket,
   };
 }
-

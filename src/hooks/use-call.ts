@@ -158,9 +158,13 @@ export function useCall({ orderId, socket, myName, myRole, enabled = true }: Use
   const endCall = useCallback(() => {
     if (socket?.connected) {
       socket.emit("call:end", { orderId });
+      // Si appel sortant sans réponse → appel manqué
+      if (callState === "outgoing") {
+        socket.emit("call:missed", { orderId, callerName: myName });
+      }
     }
     cleanup();
-  }, [socket, orderId, cleanup]);
+  }, [socket, orderId, callState, myName, cleanup]);
 
   // Mute toggle
   const toggleMute = useCallback(() => {
@@ -271,6 +275,9 @@ export function useCall({ orderId, socket, myName, myRole, enabled = true }: Use
       if (data.orderId !== orderId) return;
       cleanup();
     };
+
+    // Timeout: si pas de réponse après 30s → appel manqué
+    let callTimeout: ReturnType<typeof setTimeout> | null = null;
 
     socket.on("call:incoming", onIncoming);
     socket.on("call:accepted", onAccepted);

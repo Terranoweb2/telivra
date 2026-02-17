@@ -151,6 +151,34 @@ app.prepare().then(() => {
       socket.to(`chat:${data.orderId}`).emit("call:ended", { orderId: data.orderId });
     });
 
+    socket.on("call:missed", async (data: { orderId: string; callerName: string }) => {
+      try {
+        const { PrismaClient } = await import("@prisma/client");
+        const db = new PrismaClient();
+        await db.message.create({
+          data: {
+            content: `Appel manque de ${data.callerName}`,
+            sender: "SYSTEM",
+            orderId: data.orderId,
+          },
+        });
+        const msg = await db.message.findFirst({
+          where: { orderId: data.orderId, sender: "SYSTEM" },
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { id: true, name: true, role: true } } },
+        });
+        if (msg) {
+          io.to(`chat:${data.orderId}`).emit("chat:message", {
+            ...msg,
+            createdAt: msg.createdAt.toISOString(),
+          });
+        }
+        await db.$disconnect();
+      } catch (e) {
+        console.error("[Call] Missed call error:", e);
+      }
+    });
+
     socket.on("call:busy", (data: { orderId: string }) => {
       socket.to(`chat:${data.orderId}`).emit("call:busy", { orderId: data.orderId });
     });

@@ -15,22 +15,15 @@ export async function GET(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
-        id: true,
-        status: true,
-        clientId: true,
-        guestPhone: true,
+        id: true, status: true, clientId: true, guestPhone: true,
         delivery: { select: { driverId: true } },
       },
     });
-
-    if (!order) {
-      return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
-    }
+    if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
 
     const session = await auth();
     const userId = (session?.user as any)?.id;
     const role = (session?.user as any)?.role;
-
     const isAdmin = role === "ADMIN" || role === "MANAGER";
     const isOrderClient = userId && userId === order.clientId;
     const isOrderDriver = userId && userId === order.delivery?.driverId;
@@ -41,17 +34,13 @@ export async function GET(
     }
 
     const where: any = { orderId };
-    if (cursor) {
-      where.createdAt = { lt: new Date(cursor) };
-    }
+    if (cursor) where.createdAt = { lt: new Date(cursor) };
 
     const messages = await prisma.message.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
-      include: {
-        user: { select: { id: true, name: true, role: true } },
-      },
+      include: { user: { select: { id: true, name: true, role: true } } },
     });
 
     return NextResponse.json({
@@ -72,40 +61,26 @@ export async function POST(
   try {
     const { orderId } = await params;
     const body = await request.json();
-    const rawContent = body.content;
 
-    if (!rawContent || typeof rawContent !== "string") {
-      return NextResponse.json({ error: "Message requis" }, { status: 400 });
-    }
+    const rawContent = typeof body.content === "string" ? body.content.slice(0, 1000).trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+    const fileUrl = typeof body.fileUrl === "string" && body.fileUrl.startsWith("/uploads/") ? body.fileUrl : null;
 
-    const content = rawContent.slice(0, 1000).trim().replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    if (content.length === 0) {
-      return NextResponse.json({ error: "Message vide" }, { status: 400 });
+    if (!rawContent && !fileUrl) {
+      return NextResponse.json({ error: "Message ou fichier requis" }, { status: 400 });
     }
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
-        id: true,
-        status: true,
-        clientId: true,
-        guestPhone: true,
-        guestName: true,
+        id: true, status: true, clientId: true, guestPhone: true, guestName: true,
         delivery: { select: { driverId: true } },
       },
     });
-
-    if (!order) {
-      return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
-    }
-
+    if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
     if (["DELIVERED", "CANCELLED"].includes(order.status)) {
-      return NextResponse.json({ error: "La conversation est terminee" }, { status: 403 });
+      return NextResponse.json({ error: "Conversation terminee" }, { status: 403 });
     }
-
-    if (!order.delivery) {
-      return NextResponse.json({ error: "Chat indisponible" }, { status: 403 });
-    }
+    if (!order.delivery) return NextResponse.json({ error: "Chat indisponible" }, { status: 403 });
 
     const session = await auth();
     const userId = (session?.user as any)?.id;
@@ -116,9 +91,7 @@ export async function POST(
     let guestName: string | null = null;
 
     if (!session?.user) {
-      if (order.clientId) {
-        return NextResponse.json({ error: "Non autorise" }, { status: 403 });
-      }
+      if (order.clientId) return NextResponse.json({ error: "Non autorise" }, { status: 403 });
       sender = "CLIENT";
       guestName = order.guestName || "Client";
     } else if (role === "ADMIN" || role === "MANAGER") {
@@ -135,16 +108,8 @@ export async function POST(
     }
 
     const message = await prisma.message.create({
-      data: {
-        content,
-        sender,
-        orderId,
-        userId: senderUserId,
-        guestName,
-      },
-      include: {
-        user: { select: { id: true, name: true, role: true } },
-      },
+      data: { content: rawContent, fileUrl, sender, orderId, userId: senderUserId, guestName },
+      include: { user: { select: { id: true, name: true, role: true } } },
     });
 
     const io = (global as any).io;

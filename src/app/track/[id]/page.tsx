@@ -766,7 +766,7 @@ export default function TrackDetailPage() {
             onTyping={() => chatEmitTyping(order.guestName || order.client?.name || "Client", "CLIENT")}
             onStopTyping={chatStopTyping}
             disabled={!chatEnabled}
-            otherPartyName={order.delivery?.driver?.name}
+            otherPartyName={order.delivery?.driver?.name || "Livreur"}
             orderNumber={order.orderNumber}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}

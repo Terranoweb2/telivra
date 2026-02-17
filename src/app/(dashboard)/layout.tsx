@@ -7,6 +7,7 @@ import { TopBar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarProvider, useSidebar } from "@/lib/sidebar-context";
 import { getCachedSettings } from "@/lib/settings-cache";
+import { GlobalDriverChat } from "@/components/chat/global-driver-chat";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { open, toggle, close } = useSidebar();
@@ -30,6 +31,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 sm:p-6 pb-20 lg:pb-6">{children}</main>
       </div>
       <MobileNav />
+      <GlobalDriverChat />
     </div>
   );
 }

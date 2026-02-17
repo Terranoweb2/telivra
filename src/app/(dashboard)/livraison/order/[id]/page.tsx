@@ -578,7 +578,7 @@ export default function OrderDetailPage() {
             onLoadMore={chatLoadMore}
             onTyping={() => chatEmitTyping("Support", "ADMIN")}
             onStopTyping={chatStopTyping}
-            otherPartyName={order.client?.name || order.guestName || "Client"}
+            otherPartyName={order.client?.name || (order.guestName ? `${order.guestName} (${order.orderNumber})` : `#${order.orderNumber}`)}
             orderNumber={order.orderNumber}
           />
         </>
