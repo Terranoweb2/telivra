@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
     "/api/settings",
     "/api/promotions",
     "/api/geocode",
-    "/api/messages",
+    "/api/messages", "/api/upload/chat",
     "/track",
   ];
   const isPublic =

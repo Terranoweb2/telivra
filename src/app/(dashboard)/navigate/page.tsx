@@ -10,6 +10,11 @@ import {
   Minimize2, Maximize2, CheckCircle, Truck, X, XCircle,
 } from "lucide-react";
 import { playSound } from "@/lib/sounds";
+import { ChatButton } from "@/components/chat/chat-button";
+import { ChatPanel } from "@/components/chat/chat-panel";
+import { useChat } from "@/hooks/use-chat";
+import { useCall } from "@/hooks/use-call";
+import { CallOverlay } from "@/components/call/call-overlay";
 
 const NavMap = dynamic(() => import("@/components/map/nav-map"), {
   ssr: false,
@@ -72,7 +77,30 @@ function NavigateContent() {
   const [cancelError, setCancelError] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [customReason, setCustomReason] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
   const arrivedSoundPlayed = useRef(false);
+
+  // Chat & Appel VoIP
+  const chatEnabled = !!orderId && !!deliveryId && !["DELIVERED", "CANCELLED"].includes(deliveryStatus);
+  const {
+    messages: chatMessages, loading: chatLoading, sending: chatSending,
+    typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
+    markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
+    emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
+    unreadCount: chatUnread, socket,
+  } = useChat({ orderId, enabled: !!orderId && !!deliveryId });
+
+  const {
+    callState, remoteName: callRemoteName, callDuration,
+    isMuted, isSpeaker, initiateCall, acceptCall, endCall,
+    toggleMute, toggleSpeaker,
+  } = useCall({
+    orderId,
+    socket,
+    myName: "Livreur",
+    myRole: "DRIVER",
+    enabled: !!orderId && !!deliveryId,
+  });
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showPickupDialog, setShowPickupDialog] = useState(false);
 
@@ -811,6 +839,52 @@ function NavigateContent() {
           )}
         </div>
       )}
+      {/* ========== APPEL VoIP ========== */}
+      <CallOverlay
+        callState={callState}
+        remoteName={callRemoteName}
+        duration={callDuration}
+        isMuted={isMuted}
+        isSpeaker={isSpeaker}
+        onAccept={acceptCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+        onToggleSpeaker={toggleSpeaker}
+      />
+
+      {/* ========== CHAT ========== */}
+      {orderId && deliveryId && (
+        <>
+          {!chatOpen && (
+            <ChatButton
+              onClick={() => setChatOpen(true)}
+              unreadCount={chatUnread}
+              disabled={!chatEnabled}
+            />
+          )}
+          <ChatPanel
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+            messages={chatMessages}
+            loading={chatLoading}
+            sending={chatSending}
+            typingUser={typingUser}
+            hasMore={chatHasMore}
+            currentSender="DRIVER"
+            onSend={chatSendMessage}
+            onMarkRead={chatMarkAsRead}
+            onLoadMore={chatLoadMore}
+            onTyping={() => chatEmitTyping("Livreur", "DRIVER")}
+            onStopTyping={chatStopTyping}
+            disabled={!chatEnabled}
+            otherPartyName={clientName || "Client"}
+            orderNumber={orderId.slice(-8).toUpperCase()}
+            onCall={initiateCall}
+            callDisabled={callState !== "idle" || !chatEnabled}
+          />
+        </>
+      )}
+
       {/* Dialog Recuperation */}
       {showPickupDialog && deliveryStatus === "PICKING_UP" && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">

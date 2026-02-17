@@ -233,6 +233,7 @@ model Alert {
   severity  AlertSeverity @default(INFO)
   title     String
   message   String
+  fileUrl   String?
   isRead    Boolean       @default(false)
   data      Json?
   createdAt DateTime      @default(now())
@@ -532,6 +533,7 @@ model Message {
   userId    String?
   user      User?         @relation("SentMessages", fields: [userId], references: [id], onDelete: SetNull)
   guestName String?
+  fileUrl   String?
   isRead    Boolean       @default(false)
   createdAt DateTime      @default(now())
 

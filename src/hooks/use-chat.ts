@@ -54,14 +54,14 @@ export function useChat({ orderId, enabled = true }: UseChatOptions) {
     }
   }, [orderId]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, fileUrl?: string) => {
     if (!content.trim() || sending) return false;
     setSending(true);
     try {
       const res = await fetch(`/api/messages/${orderId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: content.trim() }),
+        body: JSON.stringify({ content: content.trim(), fileUrl }),
       });
       if (!res.ok) return false;
       return true;

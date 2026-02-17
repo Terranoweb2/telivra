@@ -770,6 +770,7 @@ export default function TrackDetailPage() {
             orderNumber={order.orderNumber}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}
+            lightMode
           />
         </>
       )}
