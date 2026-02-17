@@ -16,7 +16,7 @@ import {
   Bell,
   ChefHat,
   Percent,
-} from "lucide-react";
+  BarChart3 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const mobileItems: Record<string, { label: string; href: string; icon: any }[]> = {

@@ -20,7 +20,7 @@ import {
   ChefHat,
   UtensilsCrossed,
   Percent,
-} from "lucide-react";
+  BarChart3 } from "lucide-react";
 
 function useBranding() {
   const [brand, setBrand] = useState({ name: "Terrano", logo: null as string | null });

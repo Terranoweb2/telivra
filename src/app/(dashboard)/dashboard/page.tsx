@@ -179,7 +179,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-white">Recettes - 7 derniers jours</h3>
-                <Link href="/products" className="text-xs text-orange-400 flex items-center gap-1">
+                <Link href="/statistiques" className="text-xs text-orange-400 flex items-center gap-1">
                   Voir plus <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>

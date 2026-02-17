@@ -348,3 +348,18 @@ html:not(.dark) .scroll-fade-wrapper::after {
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* --- Print styles --- */
+@media print {
+  body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print, nav, aside, [class*="mobile-nav"], [class*="sidebar"], [class*="topbar"] { display: none !important; }
+  .print-only { display: block !important; }
+  .print-break { page-break-before: always; }
+  main { padding: 0 !important; }
+  .bg-gray-900, .bg-gray-950, .bg-gray-800 { background: white !important; }
+  .text-white, .text-gray-100, .text-gray-200, .text-gray-300 { color: black !important; }
+  .text-gray-400, .text-gray-500, .text-gray-600 { color: #555 !important; }
+  .border-gray-800, .border-gray-700 { border-color: #ddd !important; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; }
+}
