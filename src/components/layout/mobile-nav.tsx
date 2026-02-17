@@ -16,7 +16,8 @@ import {
   Bell,
   ChefHat,
   Percent,
-  BarChart3 } from "lucide-react";
+  BarChart3,
+  Banknote } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const mobileItems: Record<string, { label: string; href: string; icon: any }[]> = {
@@ -49,10 +50,12 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
     { label: "Paramètres", href: "/settings", icon: Settings },
   ],
   COOK: [
+    { label: "Encaissement", href: "/encaissement", icon: Banknote },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
     { label: "Paramètres", href: "/settings", icon: Settings },
   ],
   DEFAULT: [
+    { label: "Encaissement", href: "/encaissement", icon: Banknote },
     { label: "Cuisine", href: "/cuisine", icon: ChefHat },
     { label: "Marketing", href: "/products?tab=promotions", icon: Percent },
     { label: "Cuisiniers", href: "/cooks", icon: ChefHat },

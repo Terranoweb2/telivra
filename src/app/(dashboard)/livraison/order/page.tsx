@@ -208,7 +208,7 @@ export default function CommandesPage() {
       // Trouver la commande pour construire l'URL de navigation
       const order = orders.find((o: any) => o.id === orderId) || pendingOrders.find((o: any) => o.id === orderId);
       if (order && delivery?.id) {
-        const navUrl = "/navigate?lat=" + order.deliveryLat + "&lng=" + order.deliveryLng + "&address=" + encodeURIComponent(order.deliveryAddress || "") + "&client=" + encodeURIComponent(order.client?.name || order.guestName || "Client") + "&phone=" + encodeURIComponent(order.guestPhone || "") + "&amount=" + (order.totalAmount || 0) + "&orderId=" + (order.id as string).slice(-6) + "&deliveryId=" + delivery.id + "&status=PICKING_UP";
+        const navUrl = "/navigate?lat=" + order.deliveryLat + "&lng=" + order.deliveryLng + "&address=" + encodeURIComponent(order.deliveryAddress || "") + "&client=" + encodeURIComponent(order.client?.name || order.guestName || "Client") + "&phone=" + encodeURIComponent(order.guestPhone || "") + "&amount=" + (order.totalAmount || 0) + "&orderId=" + order.id + "&deliveryId=" + delivery.id + "&status=DELIVERING";
         toast.success("Livraison acceptée");
         router.push(navUrl);
         return;
@@ -385,8 +385,8 @@ export default function CommandesPage() {
           {currentList.map((order) => {
             const orderStatus = isDriver ? (order.delivery?.status || order.status) : order.status;
             const href = isDriver && order.delivery
-              ? `/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}&deliveryId=${order.delivery.id}&status=${order.delivery.status}`
-              : `/livraison/order/${order.id}`;
+              ? `/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}&deliveryId=${order.delivery.id}&status=${order.delivery.status}`
+              : `/track/${order.id}`;
 
             // === COOK: onglet Nouvelles — bouton Accepter ===
             if (tab === "pending" && isCook) {
@@ -549,7 +549,7 @@ export default function CommandesPage() {
                       </button>
                       {order.deliveryLat && order.deliveryLng && (
                         <Link
-                          href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
+                          href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                           className="py-2.5 px-3 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Navigation className="w-4 h-4" />
@@ -607,7 +607,7 @@ export default function CommandesPage() {
                   {/* Bouton itineraire pour livreur/admin */}
                   {isDriver && order.deliveryLat && order.deliveryLng && (tab === "active" || tab === "delivered") && (
                     <Link
-                      href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id.slice(-6)}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
+                      href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                       className="mt-2 w-full py-2 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Navigation className="w-3.5 h-3.5" />

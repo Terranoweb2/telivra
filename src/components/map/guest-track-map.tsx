@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -61,11 +61,28 @@ const css = `
 
 function FitBounds({ driverPos, clientPos }: { driverPos: { lat: number; lng: number } | null; clientPos: { lat: number; lng: number } }) {
   const map = useMap();
+  const initialFitDone = useRef(false);
+  const updateCount = useRef(0);
+
   useEffect(() => {
-    const points: [number, number][] = [[clientPos.lat, clientPos.lng]];
-    if (driverPos) points.push([driverPos.lat, driverPos.lng]);
-    if (points.length > 0) {
+    // Premier affichage : montrer les deux points
+    if (!initialFitDone.current) {
+      const points: [number, number][] = [[clientPos.lat, clientPos.lng]];
+      if (driverPos) points.push([driverPos.lat, driverPos.lng]);
       map.fitBounds(points, { padding: [80, 80], maxZoom: 17 });
+      initialFitDone.current = true;
+      return;
+    }
+
+    // Suivre le livreur en temps réel
+    if (driverPos) {
+      updateCount.current += 1;
+      // Zoom sur le livreur après quelques mises à jour
+      if (updateCount.current <= 2) {
+        map.flyTo([driverPos.lat, driverPos.lng], 16, { duration: 1 });
+      } else {
+        map.panTo([driverPos.lat, driverPos.lng], { animate: true, duration: 0.5 });
+      }
     }
   }, [driverPos?.lat, driverPos?.lng, clientPos.lat, clientPos.lng]);
   return null;

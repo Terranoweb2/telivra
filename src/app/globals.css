@@ -363,3 +363,48 @@ html:not(.dark) .scroll-fade-wrapper::after {
   table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #ddd; padding: 4px 8px; }
 }
+
+/* ==========================================
+   Chat input styles — always visible in both modes
+   ========================================== */
+.chat-input {
+  background-color: #2c2c2e !important;
+  color: #ffffff !important;
+  border: 1px solid #3a3a3c !important;
+  border-radius: 0.75rem;
+}
+.chat-input:focus {
+  border-color: rgb(249 115 22 / 0.5) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+.chat-input::placeholder { color: #636366 !important; }
+
+html:not(.dark) .chat-input {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+html:not(.dark) .chat-input:focus {
+  border-color: rgb(249 115 22 / 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15) !important;
+}
+html:not(.dark) .chat-input::placeholder { color: #94a3b8 !important; }
+
+/* Light mode on track page (inside html.dark) */
+.chat-input-light {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.75rem;
+}
+.chat-input-light:focus {
+  border-color: rgb(249 115 22 / 0.5) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15) !important;
+}
+.chat-input-light::placeholder { color: #94a3b8 !important; }
+
+/* Fix: text-gray-100 and text-gray-200 in light mode */
+html:not(.dark) .text-gray-100 { color: #1e293b !important; }
+html:not(.dark) .text-gray-200 { color: #334155 !important; }

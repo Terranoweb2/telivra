@@ -47,6 +47,15 @@ app.prepare().then(() => {
 
   (global as any).io = io;
 
+  // Chat presence tracking: orderId -> Set<socketId>
+  const chatPresence = new Map<string, Set<string>>();
+
+  function emitPresence(orderId: string) {
+    const members = chatPresence.get(orderId);
+    const count = members ? members.size : 0;
+    io.to(`chat:${orderId}`).emit("chat:presence", { orderId, count });
+  }
+
   io.on("connection", (socket) => {
     console.log("[Socket.IO] Client connected:", socket.id);
 
@@ -100,10 +109,19 @@ app.prepare().then(() => {
     // Chat: rejoindre/quitter la room de discussion
     socket.on("subscribe:chat", (orderId: string) => {
       socket.join(`chat:${orderId}`);
-      console.log(`[Socket.IO] ${socket.id} joined chat:${orderId}`);
+      if (!chatPresence.has(orderId)) chatPresence.set(orderId, new Set());
+      chatPresence.get(orderId)!.add(socket.id);
+      emitPresence(orderId);
+      console.log(`[Socket.IO] ${socket.id} joined chat:${orderId} (${chatPresence.get(orderId)!.size} members)`);
     });
     socket.on("unsubscribe:chat", (orderId: string) => {
       socket.leave(`chat:${orderId}`);
+      const members = chatPresence.get(orderId);
+      if (members) {
+        members.delete(socket.id);
+        if (members.size === 0) chatPresence.delete(orderId);
+      }
+      emitPresence(orderId);
     });
 
     // Chat: indicateur de frappe
@@ -120,6 +138,14 @@ app.prepare().then(() => {
       });
     });
 
+    // Chat: relayer editions et suppressions de messages
+    socket.on("chat:message-edited", (data: { messageId: string; content: string; orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("chat:message-edited", data);
+    });
+    socket.on("chat:message-deleted", (data: { messageId: string; orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("chat:message-deleted", data);
+    });
+
 
     // ===== APPELS VoIP WebRTC =====
     socket.on("call:initiate", (data: { orderId: string; callerName: string; callerRole: string }) => {
@@ -131,8 +157,8 @@ app.prepare().then(() => {
       console.log(`[Call] ${data.callerName} calling on order ${data.orderId}`);
     });
 
-    socket.on("call:accept", (data: { orderId: string }) => {
-      socket.to(`chat:${data.orderId}`).emit("call:accepted", { orderId: data.orderId });
+    socket.on("call:accept", (data: { orderId: string; accepterName?: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:accepted", { orderId: data.orderId, accepterName: data.accepterName });
     });
 
     socket.on("call:offer", (data: { orderId: string; offer: any }) => {
@@ -184,6 +210,14 @@ app.prepare().then(() => {
     });
 
     socket.on("disconnect", () => {
+      // Clean up presence from all chat rooms
+      for (const [orderId, members] of chatPresence.entries()) {
+        if (members.has(socket.id)) {
+          members.delete(socket.id);
+          if (members.size === 0) chatPresence.delete(orderId);
+          emitPresence(orderId);
+        }
+      }
       console.log("[Socket.IO] Client disconnected:", socket.id);
     });
   });

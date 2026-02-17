@@ -87,11 +87,11 @@ function NavigateContent() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread, socket,
+    unreadCount: chatUnread, editMessage: chatEditMessage, deleteMessage: chatDeleteMessage, socket, isOtherOnline, chatEnabled: hookChatEnabled,
   } = useChat({ orderId, enabled: !!orderId && !!deliveryId });
 
   const {
-    callState, remoteName: callRemoteName, callDuration,
+    callState, remoteName: callRemoteName, callerLabel: callCallerLabel, callDuration,
     isMuted, isSpeaker, initiateCall, acceptCall, endCall,
     toggleMute, toggleSpeaker,
   } = useCall({
@@ -102,11 +102,7 @@ function NavigateContent() {
     enabled: !!orderId && !!deliveryId,
   });
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [showPickupDialog, setShowPickupDialog] = useState(false);
 
-  useEffect(() => {
-    if (deliveryStatus === "PICKING_UP") setShowPickupDialog(true);
-  }, [deliveryStatus]);
   const watchRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sendPosRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -159,6 +155,13 @@ function NavigateContent() {
     if (amount && amount !== "0") setOrderAmount(amount);
     if (oid) setOrderId(oid);
     const did = searchParams.get("deliveryId");
+    // Resolve truncated orderId from old URLs
+    if (oid && oid.length < 15 && did) {
+      fetch(`/api/deliveries/${did}?byDelivery=true`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.orderId) setOrderId(data.orderId); })
+        .catch(() => {});
+    }
     const dstatus = searchParams.get("status");
     if (did) setDeliveryId(did);
     if (dstatus) setDeliveryStatus(dstatus);
@@ -573,17 +576,6 @@ function NavigateContent() {
           {panelExpanded && (
             <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
               <div className="flex gap-2">
-                {deliveryId && deliveryStatus === "PICKING_UP" && (
-                  <button
-                    onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
-                    disabled={updatingStatus}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
-                  >
-                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
-                    Récupérée
-                  </button>
-                )}
                 {deliveryId && deliveryStatus === "DELIVERING" && (
                   <button
                     onClick={() => updateDeliveryStatus("DELIVERED")}
@@ -733,17 +725,6 @@ function NavigateContent() {
           {panelExpanded && (
             <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
               <div className="flex gap-2">
-                {deliveryId && deliveryStatus === "PICKING_UP" && (
-                  <button
-                    onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
-                    disabled={updatingStatus}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
-                  >
-                    {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
-                    Récupérée
-                  </button>
-                )}
                 {deliveryId && deliveryStatus === "DELIVERING" && (
                   <button
                     onClick={() => updateDeliveryStatus("DELIVERED")}
@@ -843,6 +824,7 @@ function NavigateContent() {
       <CallOverlay
         callState={callState}
         remoteName={callRemoteName}
+        callerLabel={callCallerLabel}
         duration={callDuration}
         isMuted={isMuted}
         isSpeaker={isSpeaker}
@@ -855,7 +837,7 @@ function NavigateContent() {
       {/* ========== CHAT ========== */}
       {orderId && deliveryId && (
         <>
-          {!chatOpen && (
+          {!chatOpen && hookChatEnabled !== false && (
             <ChatButton
               onClick={() => setChatOpen(true)}
               unreadCount={chatUnread}
@@ -872,6 +854,9 @@ function NavigateContent() {
             hasMore={chatHasMore}
             currentSender="DRIVER"
             onSend={chatSendMessage}
+              onEdit={chatEditMessage}
+              onDelete={chatDeleteMessage}
+              chatEnabled={hookChatEnabled}
             onMarkRead={chatMarkAsRead}
             onLoadMore={chatLoadMore}
             onTyping={() => chatEmitTyping("Livreur", "DRIVER")}
@@ -881,40 +866,12 @@ function NavigateContent() {
             orderNumber={orderId.slice(-8).toUpperCase()}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}
+            isOtherOnline={isOtherOnline}
           />
         </>
       )}
 
-      {/* Dialog Recuperation */}
-      {showPickupDialog && deliveryStatus === "PICKING_UP" && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowPickupDialog(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl mx-4 max-w-sm w-full p-6 space-y-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Truck className="w-8 h-8 text-orange-500" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Commande à récupérer</h3>
-              <p className="text-sm text-gray-500 mt-1">Confirmez quand vous avez récupéré la commande au restaurant</p>
-            </div>
-            <button
-              onClick={() => { updateDeliveryStatus("DELIVERING"); setShowPickupDialog(false); }}
-              disabled={updatingStatus}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #ea580c, #f97316)" }}
-            >
-              {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              Commande récupérée
-            </button>
-            <button
-              onClick={() => setShowPickupDialog(false)}
-              className="w-full py-2.5 text-sm text-gray-500 hover:text-gray-700 font-medium"
-            >
-              Plus tard
-            </button>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

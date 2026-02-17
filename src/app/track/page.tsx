@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400", icon: Clock },
   ACCEPTED: { label: "Acceptée", color: "bg-orange-500/20 text-orange-400", icon: CheckCircle },
-  PICKING_UP: { label: "Recuperation", color: "bg-orange-500/20 text-orange-400", icon: ShoppingBag },
   DELIVERING: { label: "En livraison", color: "bg-purple-500/20 text-purple-400", icon: Truck },
   DELIVERED: { label: "Livrée", color: "bg-green-500/20 text-green-400", icon: CheckCircle },
   CANCELLED: { label: "Annulée", color: "bg-red-500/20 text-red-400", icon: XCircle },
@@ -50,7 +49,7 @@ export default function TrackPage() {
         {/* Recherche par telephone */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-white mb-1">Suivre une commande</h2>
-          <p className="text-xs text-gray-500 mb-4">Entrez la référence de votre commande (ex: REF-ABC123)</p>
+          <p className="text-xs text-gray-500 mb-4">Entrez le numéro de votre commande</p>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -59,7 +58,7 @@ export default function TrackPage() {
                 value={ref}
                 onChange={(e) => setRef(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                placeholder="REF-ABC123"
+                placeholder="12345"
                 className="w-full pl-10 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 uppercase"
               />
             </div>
@@ -95,7 +94,7 @@ export default function TrackPage() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="text-sm font-semibold text-white">{order.orderNumber || "CMD-" + order.id.slice(-6)}</p>
+                        <p className="text-sm font-semibold text-white">{order.orderNumber || "#" + order.id.slice(-6)}</p>
                         <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
                       </div>
                       <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", st.color)}>

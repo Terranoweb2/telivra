@@ -23,6 +23,8 @@ const APP_ROUTES = [
   "/users",
   "/settings",
   "/cooks",
+  "/encaissement",
+  "/statistiques",
   "/drivers",
   "/track",
 ];

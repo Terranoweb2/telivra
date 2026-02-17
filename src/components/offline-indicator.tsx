@@ -53,7 +53,7 @@ export function OfflineIndicator() {
       if (!mountedRef.current) return;
       playConnectionSound("lost");
       toast.error("Hors connexion", {
-        description: "Mode cache actif — vos actions seront synchronisées au retour",
+        description: "Mode cache actif — vos actions seront synchronisees au retour",
         icon: <WifiOff className="w-4 h-4" />,
         duration: 5000,
       });
@@ -62,12 +62,11 @@ export function OfflineIndicator() {
     function handleOnline() {
       if (!mountedRef.current) return;
       playConnectionSound("restored");
-      toast.success("Connexion rétablie", {
+      toast.success("Connexion retablie", {
         description: "Synchronisation des actions en attente...",
         icon: <Wifi className="w-4 h-4" />,
         duration: 3000,
       });
-      // Declencher la sync des mutations
       navigator.serviceWorker?.controller?.postMessage("sync-mutations");
     }
 
@@ -75,14 +74,14 @@ export function OfflineIndicator() {
       if (event.data?.type === "mutation-queued") {
         setPendingCount((c) => c + 1);
         toast.info("Action enregistree hors-ligne", {
-          description: "Sera synchronisée au retour de la connexion",
+          description: "Sera synchronisee au retour de la connexion",
           icon: <RefreshCw className="w-4 h-4" />,
           duration: 3000,
         });
       }
       if (event.data?.type === "mutations-synced") {
         setPendingCount(0);
-        toast.success(`${event.data.count} action(s) synchronisée(s)`, {
+        toast.success(`${event.data.count} action(s) synchronisee(s)`, {
           icon: <RefreshCw className="w-4 h-4" />,
           duration: 3000,
         });
@@ -101,12 +100,7 @@ export function OfflineIndicator() {
     };
   }, []);
 
-  if (pendingCount === 0) return null;
-
-  return (
-    <div className="fixed bottom-4 right-4 z-[9999] px-3 py-2 bg-yellow-600/90 text-white rounded-xl text-xs font-medium flex items-center gap-2 backdrop-blur-sm shadow-lg">
-      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-      {pendingCount} action(s) en attente
-    </div>
-  );
+  // Ne rien afficher — les actions en attente sont gerees par les toasts
+  // L'ancien bandeau fixe chevauchait le chat panel et d'autres elements
+  return null;
 }

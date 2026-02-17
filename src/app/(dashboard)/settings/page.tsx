@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette } from "lucide-react";
+import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,15 @@ export default function SettingsPage() {
   const role = (session?.user as any)?.role;
   const isAdmin = role === "ADMIN";
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Restore tab from sessionStorage after mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("settings-tab");
+    if (saved) setActiveTab(saved);
+  }, []);
+  useEffect(() => {
+    sessionStorage.setItem("settings-tab", activeTab);
+  }, [activeTab]);
   const [saving, setSaving] = useState(false);
 
   // Profil
@@ -40,6 +49,7 @@ export default function SettingsPage() {
   const [heroTitle, setHeroTitle] = useState("");
   const [heroSubtitle, setHeroSubtitle] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
+  const [chatEnabled, setChatEnabled] = useState(true);
 
   useEffect(() => {
     if (isAdmin) {
@@ -54,6 +64,7 @@ export default function SettingsPage() {
         setButtonColor(data.buttonColor || "#ea580c");
         setHeroTitle(data.heroTitle || "");
         setHeroSubtitle(data.heroSubtitle || "");
+        setChatEnabled(data.chatEnabled !== false);
       }).catch(() => {});
     }
   }, [isAdmin]);
@@ -119,7 +130,7 @@ export default function SettingsPage() {
   async function saveSiteSettings() {
     setSaving(true);
     try {
-      const body: any = { restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
+      const body: any = { chatEnabled, restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
       const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
@@ -189,6 +200,20 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Devise</label>
                 <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass} />
+              </div>
+              <div className="border-t border-white/[0.06] pt-4">
+                <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-orange-400" /> Messagerie
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[13px] text-gray-300">Activer le chat</p>
+                    <p className="text-[11px] text-gray-600">Permet aux clients et livreurs de discuter</p>
+                  </div>
+                  <button type="button" onClick={() => setChatEnabled(!chatEnabled)} className={cn("relative w-11 h-6 rounded-full transition-colors", chatEnabled ? "bg-orange-600" : "bg-gray-700")}>
+                    <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", chatEnabled ? "left-[22px]" : "left-0.5")} />
+                  </button>
+                </div>
               </div>
               <button onClick={saveSiteSettings} disabled={saving}
                 className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl text-[13px] font-semibold transition-colors">

@@ -16,6 +16,7 @@ export async function GET() {
       buttonColor: null,
       heroTitle: null,
       heroSubtitle: null,
+      chatEnabled: true,
     }, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
@@ -42,6 +43,7 @@ export async function PUT(request: NextRequest) {
     buttonColor,
     heroTitle,
     heroSubtitle,
+    chatEnabled,
   } = body;
 
   const data: Record<string, unknown> = {};
@@ -54,6 +56,7 @@ export async function PUT(request: NextRequest) {
   if (buttonColor !== undefined) data.buttonColor = buttonColor ? String(buttonColor).replace(/[^#a-fA-F0-9]/g, "").slice(0, 7) : null;
   if (heroTitle !== undefined) data.heroTitle = heroTitle ? String(heroTitle).slice(0, 200) : null;
   if (heroSubtitle !== undefined) data.heroSubtitle = heroSubtitle ? String(heroSubtitle).slice(0, 500) : null;
+  if (chatEnabled !== undefined) data.chatEnabled = Boolean(chatEnabled);
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "default" },

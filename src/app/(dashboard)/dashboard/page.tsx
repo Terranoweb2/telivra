@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [chartPeriod, setChartPeriod] = useState<"day" | "week" | "month" | "custom">("day");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
   useEffect(() => {
     const promises: Promise<any>[] = [];
@@ -50,6 +51,11 @@ export default function DashboardPage() {
       promises.push(
         Promise.resolve(null),
         fetch("/api/orders?as=driver").then((r) => r.json()),
+      );
+    } else if (role === "COOK") {
+      promises.push(
+        Promise.resolve(null),
+        fetch("/api/orders/cook").then((r) => r.json()),
       );
     } else {
       promises.push(
@@ -183,16 +189,23 @@ export default function DashboardPage() {
                   Voir plus <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
-              <div className="flex items-end justify-between gap-2 h-32">
-                {revenue.dailyRevenue.map((day: any) => {
+              <div className="flex items-end justify-between gap-2 h-40">
+                {revenue.dailyRevenue.map((day: any, idx: number) => {
                   const maxRevenue = Math.max(...revenue.dailyRevenue.map((d: any) => d.revenue), 1);
                   const height = (day.revenue / maxRevenue) * 100;
+                  const isActive = selectedBar === idx;
                   return (
-                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1 cursor-pointer relative"
+                      onClick={() => setSelectedBar(isActive ? null : idx)}>
+                      {isActive && (
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 border border-orange-500/50 rounded-lg px-2 py-1 whitespace-nowrap z-10 shadow-xl shadow-orange-500/10">
+                          <p className="text-[10px] text-orange-400 font-bold">{day.revenue.toLocaleString()} F</p>
+                        </div>
+                      )}
                       <p className="text-[9px] text-gray-500 font-medium">{day.count}</p>
                       <div className="w-full bg-gray-800 rounded-t-lg relative" style={{ height: "100px" }}>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-lg transition-all"
-                          style={{ height: `${Math.max(height, 3)}%` }} />
+                        <div className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all ${isActive ? "ring-2 ring-orange-400/50" : ""}`}
+                          style={{ height: `${Math.max(height, 3)}%`, background: "linear-gradient(to top, #c2410c, #fb923c)" }} />
                       </div>
                       <p className="text-[10px] text-gray-500">{day.label}</p>
                     </div>
@@ -341,6 +354,11 @@ export default function DashboardPage() {
   const todayDelivered = isDriverRole ? orders.filter((o: any) => o.status === "DELIVERED" && o.createdAt?.slice(0, 10) === todayKey) : [];
   const todayRevenue = todayDelivered.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0);
   const cancelledOrders = orders.filter((o: any) => o.status === "CANCELLED");
+  const nonCancelledOrders = orders.filter((o: any) => o.status !== "CANCELLED");
+  const totalSpent = nonCancelledOrders.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0);
+  const pendingCook = orders.filter((o: any) => o.status === "PENDING");
+  const preparingCook = orders.filter((o: any) => ["ACCEPTED", "PREPARING"].includes(o.status));
+  const readyCook = orders.filter((o: any) => o.status === "READY");
 
   return (
     <div className="space-y-5">
@@ -491,9 +509,10 @@ export default function DashboardPage() {
                   {chartData.map((bar, i) => {
                     const pct = (bar.count / chartMax) * 100;
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative cursor-pointer"
+                          onClick={() => setSelectedBar(selectedBar === i ? null : i)}>
                         {/* Tooltip */}
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                        <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 transition-opacity whitespace-nowrap z-10 shadow-xl ${selectedBar === i ? "opacity-100" : "opacity-0 group-hover:opacity-100 pointer-events-none"}`}>
                           <p className="text-[10px] text-white font-medium">{bar.count} livr.</p>
                           <p className="text-[10px] text-orange-400 font-medium">{bar.revenue.toLocaleString()} F</p>
                         </div>
@@ -524,47 +543,64 @@ export default function DashboardPage() {
         </>
       ) : (
         <>
-          {/* Stats pour Cook / Client */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              icon={role === "COOK" ? ChefHat : Truck}
-              value={activeOrders.length}
-              label={role === "COOK" ? "En préparation" : "Commandes en cours"}
-              color="orange"
-            />
-            <StatCard
-              icon={CheckCircle}
-              value={deliveredOrders.length}
-              label={role === "COOK" ? "Préparées" : "Commandes livrées"}
-              color="green"
-            />
-          </div>
-
-          {/* Actions rapides Cook / Client */}
-          <div className="grid grid-cols-2 gap-3">
-            {role === "CLIENT" && (
-              <Link href="/livraison">
-                <Card hover className="p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-orange-500/10 rounded-xl"><ShoppingBag className="w-5 h-5 text-orange-400" /></div>
-                  <div><p className="text-sm font-medium text-white">Commander</p><p className="text-xs text-gray-500">Passer une commande</p></div>
-                </Card>
-              </Link>
-            )}
-            {role === "COOK" && (
-              <Link href="/cuisine">
-                <Card hover className="p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-orange-500/10 rounded-xl"><ChefHat className="w-5 h-5 text-orange-400" /></div>
-                  <div><p className="text-sm font-medium text-white">Cuisine</p><p className="text-xs text-gray-500">Voir les commandes</p></div>
-                </Card>
-              </Link>
-            )}
-            <Link href="/livraison/order">
-              <Card hover className="p-4 flex items-center gap-3">
-                <div className="p-2.5 bg-purple-500/10 rounded-xl"><Package className="w-5 h-5 text-purple-400" /></div>
-                <div><p className="text-sm font-medium text-white">Commandes</p><p className="text-xs text-gray-500">Voir toutes</p></div>
+          {role === "COOK" ? (
+            /* Stats detaillees cuisinier */
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <StatCard icon={Clock} value={pendingCook.length} label="En attente" color="yellow" />
+              <StatCard icon={ChefHat} value={preparingCook.length} label="Acceptées" color="orange" />
+              <StatCard icon={CheckCircle} value={readyCook.length} label="Attente livraison" color="cyan" />
+              <StatCard icon={Truck} value={deliveredOrders.length} label="Livrées" color="green" />
+              <StatCard icon={XCircle} value={cancelledOrders.length} label="Annulées" color="red" />
+            </div>
+          ) : (
+            <>
+            {/* Stats Client */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="relative overflow-hidden p-4">
+                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #f97316, transparent)", transform: "translate(30%, -30%)" }} />
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 shadow-lg shadow-orange-500/5">
+                    <Truck className="w-6 h-6 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{activeOrders.length}</p>
+                    <p className="text-[11px] text-gray-400">En cours</p>
+                  </div>
+                </div>
               </Card>
-            </Link>
-          </div>
+              <Card className="relative overflow-hidden p-4">
+                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #22c55e, transparent)", transform: "translate(30%, -30%)" }} />
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-600/10 shadow-lg shadow-green-500/5">
+                    <CheckCircle className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{deliveredOrders.length}</p>
+                    <p className="text-[11px] text-gray-400">Livrées</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            {/* Total dépensé */}
+            <Card className="relative overflow-hidden p-4">
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #a855f7, transparent)", transform: "translate(30%, -30%)" }} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 shadow-lg shadow-purple-500/5">
+                    <Wallet className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-400 mb-0.5">Total dépensé</p>
+                    <p className="text-2xl font-bold text-white">{totalSpent.toLocaleString()} <span className="text-sm font-normal text-gray-400">FCFA</span></p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">{nonCancelledOrders.length} commande{nonCancelledOrders.length > 1 ? "s" : ""}</p>
+              </div>
+            </Card>
+            </>
+          )}
+
+
         </>
       )}
 
@@ -576,18 +612,38 @@ export default function DashboardPage() {
             {recentOrders.map((order: any) => {
               const href = isDriverRole && order.delivery
                 ? `/livraison/driver/${order.delivery.id}`
-                : role === "COOK" ? `/cuisine` : `/livraison/order/${order.id}`;
+                : role === "COOK" ? `/cuisine` : `/track/${order.id}`;
+              const mealNames = order.items?.map((i: any) => i.product?.name).filter(Boolean).join(", ");
+              const firstImage = order.items?.find((i: any) => i.product?.image)?.product?.image;
+              const itemCount = order.items?.length || 0;
               return (
                 <Link key={order.id} href={href} className="block">
                   <Card hover className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      {/* Photo du repas */}
+                      {!isDriverRole && role !== "COOK" ? (
+                        firstImage ? (
+                          <img src={firstImage} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-700/50" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center shrink-0 border border-gray-700/50">
+                            <UtensilsCrossed className="w-5 h-5 text-gray-600" />
+                          </div>
+                        )
+                      ) : null}
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">
-                          {isDriverRole || role === "COOK" ? (order.client?.name || order.guestName || `#${order.id.slice(-6)}`) : `Commande #${order.id.slice(-6)}`}
+                          {isDriverRole || role === "COOK"
+                            ? (order.client?.name || order.guestName || `#${order.id.slice(-6)}`)
+                            : (mealNames || `Commande #${order.id.slice(-6)}`)}
                         </p>
-                        <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {!isDriverRole && role !== "COOK" && itemCount > 1 && (
+                            <span className="text-gray-400">{itemCount} articles · </span>
+                          )}
+                          {new Date(order.createdAt).toLocaleString("fr-FR")}
+                        </p>
                       </div>
-                      <div className="text-right shrink-0 ml-3">
+                      <div className="text-right shrink-0">
                         <StatusBadge status={order.status} type="order" />
                         <p className="text-xs font-bold text-orange-400 mt-1">{order.totalAmount?.toLocaleString()} F</p>
                       </div>

@@ -20,7 +20,8 @@ import {
   ChefHat,
   UtensilsCrossed,
   Percent,
-  BarChart3 } from "lucide-react";
+  BarChart3,
+  Banknote } from "lucide-react";
 
 function useBranding() {
   const [brand, setBrand] = useState({ name: "Terrano", logo: null as string | null });
@@ -33,6 +34,7 @@ function useBranding() {
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
   { label: "Cuisine", href: "/cuisine", icon: ChefHat, roles: ["COOK", "ADMIN"] },
+  { label: "Encaissement", href: "/encaissement", icon: Banknote, roles: ["COOK", "ADMIN"] },
   { label: "Commander", href: "/livraison", icon: ShoppingBag, roles: ["CLIENT"] },
   { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER", "COOK"] },
   { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER", "COOK"] },

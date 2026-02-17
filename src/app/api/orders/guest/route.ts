@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
     return { productId: i.productId, quantity: i.quantity, price: discountedTotal };
   });
 
-  const ref = "REF-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Generate sequential numeric orderNumber
+  const lastOrder = await prisma.$queryRaw<{ next: number }[]>`
+    SELECT COALESCE(MAX(CAST("orderNumber" AS INTEGER)), 0) + 1 as next
+    FROM orders WHERE "orderNumber" ~ '^[0-9]+$'
+  `;
+  const ref = String(lastOrder[0]?.next || 1);
 
   const order = await prisma.order.create({
     data: {

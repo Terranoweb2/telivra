@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
+// Resolve potentially truncated orderId
+async function resolveOrderId(rawId: string) {
+  let order = await prisma.order.findUnique({
+    where: { id: rawId },
+    select: { id: true, clientId: true, delivery: { select: { driverId: true } } },
+  });
+  if (order) return order;
+  if (rawId.length < 15) {
+    order = await prisma.order.findFirst({
+      where: { id: { endsWith: rawId } },
+      select: { id: true, clientId: true, delivery: { select: { driverId: true } } },
+    });
+  }
+  return order;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
@@ -12,12 +28,9 @@ export async function POST(
     const userId = (session?.user as any)?.id;
     const role = (session?.user as any)?.role;
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: { clientId: true, delivery: { select: { driverId: true } } },
-    });
-
+    const order = await resolveOrderId(orderId);
     if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
+    const realOrderId = order.id;
 
     let senderFilter: string[];
 
@@ -35,7 +48,7 @@ export async function POST(
 
     await prisma.message.updateMany({
       where: {
-        orderId,
+        orderId: realOrderId,
         isRead: false,
         sender: { in: senderFilter as any },
       },
@@ -44,7 +57,10 @@ export async function POST(
 
     const io = (global as any).io;
     if (io) {
-      io.to(`chat:${orderId}`).emit("chat:read", { orderId, readBy: role || "CLIENT" });
+      io.to(`chat:${realOrderId}`).emit("chat:read", { orderId: realOrderId, readBy: role || "CLIENT" });
+      if (realOrderId !== orderId) {
+        io.to(`chat:${orderId}`).emit("chat:read", { orderId, readBy: role || "CLIENT" });
+      }
     }
 
     return NextResponse.json({ success: true });

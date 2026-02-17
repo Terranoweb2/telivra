@@ -303,6 +303,7 @@ model SiteSettings {
   buttonColor          String?
   heroTitle            String?
   heroSubtitle         String?
+  chatEnabled          Boolean       @default(true)
   updatedAt            DateTime      @updatedAt
 
   @@map("site_settings")
@@ -535,6 +536,10 @@ model Message {
   guestName String?
   fileUrl   String?
   isRead    Boolean       @default(false)
+  isEdited  Boolean       @default(false)
+  replyToId String?
+  replyTo   Message?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[]     @relation("MessageReplies")
   createdAt DateTime      @default(now())
 
   @@index([orderId, createdAt])

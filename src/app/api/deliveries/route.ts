@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     data: {
       orderId,
       driverId: (session.user as any).id,
-      status: "PICKING_UP",
+      status: "DELIVERING",
       currentLat: latitude || null,
       currentLng: longitude || null,
     },

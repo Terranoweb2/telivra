@@ -15,35 +15,32 @@ export async function GET() {
   const sevenDaysAgo = new Date(todayStart);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
-  const [
-    todayAgg, weekAgg, monthAgg, allOrders,
-    pendingCount, activeDeliveries, deliveredToday,
-    preparingCount, readyCount, pendingCookCount, preparedToday,
-    cashAgg, onlineAgg,
-    todayOrdersCount, weekOrdersCount, monthOrdersCount,
-    dailyRevenueRaw,
-  ] = await Promise.all([
-    // Recettes agrégées (DELIVERED seulement)
+  // Batch 1: Aggregates (6 queries)
+  const [todayAgg, weekAgg, monthAgg, allOrders, cashAgg, onlineAgg] = await Promise.all([
     prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: todayStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: weekStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.count(),
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "CASH" }, _sum: { totalAmount: true }, _count: true }),
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "ONLINE" }, _sum: { totalAmount: true }, _count: true }),
+  ]);
+
+  // Batch 2: Counts (6 queries)
+  const [pendingCount, activeDeliveries, deliveredToday, preparingCount, readyCount, preparedToday] = await Promise.all([
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.delivery.count({ where: { status: { in: ["PICKING_UP", "DELIVERING"] } } }),
     prisma.delivery.count({ where: { status: "DELIVERED", endTime: { gte: todayStart } } }),
-    // Cook stats
     prisma.order.count({ where: { status: "PREPARING" } }),
     prisma.order.count({ where: { status: "READY" } }),
-    prisma.order.count({ where: { status: "PENDING" } }),
     prisma.order.count({ where: { status: { in: ["READY", "PICKED_UP", "DELIVERING", "DELIVERED"] }, cookReadyAt: { gte: todayStart } } }),
-    // Payment breakdown agrégé
-    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "CASH" }, _sum: { totalAmount: true }, _count: true }),
-    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "ONLINE" }, _sum: { totalAmount: true }, _count: true }),
-    // Comptages par période
+  ]);
+  const pendingCookCount = pendingCount;
+
+  // Batch 3: Period counts + daily SQL (4 queries)
+  const [todayOrdersCount, weekOrdersCount, monthOrdersCount, dailyRevenueRaw] = await Promise.all([
     prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.order.count({ where: { createdAt: { gte: weekStart } } }),
     prisma.order.count({ where: { createdAt: { gte: monthStart } } }),
-    // Revenue 7 jours en une seule requête SQL
     prisma.$queryRaw<{ day: string; revenue: number; count: bigint }[]>`
       SELECT DATE("createdAt") as day,
              COALESCE(SUM("totalAmount"), 0)::float as revenue,
@@ -62,7 +59,7 @@ export async function GET() {
     const dayStart = new Date(todayStart);
     dayStart.setDate(dayStart.getDate() - i);
     const dateStr = dayStart.toISOString().slice(0, 10);
-    const found = dailyRevenueRaw.find((r: any) => String(r.day).slice(0, 10) === dateStr);
+    const found = dailyRevenueRaw.find((r: any) => new Date(r.day).toISOString().slice(0, 10) === dateStr);
     dailyRevenue.push({
       date: dateStr,
       label: dayStart.toLocaleDateString("fr-FR", { weekday: "short" }),

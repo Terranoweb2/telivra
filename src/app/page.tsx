@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import {
   ShoppingBag, MapPin, CreditCard,
-  Search, Plus, Minus, X, Loader2,
+  Search, Plus, Minus, X, Trash2, Loader2,
   ClipboardList, LogIn, UserPlus,
   UtensilsCrossed,
   ArrowDown, Phone, User, Timer, Droplets,
@@ -183,7 +183,7 @@ export default function LandingPage() {
         body: JSON.stringify({ name: authName, email: authEmail, password: authPassword, phone: authPhone }),
       });
       if (res.ok) {
-        const result = await signIn("credentials", { email: authEmail, password: authPassword, redirect: false });
+        const result = await signIn("credentials", { email: authEmail.trim().toLowerCase(), password: authPassword, redirect: false });
         if (result?.error) {
           setAuthError("Compte créé. Erreur de connexion automatique.");
         } else {
@@ -199,6 +199,34 @@ export default function LandingPage() {
     }
     setAuthLoading(false);
   }
+
+  // Restore from sessionStorage on mount (after hydration)
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const savedCart = sessionStorage.getItem("terrano-cart");
+      if (savedCart) { const parsed = JSON.parse(savedCart); if (Array.isArray(parsed) && parsed.length > 0) setCart(parsed); }
+      const savedStep = sessionStorage.getItem("terrano-step") as OrderStep | null;
+      if (savedStep && ["extras", "address", "info", "payment"].includes(savedStep)) setOrderStep(savedStep);
+      const savedName = sessionStorage.getItem("terrano-gname");
+      if (savedName) setGuestName(savedName);
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  // Sync to sessionStorage after hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    try { sessionStorage.setItem("terrano-cart", JSON.stringify(cart)); } catch {}
+  }, [cart, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    sessionStorage.setItem("terrano-step", orderStep);
+  }, [orderStep, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (guestName) sessionStorage.setItem("terrano-gname", guestName);
+  }, [guestName, hydrated]);
 
   useEffect(() => {
     Promise.all([
@@ -305,7 +333,7 @@ export default function LandingPage() {
 
   // Step navigation
   const stepsList: { id: OrderStep; label: string }[] = [
-    ...(hasExtras ? [{ id: "extras" as const, label: "Suppléments" }] : []),
+    ...(hasExtras ? [{ id: "extras" as const, label: "Extras" }] : []),
     { id: "address" as const, label: "Adresse" },
     { id: "info" as const, label: "Vos infos" },
     { id: "payment" as const, label: "Paiement" },
@@ -555,16 +583,24 @@ export default function LandingPage() {
       {/* ============================================ */}
       {orderStep === "menu" && totalMeals > 0 && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 lg:bottom-0 lg:pb-4 lg:max-w-2xl lg:mx-auto">
-          <button onClick={nextStep}
-            className="w-full flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg">
-            <span className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5" />
-              <span className="text-sm font-semibold">{totalMeals} Plat{totalMeals > 1 ? "s" : ""}</span>
-            </span>
-            <span className="flex items-center gap-1.5 text-sm font-bold">
-              Suivant <ChevronRight className="w-4 h-4" />
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setCart([]); try { sessionStorage.removeItem("terrano-cart"); } catch {} toast.info("Panier vidé"); }}
+              className="w-12 h-12 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-2xl text-gray-400 transition-colors shadow-lg shrink-0"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+            <button onClick={nextStep}
+              className="flex-1 flex items-center justify-between py-3.5 px-5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-white transition-colors shadow-lg">
+              <span className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="text-sm font-semibold">{totalMeals} Plat{totalMeals > 1 ? "s" : ""}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-sm font-bold">
+                Suivant <ChevronRight className="w-4 h-4" />
+              </span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -609,7 +645,7 @@ export default function LandingPage() {
             {/* Contenu scrollable */}
             <div className={cn("flex-1 min-h-0", orderStep === "address" ? "overflow-hidden relative" : "overflow-y-auto p-4")}>
 
-              {/* ——— ÉTAPE : Suppléments ——— */}
+              {/* ——— ÉTAPE : Extras ——— */}
               {orderStep === "extras" && (
                 <div className="space-y-4">
                   <p className="text-sm text-gray-400">
@@ -722,10 +758,10 @@ export default function LandingPage() {
                     ))}
                   </div>
 
-                  {/* Suppléments */}
+                  {/* Extras */}
                   {extraItems.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Suppléments</p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Extras</p>
                       {extraItems.map((i) => (
                         <div key={i.product.id} className="flex justify-between text-sm">
                           <span className="text-gray-300">{i.quantity}× {i.product.name}</span>

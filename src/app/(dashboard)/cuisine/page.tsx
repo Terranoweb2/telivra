@@ -149,6 +149,8 @@ export default function CuisinePage() {
     { key: "pending", label: "Nouvelles", count: pending.length, icon: Bell },
     { key: "preparing", label: "En cuisine", count: preparing.length, icon: ChefHat },
     { key: "ready", label: "Prêtes", count: ready.length, icon: CheckCircle },
+    { key: "delivered", label: "Livrées", count: delivered.length, icon: Truck },
+    { key: "cancelled", label: "Annulées", count: cancelled.length, icon: XCircle },
   ];
 
   const adminTabs: { key: string; label: string; count: number; icon: any }[] = [

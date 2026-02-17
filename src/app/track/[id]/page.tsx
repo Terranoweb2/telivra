@@ -163,12 +163,12 @@ export default function TrackDetailPage() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread, setUnreadCount: setChatUnread, socket,
+    unreadCount: chatUnread, setUnreadCount: setChatUnread, editMessage: chatEditMessage, deleteMessage: chatDeleteMessage, socket, isOtherOnline, chatEnabled: hookChatEnabled,
   } = useChat({ orderId: id as string, enabled: !!order?.delivery });
 
   // Appel VoIP WebRTC
   const {
-    callState, remoteName: callRemoteName, callDuration,
+    callState, remoteName: callRemoteName, callerLabel: callCallerLabel, callDuration,
     isMuted, isSpeaker, initiateCall, acceptCall, endCall,
     toggleMute, toggleSpeaker,
   } = useCall({
@@ -732,6 +732,7 @@ export default function TrackDetailPage() {
       <CallOverlay
         callState={callState}
         remoteName={callRemoteName}
+        callerLabel={callCallerLabel}
         duration={callDuration}
         isMuted={isMuted}
         isSpeaker={isSpeaker}
@@ -744,7 +745,7 @@ export default function TrackDetailPage() {
       {/* ========== CHAT ========== */}
       {order?.delivery && (
         <>
-          {!chatOpen && (
+          {!chatOpen && hookChatEnabled !== false && (
             <ChatButton
               onClick={() => setChatOpen(true)}
               unreadCount={chatUnread}
@@ -761,6 +762,9 @@ export default function TrackDetailPage() {
             hasMore={chatHasMore}
             currentSender="CLIENT"
             onSend={chatSendMessage}
+              onEdit={chatEditMessage}
+              onDelete={chatDeleteMessage}
+              chatEnabled={hookChatEnabled}
             onMarkRead={chatMarkAsRead}
             onLoadMore={chatLoadMore}
             onTyping={() => chatEmitTyping(order.guestName || order.client?.name || "Client", "CLIENT")}
@@ -770,6 +774,7 @@ export default function TrackDetailPage() {
             orderNumber={order.orderNumber}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}
+            isOtherOnline={isOtherOnline}
             lightMode
           />
         </>

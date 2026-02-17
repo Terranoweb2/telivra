@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, phone } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Nom, email et mot de passe requis" }, { status: 400 });
@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caractères" }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    // Normaliser l'email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
     }
@@ -23,16 +26,21 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: name.trim(),
+        email: normalizedEmail,
         hashedPassword,
         role: "CLIENT",
+        ...(phone ? { phone: phone.trim() } : {}),
       },
       select: { id: true, name: true, email: true, role: true },
     });
 
     return NextResponse.json(user, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  } catch (err: any) {
+    console.error("[register] error:", err?.message || err);
+    if (err?.code === "P2002") {
+      return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Erreur serveur, veuillez réessayer" }, { status: 500 });
   }
 }

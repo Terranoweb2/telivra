@@ -75,12 +75,12 @@ export default function DriverDeliveryDetail() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread, socket,
+    unreadCount: chatUnread, editMessage: chatEditMessage, deleteMessage: chatDeleteMessage, socket, isOtherOnline, chatEnabled: hookChatEnabled,
   } = useChat({ orderId: chatOrderId, enabled: !!delivery?.orderId });
 
   // Appel VoIP WebRTC
   const {
-    callState, remoteName: callRemoteName, callDuration,
+    callState, remoteName: callRemoteName, callerLabel: callCallerLabel, callDuration,
     isMuted, isSpeaker, initiateCall, acceptCall, endCall,
     toggleMute, toggleSpeaker,
   } = useCall({
@@ -295,7 +295,7 @@ export default function DriverDeliveryDetail() {
           <div className="flex-1 bg-gray-900/70 backdrop-blur-md rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
             <Truck className="w-4 h-4 text-orange-400" />
             <span className="text-sm font-semibold text-white flex-1">
-              {delivery.status === "PICKING_UP" ? "Récupération" : "En route"}
+              En route
             </span>
             <span className="text-xs text-gray-400 flex items-center gap-1">
               <Clock className="w-3 h-3" /> {elapsed} min
@@ -328,6 +328,7 @@ export default function DriverDeliveryDetail() {
       <CallOverlay
         callState={callState}
         remoteName={callRemoteName}
+        callerLabel={callCallerLabel}
         duration={callDuration}
         isMuted={isMuted}
         isSpeaker={isSpeaker}
@@ -340,7 +341,7 @@ export default function DriverDeliveryDetail() {
       {/* ========== CHAT ========== */}
       {delivery && (
         <>
-          {!chatOpen && (
+          {!chatOpen && hookChatEnabled !== false && (
             <ChatButton
               onClick={() => setChatOpen(true)}
               unreadCount={chatUnread}
@@ -357,6 +358,9 @@ export default function DriverDeliveryDetail() {
             hasMore={chatHasMore}
             currentSender="DRIVER"
             onSend={chatSendMessage}
+              onEdit={chatEditMessage}
+              onDelete={chatDeleteMessage}
+              chatEnabled={hookChatEnabled}
             onMarkRead={chatMarkAsRead}
             onLoadMore={chatLoadMore}
             onTyping={() => chatEmitTyping(delivery?.driver?.name || "Livreur", "DRIVER")}
@@ -366,6 +370,7 @@ export default function DriverDeliveryDetail() {
             orderNumber={order?.orderNumber}
             onCall={initiateCall}
             callDisabled={callState !== "idle" || !chatEnabled}
+            isOtherOnline={isOtherOnline}
           />
         </>
       )}
@@ -378,18 +383,13 @@ export default function DriverDeliveryDetail() {
         )}
       >
         <div className={cn(
-          "bg-gray-900/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.3)] flex flex-col rounded-t-2xl",
+          "bg-gray-900/95 backdrop-blur-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.4)] flex flex-col rounded-t-3xl border-t border-gray-700/30",
           sheetExpanded && "h-full"
         )}>
-          {/* Handle */}
-          <div className="flex justify-center pt-2.5 pb-1">
-            <div className="w-10 h-1 bg-gray-600 rounded-full" />
-          </div>
-
           {/* Client info + toggle */}
           <button
             onClick={() => setSheetExpanded(!sheetExpanded)}
-            className="w-full px-4 pb-3 flex items-center gap-3"
+            className="w-full px-4 pt-3 pb-3 flex items-center gap-3"
           >
             <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center shrink-0">
               <User className="w-5 h-5 text-white" />
@@ -400,21 +400,13 @@ export default function DriverDeliveryDetail() {
                 <MapPin className="w-3 h-3 shrink-0" /> {order?.deliveryAddress}
               </p>
             </div>
-            <div className="shrink-0 w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
-              {sheetExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+            <div className="shrink-0 w-8 h-8 rounded-full bg-orange-600/20 flex items-center justify-center">
+              {sheetExpanded ? <ChevronDown className="w-4 h-4 text-orange-400" /> : <ChevronUp className="w-4 h-4 text-orange-400" />}
             </div>
           </button>
 
           {/* Boutons d'action (toujours visibles) */}
           <div className="px-4 pb-3 flex gap-2">
-            {delivery.status === "PICKING_UP" && (
-              <button
-                onClick={() => updateStatus("DELIVERING")}
-                className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg"
-              >
-                <Navigation className="w-4 h-4" /> Commande récupérée
-              </button>
-            )}
             {delivery.status === "DELIVERING" && (
               <button
                 onClick={() => updateStatus("DELIVERED")}

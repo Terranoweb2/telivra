@@ -88,9 +88,17 @@ export async function POST(request: NextRequest) {
     return { productId: i.productId, quantity: i.quantity, price: discountedTotal };
   });
 
+  // Generate sequential numeric orderNumber
+  const lastOrder = await prisma.$queryRaw<{ next: number }[]>`
+    SELECT COALESCE(MAX(CAST("orderNumber" AS INTEGER)), 0) + 1 as next
+    FROM orders WHERE "orderNumber" ~ '^[0-9]+$'
+  `;
+  const orderNumber = String(lastOrder[0]?.next || 1);
+
   const order = await prisma.order.create({
     data: {
       clientId: (session.user as any).id,
+      orderNumber,
       totalAmount: Math.round(totalAmount * 100) / 100,
       discountAmount: Math.round(totalDiscount * 100) / 100,
       promotionId: appliedPromotionId,

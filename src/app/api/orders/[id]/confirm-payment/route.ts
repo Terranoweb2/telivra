@@ -21,14 +21,44 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Paiement déjà confirmé" }, { status: 409 });
   }
 
+  const cookId = (session.user as any).id;
+
+  // Confirmer paiement = accepter la commande automatiquement
+  const updateData: any = { paymentConfirmed: true, paymentStatus: "PAID" };
+  if (order.status === "PENDING") {
+    updateData.status = "PREPARING";
+    updateData.cookId = cookId;
+    updateData.cookAcceptedAt = new Date();
+  }
+
   const updated = await prisma.order.update({
     where: { id },
-    data: { paymentConfirmed: true, paymentStatus: "PAID" },
+    data: updateData,
+    include: {
+      items: { include: { product: true } },
+      client: { select: { id: true, name: true } },
+    },
   });
 
   const io = (global as any).io;
   if (io) {
     io.to("order:" + id).emit("order:payment-confirmed", { orderId: id });
+
+    // Si la commande etait PENDING, emettre aussi l'evenement cook-accepted
+    if (order.status === "PENDING") {
+      const maxCookTime = Math.max(...updated.items.map((i: any) => i.product?.cookingTimeMin ?? 15));
+      const eventData = {
+        orderId: id,
+        cookName: (session.user as any).name,
+        cookAcceptedAt: updated.cookAcceptedAt?.toISOString(),
+        cookingTimeMin: maxCookTime,
+        status: "PREPARING",
+      };
+      io.to(`order:${id}`).emit("order:cook-accepted", eventData);
+      if (updated.clientId) {
+        io.to(`client:${updated.clientId}`).emit("order:cook-accepted", eventData);
+      }
+    }
   }
 
   return NextResponse.json(updated);
