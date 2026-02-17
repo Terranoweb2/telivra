@@ -17,6 +17,9 @@ import { toast } from "sonner";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 import { getCachedSettings } from "@/lib/settings-cache";
 import { playSound } from "@/lib/sounds";
+import { ChatButton } from "@/components/chat/chat-button";
+import { ChatPanel } from "@/components/chat/chat-panel";
+import { useChat } from "@/hooks/use-chat";
 
 const GuestMap = dynamic(() => import("@/components/map/guest-track-map"), {
   ssr: false,
@@ -140,6 +143,7 @@ export default function TrackDetailPage() {
   const routeThrottle = useRef(0);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [brandColor, setBrandColor] = useState("#ea580c");
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Notation
   const [driverRating, setDriverRating] = useState(0);
@@ -149,6 +153,16 @@ export default function TrackDetailPage() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Chat
+  const chatEnabled = !!order?.delivery && !["DELIVERED", "CANCELLED"].includes(order?.status || "");
+  const {
+    messages: chatMessages, loading: chatLoading, sending: chatSending,
+    typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
+    markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
+    emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
+    unreadCount: chatUnread, setUnreadCount: setChatUnread,
+  } = useChat({ orderId: id as string, enabled: !!order?.delivery });
 
   const loadOrder = useCallback(async () => {
     const res = await fetch(`/api/orders/track/${id}`);
@@ -698,6 +712,38 @@ export default function TrackDetailPage() {
           )}
         </div>
       </div>
+
+      {/* ========== CHAT ========== */}
+      {order?.delivery && (
+        <>
+          {!chatOpen && (
+            <ChatButton
+              onClick={() => setChatOpen(true)}
+              unreadCount={chatUnread}
+              disabled={["DELIVERED", "CANCELLED"].includes(order.status)}
+            />
+          )}
+          <ChatPanel
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+            messages={chatMessages}
+            loading={chatLoading}
+            sending={chatSending}
+            typingUser={typingUser}
+            hasMore={chatHasMore}
+            currentSender="CLIENT"
+            onSend={chatSendMessage}
+            onMarkRead={chatMarkAsRead}
+            onLoadMore={chatLoadMore}
+            onTyping={() => chatEmitTyping(order.guestName || order.client?.name || "Client", "CLIENT")}
+            onStopTyping={chatStopTyping}
+            disabled={!chatEnabled}
+            otherPartyName={order.delivery?.driver?.name}
+            otherPartyPhone={order.delivery?.driver?.phone}
+            orderNumber={order.orderNumber}
+          />
+        </>
+      )}
 
       {/* ========== NAV MOBILE ========== */}
       <nav className="fixed bottom-0 left-0 right-0 z-[999] lg:hidden">

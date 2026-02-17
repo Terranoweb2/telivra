@@ -11,12 +11,12 @@ export async function GET(
     where: { id },
     include: {
       items: { include: { product: true } },
-      client: { select: { id: true, name: true } },
+      client: { select: { id: true, name: true, phone: true } },
       promotion: { select: { name: true } },
       rating: true,
       delivery: {
         include: {
-          driver: { select: { id: true, name: true } },
+          driver: { select: { id: true, name: true, phone: true } },
           positions: { orderBy: { timestamp: "desc" }, take: 20 },
         },
       },

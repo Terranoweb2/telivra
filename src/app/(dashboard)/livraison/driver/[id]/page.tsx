@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/ui/star-rating";
+import { ChatButton } from "@/components/chat/chat-button";
+import { ChatPanel } from "@/components/chat/chat-panel";
+import { useChat } from "@/hooks/use-chat";
 
 const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
   ssr: false,
@@ -54,12 +57,24 @@ export default function DriverDeliveryDetail() {
   const [cancelReason, setCancelReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const watchRef = useRef<number | null>(null);
   const sendRef = useRef<any>(null);
   const myPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const speedRef = useRef(0);
   const routeThrottle = useRef<any>(null);
+
+  // Chat
+  const chatEnabled = !!delivery && !["DELIVERED", "CANCELLED"].includes(delivery?.status || "");
+  const chatOrderId = delivery?.orderId || "";
+  const {
+    messages: chatMessages, loading: chatLoading, sending: chatSending,
+    typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
+    markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
+    emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
+    unreadCount: chatUnread,
+  } = useChat({ orderId: chatOrderId, enabled: !!delivery?.orderId });
 
   useEffect(() => {
     fetchDelivery();
@@ -293,6 +308,38 @@ export default function DriverDeliveryDetail() {
           )}
         </div>
       </div>
+
+      {/* ========== CHAT ========== */}
+      {delivery && (
+        <>
+          {!chatOpen && (
+            <ChatButton
+              onClick={() => setChatOpen(true)}
+              unreadCount={chatUnread}
+              disabled={!chatEnabled}
+            />
+          )}
+          <ChatPanel
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+            messages={chatMessages}
+            loading={chatLoading}
+            sending={chatSending}
+            typingUser={typingUser}
+            hasMore={chatHasMore}
+            currentSender="DRIVER"
+            onSend={chatSendMessage}
+            onMarkRead={chatMarkAsRead}
+            onLoadMore={chatLoadMore}
+            onTyping={() => chatEmitTyping(delivery?.driver?.name || "Livreur", "DRIVER")}
+            onStopTyping={chatStopTyping}
+            disabled={!chatEnabled}
+            otherPartyName={order?.client?.name || order?.guestName || "Client"}
+            otherPartyPhone={order?.client?.phone || order?.guestPhone}
+            orderNumber={order?.orderNumber}
+          />
+        </>
+      )}
 
       {/* ========== BOTTOM SHEET ========== */}
       <div

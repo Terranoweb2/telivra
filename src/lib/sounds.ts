@@ -7,7 +7,8 @@ export type SoundType =
   | "delivered"
   | "arriving"
   | "connection-lost"
-  | "connection-restored";
+  | "connection-restored"
+  | "new-message";
 
 // Singleton AudioContext — créé seulement au premier geste utilisateur
 let _ctx: AudioContext | null = null;
@@ -189,6 +190,17 @@ function _playNow(type: SoundType) {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.5);
+        break;
+
+      case "new-message":
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.08);
+        osc.frequency.setValueAtTime(900, ctx.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
         break;
     }
   } catch {}

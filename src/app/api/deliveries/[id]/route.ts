@@ -9,8 +9,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const delivery = await prisma.delivery.findUnique({
     where: { id },
     include: {
-      order: { include: { items: { include: { product: true } }, client: { select: { id: true, name: true } }, rating: true } },
-      driver: { select: { id: true, name: true } },
+      order: { include: { items: { include: { product: true } }, client: { select: { id: true, name: true, phone: true } }, rating: true } },
+      driver: { select: { id: true, name: true, phone: true } },
       positions: { orderBy: { timestamp: "asc" } },
     },
   });
@@ -56,6 +56,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     io.to(`order:${delivery.orderId}`).emit("delivery:status", eventData);
     // Notifier la liste de commandes du client
     io.to(`client:${delivery.order.clientId}`).emit("delivery:status", eventData);
+  }
+
+  // Message système de fermeture du chat
+  if (["DELIVERED", "CANCELLED"].includes(body.status)) {
+    const sysContent = body.status === "DELIVERED"
+      ? "Livraison terminee. Merci !"
+      : "Commande annulee. La discussion est fermee.";
+    try {
+      const sysMsg = await prisma.message.create({
+        data: { content: sysContent, sender: "SYSTEM", orderId: delivery.orderId },
+      });
+      const io2 = (global as any).io;
+      if (io2) {
+        io2.to(`chat:${delivery.orderId}`).emit("chat:message", {
+          ...sysMsg,
+          createdAt: sysMsg.createdAt.toISOString(),
+        });
+      }
+    } catch {}
   }
 
   return NextResponse.json(delivery);

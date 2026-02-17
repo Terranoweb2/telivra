@@ -97,6 +97,29 @@ app.prepare().then(() => {
       socket.leave(`client:${clientId}`);
     });
 
+    // Chat: rejoindre/quitter la room de discussion
+    socket.on("subscribe:chat", (orderId: string) => {
+      socket.join(`chat:${orderId}`);
+      console.log(`[Socket.IO] ${socket.id} joined chat:${orderId}`);
+    });
+    socket.on("unsubscribe:chat", (orderId: string) => {
+      socket.leave(`chat:${orderId}`);
+    });
+
+    // Chat: indicateur de frappe
+    socket.on("chat:typing", (data: { orderId: string; sender: string; name: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("chat:typing", {
+        orderId: data.orderId,
+        sender: data.sender,
+        name: data.name,
+      });
+    });
+    socket.on("chat:stop-typing", (data: { orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("chat:stop-typing", {
+        orderId: data.orderId,
+      });
+    });
+
     socket.on("disconnect", () => {
       console.log("[Socket.IO] Client disconnected:", socket.id);
     });

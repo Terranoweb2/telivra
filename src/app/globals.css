@@ -339,3 +339,12 @@ html:not(.dark) nav .bg-gray-950 {
 html:not(.dark) .scroll-fade-wrapper::after {
   background: linear-gradient(to right, transparent, rgb(248 250 252 / 0.95));
 }
+
+/* --- Chat panel animation --- */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}

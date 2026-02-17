@@ -26,6 +26,8 @@ model User {
   clientOrders     Order[]    @relation("ClientOrders")
   driverDeliveries Delivery[] @relation("DriverDeliveries")
   cookOrders       Order[]    @relation("CookOrders")
+  phone          String?
+  sentMessages   Message[]  @relation("SentMessages")
 
   @@map("users")
 }
@@ -404,6 +406,7 @@ model Order {
   items    OrderItem[]
   delivery Delivery?
   rating   Rating?
+  messages Message[]
 
   @@index([clientId, status])
   @@index([status])
@@ -509,4 +512,30 @@ model PasswordResetCode {
 
   @@index([email, code])
   @@map("password_reset_codes")
+}
+
+// ========== MESSAGERIE INTERNE ==========
+
+enum MessageSender {
+  CLIENT
+  DRIVER
+  ADMIN
+  SYSTEM
+}
+
+model Message {
+  id        String        @id @default(cuid())
+  content   String
+  sender    MessageSender
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?         @relation("SentMessages", fields: [userId], references: [id], onDelete: SetNull)
+  guestName String?
+  isRead    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([orderId, isRead])
+  @@map("messages")
 }

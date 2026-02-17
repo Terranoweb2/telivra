@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
+import { ChatButton } from "@/components/chat/chat-button";
+import { ChatPanel } from "@/components/chat/chat-panel";
+import { useChat } from "@/hooks/use-chat";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -136,6 +139,7 @@ export default function OrderDetailPage() {
   const orderId = id as string;
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
   const [driverPos, setDriverPos] = useState<{
     lat: number;
     lng: number;
@@ -165,6 +169,16 @@ export default function OrderDetailPage() {
     },
     []
   );
+
+  // Chat admin
+  const chatOrderId = orderId || "";
+  const {
+    messages: chatMessages, loading: chatLoading, sending: chatSending,
+    typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
+    markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
+    emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
+    unreadCount: chatUnread,
+  } = useChat({ orderId: chatOrderId, enabled: !!order?.delivery });
 
   const loadOrderFn = useCallback(async () => {
     try {
@@ -525,6 +539,36 @@ export default function OrderDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Chat admin */}
+      {order?.delivery && (
+        <>
+          {!chatOpen && (
+            <ChatButton
+              onClick={() => setChatOpen(true)}
+              unreadCount={chatUnread}
+            />
+          )}
+          <ChatPanel
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+            messages={chatMessages}
+            loading={chatLoading}
+            sending={chatSending}
+            typingUser={typingUser}
+            hasMore={chatHasMore}
+            currentSender="ADMIN"
+            onSend={chatSendMessage}
+            onMarkRead={chatMarkAsRead}
+            onLoadMore={chatLoadMore}
+            onTyping={() => chatEmitTyping("Support", "ADMIN")}
+            onStopTyping={chatStopTyping}
+            otherPartyName={order.client?.name || order.guestName || "Client"}
+            otherPartyPhone={order.client?.phone || order.guestPhone}
+            orderNumber={order.orderNumber}
+          />
+        </>
+      )}
 
       {/* Adresse */}
       <Card>
