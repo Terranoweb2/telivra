@@ -407,6 +407,7 @@ model Order {
 
   @@index([clientId, status])
   @@index([status])
+  @@index([status, createdAt])
   @@index([guestPhone])
   @@index([cookId])
   @@map("orders")

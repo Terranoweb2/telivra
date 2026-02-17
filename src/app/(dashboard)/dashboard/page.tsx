@@ -78,7 +78,7 @@ export default function DashboardPage() {
         <PageHeader title="Dashboard" subtitle="Vue d'ensemble de votre activité" />
 
         {/* Recettes */}
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0 scroll-fade-wrapper">
           <StatCard
             icon={Wallet}
             value={revenue.today.revenue.toLocaleString()}
@@ -119,7 +119,7 @@ export default function DashboardPage() {
               <ChefHat className="w-5 h-5 text-orange-400" />
               <h3 className="text-sm font-semibold text-white">Cuisine</h3>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0 scroll-fade-wrapper">
               <StatCardCentered value={revenue.cookStats.pendingCook || 0} label="En attente" color="yellow" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
               <StatCardCentered value={revenue.cookStats.preparing || 0} label="En cuisine" color="orange" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
               <StatCardCentered value={revenue.cookStats.ready || 0} label="Prêtes" color="cyan" className="min-w-[6rem] shrink-0 flex-1 lg:min-w-0" />
@@ -129,7 +129,7 @@ export default function DashboardPage() {
         )}
 
         {/* Stats activité */}
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0 scroll-fade-wrapper">
           <StatCardBadge
             icon={Clock}
             value={revenue.totals.pending}
@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
         {/* Repartition paiement */}
         {revenue.paymentBreakdown && (
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0 scroll-fade-wrapper">
             <StatCardBadge
               icon={Wallet}
               value={(revenue.paymentBreakdown.cash?.revenue || 0).toLocaleString()}

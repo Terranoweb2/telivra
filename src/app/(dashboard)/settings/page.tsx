@@ -207,7 +207,7 @@ export default function SettingsPage() {
                 <label className="block text-[13px] text-gray-400 mb-1.5">Logo du restaurant</label>
                 <div className="flex items-center gap-4">
                   {logo && (
-                    <img src={logo} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-gray-700 bg-gray-800" />
+                    <img loading="lazy" decoding="async" src={logo} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-gray-700 bg-gray-800" />
                   )}
                   <div className="flex-1">
                     <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={async (e) => {

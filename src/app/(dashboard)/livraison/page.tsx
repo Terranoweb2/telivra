@@ -215,7 +215,7 @@ export default function CommanderPage() {
               <Card key={p.id} className="overflow-hidden" hover>
                 <div className="relative h-32 sm:h-36 flex items-center justify-center bg-orange-600/20">
                   {p.image ? (
-                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                    <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
                     <UtensilsCrossed className="w-12 h-12 opacity-40 text-orange-400" />
                   )}
@@ -272,7 +272,7 @@ export default function CommanderPage() {
                 <Card key={p.id} className="flex-shrink-0 w-36 overflow-hidden" hover>
                   <div className="h-24 flex items-center justify-center bg-orange-600/10">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
                       <Droplets className="w-8 h-8 opacity-40 text-orange-400" />
                     )}
@@ -406,7 +406,7 @@ export default function CommanderPage() {
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
                     {currentImg && (
                       <div className="relative">
-                        <img src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
+                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
                         {allImgs.length > 1 && (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">

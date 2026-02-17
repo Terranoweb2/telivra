@@ -308,12 +308,34 @@ html:not(.dark) nav .bg-gray-950 {
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* --- Smooth horizontal scroll avec snap --- */
+/* --- Smooth horizontal scroll avec snap + indicateur --- */
 .scrollbar-hide {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
+  scroll-padding-inline: 1rem;
 }
 .scrollbar-hide > * {
   scroll-snap-align: start;
+}
+
+/* Conteneur avec dégradé de fondu pour indiquer le scroll */
+.scroll-fade-wrapper {
+  position: relative;
+}
+.scroll-fade-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3rem;
+  background: linear-gradient(to right, transparent, var(--scroll-fade-bg, rgb(3 7 18 / 0.95)));
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 0 1rem 1rem 0;
+  transition: opacity 0.3s;
+}
+html:not(.dark) .scroll-fade-wrapper::after {
+  background: linear-gradient(to right, transparent, rgb(248 250 252 / 0.95));
 }

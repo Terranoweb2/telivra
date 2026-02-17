@@ -12,17 +12,21 @@ export async function GET() {
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const sevenDaysAgo = new Date(todayStart);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
   const [
-    todayDelivered, weekDelivered, monthDelivered, allOrders,
+    todayAgg, weekAgg, monthAgg, allOrders,
     pendingCount, activeDeliveries, deliveredToday,
     preparingCount, readyCount, pendingCookCount, preparedToday,
-    cashDelivered, onlineDelivered,
+    cashAgg, onlineAgg,
+    todayOrdersCount, weekOrdersCount, monthOrdersCount,
+    dailyRevenueRaw,
   ] = await Promise.all([
-    // Recettes = seulement les commandes DELIVERED
-    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: todayStart } }, select: { totalAmount: true } }),
-    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: weekStart } }, select: { totalAmount: true } }),
-    prisma.order.findMany({ where: { status: "DELIVERED", createdAt: { gte: monthStart } }, select: { totalAmount: true } }),
+    // Recettes agrégées (DELIVERED seulement)
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: todayStart } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: weekStart } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.count(),
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.delivery.count({ where: { status: { in: ["PICKING_UP", "DELIVERING"] } } }),
@@ -32,47 +36,45 @@ export async function GET() {
     prisma.order.count({ where: { status: "READY" } }),
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.order.count({ where: { status: { in: ["READY", "PICKED_UP", "DELIVERING", "DELIVERED"] }, cookReadyAt: { gte: todayStart } } }),
-    // Payment breakdown — seulement DELIVERED
-    prisma.order.findMany({
-      where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "CASH" },
-      select: { totalAmount: true },
-    }),
-    prisma.order.findMany({
-      where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "ONLINE" },
-      select: { totalAmount: true },
-    }),
+    // Payment breakdown agrégé
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "CASH" }, _sum: { totalAmount: true }, _count: true }),
+    prisma.order.aggregate({ where: { status: "DELIVERED", createdAt: { gte: monthStart }, paymentMethod: "ONLINE" }, _sum: { totalAmount: true }, _count: true }),
+    // Comptages par période
+    prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.order.count({ where: { createdAt: { gte: weekStart } } }),
+    prisma.order.count({ where: { createdAt: { gte: monthStart } } }),
+    // Revenue 7 jours en une seule requête SQL
+    prisma.$queryRaw<{ day: string; revenue: number; count: bigint }[]>`
+      SELECT DATE("createdAt") as day,
+             COALESCE(SUM("totalAmount"), 0)::float as revenue,
+             COUNT(*) as count
+      FROM orders
+      WHERE status = 'DELIVERED'
+        AND "createdAt" >= ${sevenDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY day
+    `,
   ]);
 
-  // Nombre total de commandes (livrées) pour chaque période
-  const todayOrdersCount = await prisma.order.count({ where: { createdAt: { gte: todayStart } } });
-  const weekOrdersCount = await prisma.order.count({ where: { createdAt: { gte: weekStart } } });
-  const monthOrdersCount = await prisma.order.count({ where: { createdAt: { gte: monthStart } } });
-
-  // Revenue par jour (7 derniers jours) — seulement DELIVERED
+  // Remplir les 7 jours (inclure ceux sans commandes)
   const dailyRevenue = [];
   for (let i = 6; i >= 0; i--) {
     const dayStart = new Date(todayStart);
     dayStart.setDate(dayStart.getDate() - i);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-    const orders = await prisma.order.findMany({
-      where: { createdAt: { gte: dayStart, lt: dayEnd }, status: "DELIVERED" },
-      select: { totalAmount: true },
-    });
+    const dateStr = dayStart.toISOString().slice(0, 10);
+    const found = dailyRevenueRaw.find((r: any) => String(r.day).slice(0, 10) === dateStr);
     dailyRevenue.push({
-      date: dayStart.toISOString().slice(0, 10),
+      date: dateStr,
       label: dayStart.toLocaleDateString("fr-FR", { weekday: "short" }),
-      revenue: orders.reduce((s, o) => s + o.totalAmount, 0),
-      count: orders.length,
+      revenue: found ? found.revenue : 0,
+      count: found ? Number(found.count) : 0,
     });
   }
 
-  const sum = (orders: { totalAmount: number }[]) => Math.round(orders.reduce((s, o) => s + o.totalAmount, 0));
-
   return NextResponse.json({
-    today: { revenue: sum(todayDelivered), orders: todayOrdersCount },
-    week: { revenue: sum(weekDelivered), orders: weekOrdersCount },
-    month: { revenue: sum(monthDelivered), orders: monthOrdersCount },
+    today: { revenue: Math.round(todayAgg._sum.totalAmount || 0), orders: todayOrdersCount },
+    week: { revenue: Math.round(weekAgg._sum.totalAmount || 0), orders: weekOrdersCount },
+    month: { revenue: Math.round(monthAgg._sum.totalAmount || 0), orders: monthOrdersCount },
     totals: { orders: allOrders, pending: pendingCount, activeDeliveries, deliveredToday },
     dailyRevenue,
     cookStats: {
@@ -82,8 +84,8 @@ export async function GET() {
       prepared: preparedToday,
     },
     paymentBreakdown: {
-      cash: { revenue: sum(cashDelivered), count: cashDelivered.length },
-      online: { revenue: sum(onlineDelivered), count: onlineDelivered.length },
+      cash: { revenue: Math.round(cashAgg._sum.totalAmount || 0), count: cashAgg._count },
+      online: { revenue: Math.round(onlineAgg._sum.totalAmount || 0), count: onlineAgg._count },
     },
   });
 }

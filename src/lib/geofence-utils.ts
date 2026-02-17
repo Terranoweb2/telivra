@@ -1,4 +1,6 @@
-import * as turf from "@turf/turf";
+import { point, polygon } from "@turf/helpers";
+import { distance } from "@turf/distance";
+import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
 
 export function isPointInGeofence(
   lat: number,
@@ -11,12 +13,12 @@ export function isPointInGeofence(
     coordinates: any;
   }
 ): boolean {
-  const point = turf.point([lng, lat]);
+  const pt = point([lng, lat]);
 
   if (geofence.type === "CIRCLE" && geofence.centerLat && geofence.centerLng && geofence.radiusMeters) {
-    const center = turf.point([geofence.centerLng, geofence.centerLat]);
-    const distance = turf.distance(point, center, { units: "meters" });
-    return distance <= geofence.radiusMeters;
+    const center = point([geofence.centerLng, geofence.centerLat]);
+    const dist = distance(pt, center, { units: "meters" });
+    return dist <= geofence.radiusMeters;
   }
 
   if (geofence.type === "POLYGON" && geofence.coordinates) {
@@ -26,8 +28,8 @@ export function isPointInGeofence(
     if (closed[0][0] !== closed[closed.length - 1][0] || closed[0][1] !== closed[closed.length - 1][1]) {
       closed.push(closed[0]);
     }
-    const polygon = turf.polygon([closed]);
-    return turf.booleanPointInPolygon(point, polygon);
+    const poly = polygon([closed]);
+    return booleanPointInPolygon(pt, poly);
   }
 
   return false;

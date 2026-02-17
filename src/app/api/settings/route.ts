@@ -16,9 +16,13 @@ export async function GET() {
       buttonColor: null,
       heroTitle: null,
       heroSubtitle: null,
+    }, {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
   }
-  return NextResponse.json(settings);
+  return NextResponse.json(settings, {
+    headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+  });
 }
 
 export async function PUT(request: NextRequest) {
@@ -57,5 +61,7 @@ export async function PUT(request: NextRequest) {
     update: data,
   });
 
-  return NextResponse.json(settings);
+  return NextResponse.json(settings, {
+    headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+  });
 }

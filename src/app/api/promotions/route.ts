@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
     include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json(promotions);
+  return NextResponse.json(promotions, {
+    headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" },
+  });
 }
 
 export async function POST(request: NextRequest) {

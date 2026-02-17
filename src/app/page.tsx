@@ -391,7 +391,7 @@ export default function LandingPage() {
             {!settings ? (
               <div className="w-8 h-8 bg-gray-800/60 rounded-lg animate-pulse" />
             ) : settings.logo ? (
-              <img src={settings.logo} alt={restaurantName} className="w-8 h-8 object-contain rounded-lg" />
+              <img decoding="async" src={settings.logo} alt={restaurantName} className="w-8 h-8 object-contain rounded-lg" />
             ) : (
               <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
                 <UtensilsCrossed className="w-4 h-4 text-white" />
@@ -500,7 +500,7 @@ export default function LandingPage() {
                 <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-colors">
                   <div className="relative h-32 sm:h-36 flex items-center justify-center bg-gray-800 cursor-pointer" onClick={() => setSelectedProduct(p)}>
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
                       <UtensilsCrossed className="w-12 h-12 text-gray-600" />
                     )}
@@ -623,7 +623,7 @@ export default function LandingPage() {
                         <div key={p.id} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
                           <div className="h-24 flex items-center justify-center bg-gray-800">
                             {p.image ? (
-                              <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                              <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                             ) : (
                               <Droplets className="w-8 h-8 text-gray-600" />
                             )}
@@ -953,7 +953,7 @@ export default function LandingPage() {
               {/* Image */}
               <div className="relative h-52 sm:h-64 bg-gray-800 rounded-t-3xl overflow-hidden shrink-0">
                 {p.image ? (
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                  <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <UtensilsCrossed className="w-16 h-16 text-gray-600" />
@@ -1143,7 +1143,7 @@ export default function LandingPage() {
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
                     {currentImg && (
                       <div className="relative">
-                        <img src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
+                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
                         {allImgs.length > 1 && (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">

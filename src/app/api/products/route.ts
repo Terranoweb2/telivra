@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { calculateEffectivePrice } from "@/lib/pricing";
 
 export async function GET(request: NextRequest) {
+  try {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
   const shop = searchParams.get("shop");
@@ -16,59 +17,74 @@ export async function GET(request: NextRequest) {
   if (mealsOnly === "true") where.isExtra = false;
   if (extrasOnly === "true") where.isExtra = true;
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { shopName: "asc" },
-    include: {
-      orderItems: {
-        include: {
-          order: {
-            include: { rating: { select: { mealRating: true } } },
-          },
-        },
-      },
-    },
-  });
+  const [products, activePromotions] = await Promise.all([
+    prisma.product.findMany({ where, orderBy: { shopName: "asc" } }),
+    prisma.promotion.findMany({
+      where: { isActive: true, startDate: { lte: new Date() }, endDate: { gte: new Date() } },
+      include: { products: true },
+    }),
+  ]);
 
-  // Charger les promotions actives
-  const now = new Date();
-  const activePromotions = await prisma.promotion.findMany({
-    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
-    include: { products: true },
-  });
+  // Notes moyennes en une seule requête SQL agrégée
+  const productIds = products.map(p => p.id);
+  let ratingsMap = new Map<string, { avg: number; count: number }>();
 
-  // Calculer note moyenne + prix effectif
+  if (productIds.length > 0) {
+    try {
+      const ratingsAgg = await prisma.$queryRaw<
+        { productId: string; avg: number; count: bigint }[]
+      >`
+        SELECT oi."productId",
+               AVG(r."mealRating")::float as avg,
+               COUNT(r.id) as count
+        FROM ratings r
+        JOIN orders o ON o.id = r."orderId"
+        JOIN order_items oi ON oi."orderId" = o.id
+        WHERE oi."productId" = ANY(${productIds})
+        GROUP BY oi."productId"
+      `;
+      ratingsMap = new Map(
+        ratingsAgg.map(r => [r.productId, {
+          avg: Math.round(r.avg * 10) / 10,
+          count: Number(r.count)
+        }])
+      );
+    } catch {
+      // Fallback si la requête raw échoue
+    }
+  }
+
   const productsWithRatings = products.map((p) => {
-    const ratings = p.orderItems
-      .map((oi) => oi.order?.rating?.mealRating)
-      .filter((r): r is number => r != null);
-    const ratingCount = ratings.length;
-    const averageRating = ratingCount > 0
-      ? Math.round((ratings.reduce((s, r) => s + r, 0) / ratingCount) * 10) / 10
-      : 0;
-
+    const rating = ratingsMap.get(p.id);
     const effectivePrice = calculateEffectivePrice(p, activePromotions);
-    const { orderItems, ...product } = p;
-
     return {
-      ...product,
-      averageRating,
-      ratingCount,
+      ...p,
+      averageRating: rating?.avg ?? 0,
+      ratingCount: rating?.count ?? 0,
       originalPrice: p.price,
       effectivePrice,
       hasDiscount: effectivePrice < p.price,
     };
   });
 
-  return NextResponse.json(productsWithRatings);
+  return NextResponse.json(productsWithRatings, {
+    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+  });
+  } catch (err) {
+    console.error("Products API error:", err);
+    return NextResponse.json([], { status: 200 });
+  }
 }
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN") return NextResponse.json({ error: "Non autorise" }, { status: 401 });
+  if (!session?.user || (session.user as any).role !== "ADMIN")
+    return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const body = await request.json();
-  const { name, description, price, category, shopName, image, cookingTimeMin, isExtra, paymentMethod, isAvailable, discountPercent, discountAmount } = body;
+  const { name, description, price, category, shopName, image,
+          cookingTimeMin, isExtra, paymentMethod, isAvailable,
+          discountPercent, discountAmount } = body;
 
   const product = await prisma.product.create({
     data: {

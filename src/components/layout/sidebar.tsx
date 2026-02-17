@@ -158,7 +158,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             {brandLogo ? (
-              <img src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />
+              <img decoding="async" src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />
             ) : (
               <div className="bg-orange-600 p-2 rounded-xl">
                 <UtensilsCrossed className="w-5 h-5 text-white" />

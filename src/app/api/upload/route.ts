@@ -7,7 +7,6 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: NextRequest) {
-  // Vérifier l'authentification
   const session = await auth();
   if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
@@ -32,16 +31,40 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Nettoyer l'extension pour éviter les injections
-    const rawExt = file.name.split(".").pop() || "jpg";
-    const ext = rawExt.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5) || "jpg";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // Optimiser avec Sharp : redimensionner + convertir WebP
+    let finalBuffer: Buffer;
+    let finalExt: string;
 
+    try {
+      const sharp = (await import("sharp")).default;
+      const img = sharp(buffer);
+      const metadata = await img.metadata();
+
+      // Redimensionner si > 1200px de large
+      const resized = metadata.width && metadata.width > 1200
+        ? img.resize(1200, undefined, { withoutEnlargement: true })
+        : img;
+
+      if (file.type === "image/png") {
+        finalBuffer = await resized.png({ quality: 85 }).toBuffer();
+        finalExt = "png";
+      } else {
+        finalBuffer = await resized.webp({ quality: 80 }).toBuffer();
+        finalExt = "webp";
+      }
+    } catch {
+      // Fallback si sharp échoue
+      finalBuffer = buffer;
+      const rawExt = file.name.split(".").pop() || "jpg";
+      finalExt = rawExt.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5) || "jpg";
+    }
+
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${finalExt}`;
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadDir, { recursive: true });
 
     const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
+    await writeFile(filepath, finalBuffer);
 
     return NextResponse.json({ url: `/uploads/${filename}` });
   } catch {
