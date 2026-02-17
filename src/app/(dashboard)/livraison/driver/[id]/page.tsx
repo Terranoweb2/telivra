@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/ui/star-rating";
 import { ChatButton } from "@/components/chat/chat-button";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { useCall } from "@/hooks/use-call";
+import { CallOverlay } from "@/components/call/call-overlay";
 import { useChat } from "@/hooks/use-chat";
 
 const DriverMap = dynamic(() => import("@/components/map/delivery-track-map"), {
@@ -73,8 +75,21 @@ export default function DriverDeliveryDetail() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread,
+    unreadCount: chatUnread, socket,
   } = useChat({ orderId: chatOrderId, enabled: !!delivery?.orderId });
+
+  // Appel VoIP WebRTC
+  const {
+    callState, remoteName: callRemoteName, callDuration,
+    isMuted, isSpeaker, initiateCall, acceptCall, endCall,
+    toggleMute, toggleSpeaker,
+  } = useCall({
+    orderId: chatOrderId,
+    socket,
+    myName: delivery?.driver?.name || "Livreur",
+    myRole: "DRIVER",
+    enabled: !!delivery?.orderId,
+  });
 
   useEffect(() => {
     fetchDelivery();
@@ -309,6 +324,19 @@ export default function DriverDeliveryDetail() {
         </div>
       </div>
 
+      {/* ========== APPEL VoIP ========== */}
+      <CallOverlay
+        callState={callState}
+        remoteName={callRemoteName}
+        duration={callDuration}
+        isMuted={isMuted}
+        isSpeaker={isSpeaker}
+        onAccept={acceptCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+        onToggleSpeaker={toggleSpeaker}
+      />
+
       {/* ========== CHAT ========== */}
       {delivery && (
         <>
@@ -335,8 +363,9 @@ export default function DriverDeliveryDetail() {
             onStopTyping={chatStopTyping}
             disabled={!chatEnabled}
             otherPartyName={order?.client?.name || order?.guestName || "Client"}
-            otherPartyPhone={order?.client?.phone || order?.guestPhone}
             orderNumber={order?.orderNumber}
+            onCall={initiateCall}
+            callDisabled={callState !== "idle" || !chatEnabled}
           />
         </>
       )}

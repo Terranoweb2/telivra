@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 import { ChatButton } from "@/components/chat/chat-button";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { useCall } from "@/hooks/use-call";
+import { CallOverlay } from "@/components/call/call-overlay";
 import { useChat } from "@/hooks/use-chat";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -177,8 +179,21 @@ export default function OrderDetailPage() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread,
+    unreadCount: chatUnread, socket,
   } = useChat({ orderId: chatOrderId, enabled: !!order?.delivery });
+
+  // Appel VoIP WebRTC
+  const {
+    callState, remoteName: callRemoteName, callDuration,
+    isMuted, isSpeaker, initiateCall, acceptCall, endCall,
+    toggleMute, toggleSpeaker,
+  } = useCall({
+    orderId: chatOrderId,
+    socket,
+    myName: "Admin",
+    myRole: "ADMIN",
+    enabled: true,
+  });
 
   const loadOrderFn = useCallback(async () => {
     try {
@@ -564,7 +579,6 @@ export default function OrderDetailPage() {
             onTyping={() => chatEmitTyping("Support", "ADMIN")}
             onStopTyping={chatStopTyping}
             otherPartyName={order.client?.name || order.guestName || "Client"}
-            otherPartyPhone={order.client?.phone || order.guestPhone}
             orderNumber={order.orderNumber}
           />
         </>

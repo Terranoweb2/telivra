@@ -19,6 +19,8 @@ import { getCachedSettings } from "@/lib/settings-cache";
 import { playSound } from "@/lib/sounds";
 import { ChatButton } from "@/components/chat/chat-button";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { useCall } from "@/hooks/use-call";
+import { CallOverlay } from "@/components/call/call-overlay";
 import { useChat } from "@/hooks/use-chat";
 
 const GuestMap = dynamic(() => import("@/components/map/guest-track-map"), {
@@ -161,8 +163,21 @@ export default function TrackDetailPage() {
     typingUser, hasMore: chatHasMore, sendMessage: chatSendMessage,
     markAsRead: chatMarkAsRead, loadMore: chatLoadMore,
     emitTyping: chatEmitTyping, stopTyping: chatStopTyping,
-    unreadCount: chatUnread, setUnreadCount: setChatUnread,
+    unreadCount: chatUnread, setUnreadCount: setChatUnread, socket,
   } = useChat({ orderId: id as string, enabled: !!order?.delivery });
+
+  // Appel VoIP WebRTC
+  const {
+    callState, remoteName: callRemoteName, callDuration,
+    isMuted, isSpeaker, initiateCall, acceptCall, endCall,
+    toggleMute, toggleSpeaker,
+  } = useCall({
+    orderId: id as string,
+    socket,
+    myName: order?.guestName || order?.client?.name || "Client",
+    myRole: "CLIENT",
+    enabled: !!order?.delivery,
+  });
 
   const loadOrder = useCallback(async () => {
     const res = await fetch(`/api/orders/track/${id}`);
@@ -713,6 +728,19 @@ export default function TrackDetailPage() {
         </div>
       </div>
 
+      {/* ========== APPEL VoIP ========== */}
+      <CallOverlay
+        callState={callState}
+        remoteName={callRemoteName}
+        duration={callDuration}
+        isMuted={isMuted}
+        isSpeaker={isSpeaker}
+        onAccept={acceptCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+        onToggleSpeaker={toggleSpeaker}
+      />
+
       {/* ========== CHAT ========== */}
       {order?.delivery && (
         <>
@@ -739,8 +767,9 @@ export default function TrackDetailPage() {
             onStopTyping={chatStopTyping}
             disabled={!chatEnabled}
             otherPartyName={order.delivery?.driver?.name}
-            otherPartyPhone={order.delivery?.driver?.phone}
             orderNumber={order.orderNumber}
+            onCall={initiateCall}
+            callDisabled={callState !== "idle" || !chatEnabled}
           />
         </>
       )}

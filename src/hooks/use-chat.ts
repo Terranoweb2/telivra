@@ -159,5 +159,7 @@ export function useChat({ orderId, enabled = true }: UseChatOptions) {
     loadMore,
     emitTyping,
     stopTyping,
+    socket: socketRef.current,
   };
 }
+

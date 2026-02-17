@@ -120,6 +120,41 @@ app.prepare().then(() => {
       });
     });
 
+
+    // ===== APPELS VoIP WebRTC =====
+    socket.on("call:initiate", (data: { orderId: string; callerName: string; callerRole: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:incoming", {
+        orderId: data.orderId,
+        callerName: data.callerName,
+        callerRole: data.callerRole,
+      });
+      console.log(`[Call] ${data.callerName} calling on order ${data.orderId}`);
+    });
+
+    socket.on("call:accept", (data: { orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:accepted", { orderId: data.orderId });
+    });
+
+    socket.on("call:offer", (data: { orderId: string; offer: any }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:offer", { orderId: data.orderId, offer: data.offer });
+    });
+
+    socket.on("call:answer", (data: { orderId: string; answer: any }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:answer", { orderId: data.orderId, answer: data.answer });
+    });
+
+    socket.on("call:ice-candidate", (data: { orderId: string; candidate: any }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:ice-candidate", { orderId: data.orderId, candidate: data.candidate });
+    });
+
+    socket.on("call:end", (data: { orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:ended", { orderId: data.orderId });
+    });
+
+    socket.on("call:busy", (data: { orderId: string }) => {
+      socket.to(`chat:${data.orderId}`).emit("call:busy", { orderId: data.orderId });
+    });
+
     socket.on("disconnect", () => {
       console.log("[Socket.IO] Client disconnected:", socket.id);
     });

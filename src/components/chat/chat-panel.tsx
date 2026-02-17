@@ -32,15 +32,16 @@ interface ChatPanelProps {
   onStopTyping: () => void;
   disabled?: boolean;
   otherPartyName?: string;
-  otherPartyPhone?: string;
   orderNumber?: string;
+  onCall?: () => void;
+  callDisabled?: boolean;
 }
 
 export function ChatPanel({
   open, onClose, messages, loading, sending, typingUser,
   hasMore, currentSender, onSend, onMarkRead, onLoadMore,
   onTyping, onStopTyping, disabled = false,
-  otherPartyName, otherPartyPhone, orderNumber,
+  otherPartyName, orderNumber, onCall, callDisabled = false,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -117,13 +118,13 @@ export function ChatPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {otherPartyPhone && (
-              <a
-                href={`tel:${otherPartyPhone}`}
-                className="w-9 h-9 rounded-full bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors"
+            {onCall && !callDisabled && (
+              <button
+                onClick={onCall}
+                className="w-9 h-9 rounded-full bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors active:scale-90"
               >
                 <Phone className="w-4 h-4 text-white" />
-              </a>
+              </button>
             )}
             <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors">
               <X className="w-4 h-4 text-gray-400" />
@@ -209,3 +210,4 @@ export function ChatPanel({
     </div>
   );
 }
+
