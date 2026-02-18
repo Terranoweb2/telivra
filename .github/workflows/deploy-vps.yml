@@ -31,7 +31,7 @@ jobs:
       - name: Find working SSH port
         id: ssh
         run: |
-          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30"
           for PORT in 2215 2220 22; do
             echo "Trying port $PORT..."
             if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS -p $PORT ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo OK" 2>/dev/null; then
