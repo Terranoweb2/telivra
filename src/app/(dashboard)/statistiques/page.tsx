@@ -130,7 +130,8 @@ export default function StatistiquesPage() {
       </div>
 
       {/* Filtres */}
-      <div className="no-print flex flex-wrap gap-2">
+      <div className="no-print sticky top-14 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-gray-900/95 backdrop-blur-sm">
+      <div className="flex flex-wrap gap-2">
         {([
           { key: "today", label: "Aujourd'hui" },
           { key: "week", label: "Semaine" },
@@ -152,6 +153,7 @@ export default function StatistiquesPage() {
             {f.label}
           </button>
         ))}
+      </div>
       </div>
 
       {/* Custom dates */}
@@ -177,8 +179,8 @@ export default function StatistiquesPage() {
       {data && !loading && (
         <>
           {/* Cartes resume */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            <Card>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-green-500/10"><Wallet className="w-5 h-5 text-green-400" /></div>
                 <div>
@@ -187,7 +189,7 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-orange-500/10"><ShoppingBag className="w-5 h-5 text-orange-400" /></div>
                 <div>
@@ -197,7 +199,7 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-purple-500/10"><TrendingUp className="w-5 h-5 text-purple-400" /></div>
                 <div>
@@ -206,7 +208,7 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-red-500/10"><Tag className="w-5 h-5 text-red-400" /></div>
                 <div>
@@ -215,7 +217,7 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-cyan-500/10"><BarChart3 className="w-5 h-5 text-cyan-400" /></div>
                 <div>
@@ -224,7 +226,7 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-yellow-500/10"><CreditCard className="w-5 h-5 text-yellow-400" /></div>
                 <div>
@@ -242,7 +244,7 @@ export default function StatistiquesPage() {
                 <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
                 </h3>
-                <div className="h-64 -ml-2">
+                <div className="h-64 overflow-x-auto -ml-2"><div className="min-w-[500px] h-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                       <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -256,7 +258,7 @@ export default function StatistiquesPage() {
                       <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
+                </div></div>
               </CardContent>
             </Card>
           )}
