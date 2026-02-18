@@ -285,7 +285,7 @@ jobs:
 
             echo "=== Phase 5 Complete ==="
 
-      - name: Diagnose and fix app
+      - name: Fix Nginx routing and verify
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
@@ -294,68 +294,129 @@ jobs:
           port: ${{ steps.ssh.outputs.port }}
           command_timeout: 5m
           script: |
-            echo "=== DIAGNOSTICS ==="
+            echo "=== FIXING NGINX ROUTING ==="
 
-            echo "--- PM2 Status ---"
-            pm2 list || echo "PM2 not running"
-
+            echo "--- Current Nginx configs ---"
+            ls -la /etc/nginx/sites-enabled/ 2>/dev/null || true
             echo ""
-            echo "--- PM2 Logs (last 50 lines) ---"
-            pm2 logs t-delivery --lines 50 --nostream 2>/dev/null || echo "No logs"
 
+            echo "--- Checking all server_name directives ---"
+            grep -r 'server_name' /etc/nginx/sites-enabled/ 2>/dev/null || true
+            grep -r 'server_name' /etc/nginx/conf.d/ 2>/dev/null || true
             echo ""
-            echo "--- Checking .env ---"
-            cat /root/t-delivery/.env 2>/dev/null | sed 's/=.*/=***/' || echo "No .env"
 
-            echo ""
-            echo "--- Checking ecosystem.config.js ---"
-            cat /root/t-delivery/ecosystem.config.js 2>/dev/null || echo "No ecosystem config"
-
-            echo ""
-            echo "--- Checking .next directory ---"
-            ls -la /root/t-delivery/.next/ 2>/dev/null | head -10 || echo "No .next dir"
-
-            echo ""
-            echo "--- Nginx config test ---"
-            nginx -t 2>&1 || echo "Nginx config error"
-
-            echo ""
-            echo "--- Nginx error log (last 20 lines) ---"
-            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "No error log"
-
-            echo ""
-            echo "--- Checking ports ---"
-            ss -tlnp | grep -E ':(80|443|3001)' || echo "No relevant ports"
-
-            echo ""
-            echo "--- Services Status ---"
-            systemctl is-active nginx && echo "Nginx: ACTIVE" || echo "Nginx: INACTIVE"
-            systemctl is-active cloudflared && echo "Cloudflared: ACTIVE" || echo "Cloudflared: INACTIVE"
-            systemctl is-active postgresql && echo "PostgreSQL: ACTIVE" || echo "PostgreSQL: INACTIVE"
-
-            echo ""
-            echo "--- Attempting to restart app ---"
-            cd /root/t-delivery
-            pm2 delete t-delivery 2>/dev/null || true
-
-            # Try starting with next start directly
-            PORT=3001 pm2 start node_modules/.bin/next --name "t-delivery" -- start -p 3001
-            sleep 8
+            echo "--- Current PM2 apps ---"
             pm2 list
-            pm2 logs t-delivery --lines 20 --nostream 2>/dev/null || true
+            echo ""
+
+            echo "--- Ports in use ---"
+            ss -tlnp | grep -E ':(80|3000|3001)' || true
+            echo ""
+
+            echo "--- Test port 3001 directly ---"
+            curl -s -o /dev/null -w "Port 3001: HTTP %{http_code}\n" http://localhost:3001/ 2>/dev/null || echo "Port 3001 not responding"
+            echo ""
+
+            echo "--- Test port 3000 directly ---"
+            curl -s -o /dev/null -w "Port 3000: HTTP %{http_code}\n" http://localhost:3000/ 2>/dev/null || echo "Port 3000 not responding"
+            echo ""
+
+            # Write a clean nginx config for t-delivery that ensures proper routing
+            cat > /etc/nginx/sites-available/t-delivery.conf << 'NGINXEOF'
+            # Upgrade map for WebSocket (only if not already defined)
+            map $http_upgrade $t_delivery_upgrade {
+                default upgrade;
+                ''      close;
+            }
+
+            server {
+                listen 80;
+                listen [::]:80;
+                server_name t-delivery.com www.t-delivery.com;
+
+                location / {
+                    proxy_pass http://127.0.0.1:3001;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection $t_delivery_upgrade;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                    proxy_cache_bypass $http_upgrade;
+                    proxy_read_timeout 86400s;
+                    proxy_send_timeout 86400s;
+                }
+
+                location /socket.io/ {
+                    proxy_pass http://127.0.0.1:3001/socket.io/;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection $t_delivery_upgrade;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                    proxy_read_timeout 86400s;
+                    proxy_send_timeout 86400s;
+                }
+
+                location /uploads/ {
+                    alias /root/t-delivery/public/uploads/;
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                    try_files $uri =404;
+                }
+
+                location /_next/static/ {
+                    proxy_pass http://127.0.0.1:3001/_next/static/;
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+
+                client_max_body_size 10M;
+                gzip on;
+                gzip_vary on;
+                gzip_proxied any;
+                gzip_comp_level 6;
+                gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
+            }
+            NGINXEOF
+            sed -i 's/^            //' /etc/nginx/sites-available/t-delivery.conf
+
+            ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
+
+            echo "--- Testing new Nginx config ---"
+            nginx -t 2>&1
+            if [ $? -eq 0 ]; then
+              systemctl reload nginx
+              echo "Nginx reloaded with fixed config"
+            else
+              echo "Config test failed, trying to fix..."
+              # Maybe the map variable conflicts - remove it
+              sed -i '/^map/,/^}/d' /etc/nginx/sites-available/t-delivery.conf
+              # Use $connection_upgrade if it exists from another config
+              sed -i 's/\$t_delivery_upgrade/$connection_upgrade/g' /etc/nginx/sites-available/t-delivery.conf
+              nginx -t 2>&1
+              if [ $? -eq 0 ]; then
+                systemctl reload nginx
+                echo "Nginx reloaded (using existing map variable)"
+              else
+                echo "Still failing, showing error..."
+                nginx -t 2>&1
+              fi
+            fi
+
+            sleep 2
 
             echo ""
-            echo "--- Health check ---"
-            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3001/ || echo "App not responding"
-            curl -s http://localhost:3001/ 2>/dev/null | head -5 || echo "No response body"
+            echo "--- Final health check via Host header ---"
+            curl -s -o /dev/null -w "Direct 3001: HTTP %{http_code}\n" http://localhost:3001/ || true
+            curl -s -H "Host: t-delivery.com" -o /dev/null -w "Nginx t-delivery.com: HTTP %{http_code}\n" http://localhost:80/ || true
+            echo ""
+
+            echo "--- PM2 logs ---"
+            pm2 logs t-delivery --lines 30 --nostream 2>/dev/null || true
 
             echo ""
-            echo "--- Cloudflared tunnel info ---"
-            cloudflared tunnel info 2>/dev/null || true
-            systemctl status cloudflared --no-pager 2>/dev/null || true
-
-            echo ""
-            echo "--- Disk space ---"
-            df -h / | tail -1
-            echo ""
-            echo "=== DIAGNOSTICS COMPLETE ==="
+            echo "=== NGINX FIX COMPLETE ==="
