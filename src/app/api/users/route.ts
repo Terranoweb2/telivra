@@ -5,7 +5,8 @@ import { auth } from "@/lib/auth";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== "ADMIN")
+    const callerRole = (session?.user as any)?.role;
+    if (!session?.user || !["ADMIN", "MANAGER"].includes(callerRole))
       return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
@@ -77,7 +78,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(guests);
     }
 
+    const usersWhere: any = {};
+    if (callerRole === "MANAGER") usersWhere.role = { notIn: ["ADMIN", "MANAGER"] };
     const users = await prisma.user.findMany({
+      where: usersWhere,
       select: {
         id: true, name: true, email: true, role: true, isActive: true, createdAt: true, phone: true,
         _count: { select: { clientOrders: true, driverDeliveries: true, cookOrders: true } },
@@ -94,13 +98,28 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== "ADMIN")
+    const callerRole = (session?.user as any)?.role;
+    const callerId = (session?.user as any)?.id;
+    if (!session?.user || !["ADMIN", "MANAGER"].includes(callerRole))
       return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
     const { id, role, isActive } = await request.json();
 
-    if (id === (session.user as any).id && isActive === false) {
+    // Admin ne peut pas se bloquer lui-même
+    if (id === callerId && isActive === false) {
       return NextResponse.json({ error: "Vous ne pouvez pas desactiver votre propre compte" }, { status: 400 });
+    }
+
+    // Manager : restrictions
+    if (callerRole === "MANAGER") {
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (!target) return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+      if (target.role === "ADMIN" || target.role === "MANAGER") {
+        return NextResponse.json({ error: "Vous ne pouvez pas modifier cet utilisateur" }, { status: 403 });
+      }
+      if (role && !["CLIENT", "DRIVER", "COOK"].includes(role)) {
+        return NextResponse.json({ error: "Rôle non autorisé" }, { status: 403 });
+      }
     }
 
     const user = await prisma.user.update({
@@ -118,13 +137,23 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== "ADMIN")
+    const callerRole = (session?.user as any)?.role;
+    const callerId = (session?.user as any)?.id;
+    if (!session?.user || !["ADMIN", "MANAGER"].includes(callerRole))
       return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
     const { id } = await request.json();
 
-    if (id === (session.user as any).id) {
+    if (id === callerId) {
       return NextResponse.json({ error: "Vous ne pouvez pas supprimer votre propre compte" }, { status: 400 });
+    }
+
+    // Manager ne peut pas supprimer un ADMIN/MANAGER
+    if (callerRole === "MANAGER") {
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (target?.role === "ADMIN" || target?.role === "MANAGER") {
+        return NextResponse.json({ error: "Vous ne pouvez pas supprimer cet utilisateur" }, { status: 403 });
+      }
     }
 
     const user = await prisma.user.findUnique({

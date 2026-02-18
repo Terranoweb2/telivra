@@ -38,7 +38,7 @@ interface CookStat {
 export default function EncaissementPage() {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || role === "MANAGER";
 
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");

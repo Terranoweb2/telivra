@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette, MessageCircle, Cake, ShoppingBag } from "lucide-react";
@@ -280,7 +279,7 @@ export default function SettingsPage() {
                 <label className="block text-[13px] text-gray-400 mb-1.5">Logo du restaurant</label>
                 <div className="flex items-center gap-4">
                   {logo && (
-                    <Image src={logo} alt="Logo" width={64} height={64} className="w-16 h-16 object-contain rounded-xl border border-gray-700 bg-gray-800" />
+                    <img loading="lazy" decoding="async" src={logo} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-gray-700 bg-gray-800" />
                   )}
                   <div className="flex-1">
                     <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={async (e) => {

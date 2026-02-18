@@ -1,9 +1,9 @@
 module.exports = {
   apps: [{
     name: "terrano-gps",
-    script: "server.mjs",
+    script: "node_modules/.bin/tsx",
+    args: "server.ts",
     cwd: "/root/terrano-gps",
-    node_args: "--experimental-strip-types",
     env: {
       NODE_ENV: "production",
       PORT: 3000

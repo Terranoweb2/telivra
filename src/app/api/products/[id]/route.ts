@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 const ALLOWED_FIELDS = [
   "name", "description", "price", "category", "shopName",
   "image", "isAvailable", "cookingTimeMin", "isExtra", "paymentMethod",
-  "discountPercent", "discountAmount",
+  "discountPercent", "discountAmount", "deletedAt",
 ];
 
 const VALID_CATEGORIES = ["RESTAURANT", "GROCERY", "PHARMACY", "ELECTRONICS", "OTHER"];
@@ -16,7 +16,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN")
+  if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const { id } = await params;
@@ -49,6 +49,9 @@ export async function PUT(
       return NextResponse.json({ error: "Pourcentage invalide (0-100)" }, { status: 400 });
     }
   }
+  if (data.deletedAt !== undefined) {
+    data.deletedAt = data.deletedAt === null ? null : new Date(data.deletedAt);
+  }
   if (data.discountAmount !== undefined) {
     data.discountAmount = data.discountAmount ? parseFloat(data.discountAmount) : null;
     if (data.discountAmount !== null && data.discountAmount < 0) {
@@ -75,14 +78,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN")
+  if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const { id } = await params;
 
   try {
-    await prisma.orderItem.deleteMany({ where: { productId: id } });
-    await prisma.product.delete({ where: { id } });
+    await prisma.product.update({
+      where: { id },
+      data: { isAvailable: false },
+    });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Erreur lors de la suppression" }, { status: 500 });

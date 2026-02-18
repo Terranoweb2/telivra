@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import {
   Loader2, Users, Shield, Eye, Truck, ShoppingBag, ChefHat,
@@ -23,6 +24,10 @@ const roleConfig: Record<string, { label: string; color: string; bg: string; ico
 };
 
 export default function UsersPage() {
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as any)?.id;
+  const userRole = (session?.user as any)?.role;
+  const isManager = userRole === "MANAGER";
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilterState] = useState(() => {
@@ -129,7 +134,7 @@ export default function UsersPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        {Object.entries(roleConfig).map(([key, cfg]) => (
+        {Object.entries(roleConfig).filter(([key]) => !isManager || ["CLIENT", "DRIVER", "COOK"].includes(key)).map(([key, cfg]) => (
           <button key={key} onClick={() => setFilter(key)}
             className={cn("px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-colors shrink-0",
               filter === key ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white")}>
@@ -233,6 +238,7 @@ export default function UsersPage() {
                       </div>
                     </div>
 
+                    {user.id !== currentUserId && (
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button onClick={(e) => { e.preventDefault(); setBlockDialog(user); }}
                         className={cn("p-1.5 rounded-lg transition-colors",
@@ -244,6 +250,7 @@ export default function UsersPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -264,7 +271,7 @@ export default function UsersPage() {
             </div>
             <p className="text-xs text-gray-400 mb-3">{roleDialog.name} &mdash; {roleDialog.email}</p>
             <div className="space-y-1.5">
-              {Object.entries(roleConfig).map(([key, cfg]) => {
+              {Object.entries(roleConfig).filter(([key]) => !isManager || ["CLIENT", "DRIVER", "COOK"].includes(key)).map(([key, cfg]) => {
                 const Icon = cfg.icon;
                 return (
                   <button key={key}

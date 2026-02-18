@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN")
+  if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);

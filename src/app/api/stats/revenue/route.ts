@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN")
+  if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const now = new Date();

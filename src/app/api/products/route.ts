@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
   const mealsOnly = searchParams.get("mealsOnly");
   const extrasOnly = searchParams.get("extrasOnly");
 
-  const where: any = { isAvailable: true };
+  const deleted = searchParams.get("deleted");
+  const where: any = deleted === "true"
+    ? { deletedAt: { not: null } }
+    : { isAvailable: true, deletedAt: null };
   if (category) where.category = category;
   if (shop) where.shopName = { contains: shop, mode: "insensitive" };
   if (mealsOnly === "true") where.isExtra = false;
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN")
+  if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const body = await request.json();

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -34,10 +33,10 @@ function useBranding() {
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: null },
-  { label: "Cuisine", href: "/cuisine", icon: ChefHat, roles: ["COOK", "ADMIN"] },
-  { label: "Encaissement", href: "/encaissement", icon: Banknote, roles: ["COOK", "ADMIN"] },
+  { label: "Cuisine", href: "/cuisine", icon: ChefHat, roles: ["COOK", "ADMIN", "MANAGER"] },
+  { label: "Encaissement", href: "/encaissement", icon: Banknote, roles: ["COOK", "ADMIN", "MANAGER"] },
   { label: "Commander", href: "/livraison", icon: ShoppingBag, roles: ["CLIENT"] },
-  { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER", "COOK"] },
+  { label: "Commandes", href: "/livraison/order", icon: ClipboardList, roles: ["ADMIN", "CLIENT", "DRIVER", "COOK", "MANAGER"] },
   { label: "Alertes", href: "/alerts", icon: Bell, roles: ["ADMIN", "MANAGER", "VIEWER", "COOK"] },
 ];
 
@@ -155,6 +154,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   );
 
   const isAdmin = role === "ADMIN";
+  const isManager = role === "MANAGER";
 
   return (
     <>
@@ -169,7 +169,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             {brandLogo ? (
-              <Image src={brandLogo} alt={restaurantName} width={36} height={36} className="w-9 h-9 object-contain rounded-xl" />
+              <img loading="lazy" decoding="async" src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />
             ) : (
               <div className="bg-orange-600 p-2 rounded-xl">
                 <UtensilsCrossed className="w-5 h-5 text-white" />
@@ -215,7 +215,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             );
           })}
 
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <>
               <div className="pt-5 pb-2 px-3">
                 <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Administration</p>
@@ -238,7 +238,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </>
           )}
 
-          <div className="pt-4">
+          {!isManager && <div className="pt-4">
             <Link href="/settings" onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
@@ -249,7 +249,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <Settings className="w-[18px] h-[18px] shrink-0" />
               Paramètres
             </Link>
-          </div>
+          </div>}
         </nav>
       </aside>
     </>

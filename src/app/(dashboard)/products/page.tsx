@@ -1,7 +1,6 @@
 "use client";
 
 
-import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import {
   Loader2, Package, Plus, Trash2, Search,
@@ -11,6 +10,7 @@ import {
   Percent,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCardCentered, StatCardBadge } from "@/components/ui/stat-card";
@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StarRating } from "@/components/ui/star-rating";
 import { Dialog } from "@/components/ui/dialog";
 
-type Tab = "products" | "promotions";
+type Tab = "products" | "promotions" | "deleted";
 type ProductFilter = "all" | "meals" | "extras";
 type ImageMode = "link" | "upload";
 type DialogMode = "add" | "edit";
@@ -92,6 +92,9 @@ function RichTextArea({ initialValue, onChange }: { initialValue: string; onChan
 }
 
 export default function ProductsPage() {
+  const { data: session } = useSession();
+  const pageRole = (session?.user as any)?.role;
+  const isPageAdmin = pageRole === "ADMIN";
   const [tab, setTabState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "products"; } return "products"; });
   const setTab = (v: string) => {
     setTabState(v);
@@ -104,9 +107,10 @@ export default function ProductsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("tab") as Tab;
-    if (t && ["products", "promotions", "orders", "revenue"].includes(t)) setTab(t);
+    if (t && ["products", "promotions", "orders", "revenue", "deleted"].includes(t)) setTab(t);
   }, []);
   const [products, setProducts] = useState<any[]>([]);
+  const [deletedProducts, setDeletedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
   const [productSearch, setProductSearch] = useState("");
@@ -149,6 +153,15 @@ export default function ProductsPage() {
 
   // Reset page quand filtre change
   useEffect(() => { setProductPage(1); }, [productFilter, productSearch]);
+
+  // Charger les produits supprimés (admin)
+  useEffect(() => {
+    if (tab === "deleted" && isPageAdmin) {
+      fetch("/api/products?deleted=true").then((r) => r.json()).then((p) => {
+        setDeletedProducts(Array.isArray(p) ? p : []);
+      });
+    }
+  }, [tab, isPageAdmin]);
 
   function loadData() {
     Promise.all([
@@ -321,7 +334,7 @@ export default function ProductsPage() {
 
   function confirmDeleteProduct(id: string, name: string) {
     toast(`Supprimer "${name}" ?`, {
-      description: "Cette action est irréversible.",
+      description: "Ce produit sera placé dans la corbeille.",
       duration: Infinity,
       classNames: {
         toast: "!bg-gray-900 !border-red-600/30 !border",
@@ -335,6 +348,21 @@ export default function ProductsPage() {
     });
   }
 
+
+  async function restoreProduct(id: string) {
+    const res = await fetch("/api/products/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deletedAt: null, isAvailable: true }),
+    });
+    if (res.ok) {
+      setDeletedProducts((prev) => prev.filter((p) => p.id !== id));
+      refreshProducts();
+      toast.success("Produit restauré");
+    } else {
+      toast.error("Erreur lors de la restauration");
+    }
+  }
 
   // ── Promotions helpers ──
   function resetPromoForm() {
@@ -391,7 +419,7 @@ export default function ProductsPage() {
 
   function confirmDeletePromo(id: string, name: string) {
     toast(`Supprimer la promo "${name}" ?`, {
-      description: "Cette action est irréversible.",
+      description: "Ce produit sera placé dans la corbeille.",
       duration: Infinity,
       classNames: {
         toast: "!bg-gray-900 !border-red-600/30 !border",
@@ -416,6 +444,7 @@ export default function ProductsPage() {
   const tabItems: { key: Tab; label: string }[] = [
     { key: "products", label: "Repas" },
     { key: "promotions", label: "Promotions" },
+    ...(isPageAdmin ? [{ key: "deleted" as Tab, label: "Corbeille" }] : []),
   ];
 
   // Filtrer produits
@@ -503,7 +532,7 @@ export default function ProductsPage() {
                     <div className="relative">
                       <div className="relative w-full aspect-square bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden">
                         {p.image ? (
-                          <Image src={p.image as string} alt={p.name} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover rounded-lg" />
+                          <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" />
                         ) : (
                           <CatIcon className="w-6 h-6 text-gray-600" />
                         )}
@@ -625,6 +654,37 @@ export default function ProductsPage() {
         </div>
       )}
 
+
+      {/* === CORBEILLE (admin) === */}
+      {tab === "deleted" && isPageAdmin && (
+        <div className="space-y-2">
+          {deletedProducts.length === 0 ? (
+            <EmptyState icon={Trash2} message="Corbeille vide" />
+          ) : deletedProducts.map((p: any) => (
+            <Card key={p.id}>
+              <CardContent className="py-3">
+                <div className="flex items-center gap-3">
+                  {p.image ? (
+                    <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-gray-600" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{p.name}</p>
+                    <p className="text-[10px] text-gray-500">{p.price?.toLocaleString()} F {p.deletedAt && <> — Supprimé le {new Date(p.deletedAt).toLocaleDateString("fr-FR")}</>}</p>
+                  </div>
+                  <button onClick={() => restoreProduct(p.id)}
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors shrink-0">
+                    Restaurer
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* ============================================ */}
       {/* Dialog Ajout / Edition de repas              */}
@@ -867,7 +927,7 @@ export default function ProductsPage() {
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {promoImages.map((img, i) => (
                   <div key={i} className="relative group">
-                    <Image src={img} alt="" width={800} height={450} sizes="100vw" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
+                    <img loading="lazy" decoding="async" src={img} alt="" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
                     <button type="button" onClick={() => setPromoImages(prev => prev.filter((_, j) => j !== i))}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
                       <X className="w-3 h-3" />

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const role = user.role;
   const userId = user.id;
 
-  if (role !== "ADMIN" && role !== "COOK") {
+  if (role !== "ADMIN" && role !== "COOK" && role !== "MANAGER") {
     return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
   }
 
