@@ -34,12 +34,12 @@ export default function CooksPage() {
         subtitle={`${cooks.length} cuisinier${cooks.length > 1 ? "s" : ""} enregistre${cooks.length > 1 ? "s" : ""}`}
       />
 
-      <div className="flex gap-3">
-        <StatCardCentered className="flex-1" icon={Flame} value={totalInKitchen} label="En cuisine" color="orange" />
-        <StatCardCentered className="flex-1" icon={CheckCircle} value={totalDelivered} label="Livrees" color="green" />
-        <StatCardCentered className="flex-1" icon={TrendingUp} value={totalRevenue.toLocaleString()} label="FCFA total" color="purple" />
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+        <StatCardCentered className="flex-1 shrink-0 min-w-[5rem]" icon={Flame} value={totalInKitchen} label="En cuisine" color="orange" />
+        <StatCardCentered className="flex-1 shrink-0 min-w-[5rem]" icon={CheckCircle} value={totalDelivered} label="Livrees" color="green" />
+        <StatCardCentered className="flex-1 shrink-0 min-w-[5rem]" icon={TrendingUp} value={totalRevenue.toLocaleString()} label="FCFA total" color="purple" />
         {totalPickup > 0 && (
-          <StatCardCentered className="flex-1" icon={ShoppingBag} value={totalPickup} label="A emporter" color="purple" />
+          <StatCardCentered className="flex-1 shrink-0 min-w-[5rem]" icon={ShoppingBag} value={totalPickup} label="A emporter" color="purple" />
         )}
       </div>
 
@@ -54,12 +54,12 @@ export default function CooksPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{cook.name}</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-[11px] text-orange-400 font-medium">{cook.stats.inKitchen} en cuisine</span>
-                      <span className="text-[11px] text-cyan-400">{cook.stats.ready} pretes</span>
-                      <span className="text-[11px] text-green-400">{cook.stats.delivered} livrees</span>
-                      {cook.stats.pickup > 0 && <span className="text-[11px] text-purple-400">{cook.stats.pickup} emporter</span>}
-                      <span className="text-[11px] text-gray-400 font-semibold">{cook.stats.totalRevenue.toLocaleString()} F</span>
+                    <div className="flex items-center gap-2 mt-0.5 overflow-x-auto scrollbar-hide">
+                      <span className="text-[11px] text-orange-400 font-medium shrink-0 whitespace-nowrap">{cook.stats.inKitchen} en cuisine</span>
+                      <span className="text-[11px] text-cyan-400 shrink-0 whitespace-nowrap">{cook.stats.ready} pretes</span>
+                      <span className="text-[11px] text-green-400 shrink-0 whitespace-nowrap">{cook.stats.delivered} livrees</span>
+                      {cook.stats.pickup > 0 && <span className="text-[11px] text-purple-400 shrink-0 whitespace-nowrap">{cook.stats.pickup} emporter</span>}
+                      <span className="text-[11px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{cook.stats.totalRevenue.toLocaleString()} F</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
