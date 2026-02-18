@@ -24,7 +24,7 @@ DOMAIN="t-delivery.com"
 APP_DIR="/root/t-delivery"
 APP_PORT=3001
 REPO_URL="https://github.com/Terranoweb2/telivra.git"
-BRANCH="main"
+BRANCH="claude/analyze-project-8IHsf"
 PM2_APP_NAME="t-delivery"
 
 header "PHASE 0 — EXPLORATION DU VPS"
@@ -108,6 +108,22 @@ else
     npm install -g tsx
 fi
 
+# PostgreSQL (si pas déjà installé)
+if ! command -v psql &>/dev/null; then
+    info "Installation de PostgreSQL..."
+    apt-get install -y -qq postgresql postgresql-contrib
+fi
+systemctl start postgresql 2>/dev/null || service postgresql start
+systemctl enable postgresql 2>/dev/null || true
+
+# Créer l'utilisateur et la base si nécessaires
+sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='telivra'" | grep -q 1 || \
+    sudo -u postgres psql -c "CREATE USER telivra WITH PASSWORD 'TelivraSecure2026!';"
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='telivra'" | grep -q 1 || \
+    sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
+log "PostgreSQL configuré"
+
 # ===================================================================
 header "PHASE 2 — DEPLOIEMENT DU PROJET TELIVRA"
 # ===================================================================
@@ -130,34 +146,22 @@ fi
 
 cd "$APP_DIR"
 
-# Créer le fichier .env s'il n'existe pas
-if [ ! -f .env ]; then
-    warn "Fichier .env manquant !"
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}  CONFIGURATION REQUISE : Crée le fichier .env avant de continuer${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo "Copie le template et remplis les valeurs :"
-    echo "  cp deploy/.env.production .env"
-    echo "  nano .env"
-    echo ""
-    echo "Puis relance ce script : bash deploy/deploy.sh"
-    echo ""
+# Créer/mettre à jour le fichier .env
+AUTH_SECRET_VALUE=$(grep '^AUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+NEXTAUTH_SECRET_VALUE=$(grep '^NEXTAUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+SECRET="${AUTH_SECRET_VALUE:-${NEXTAUTH_SECRET_VALUE:-$(openssl rand -base64 32)}}"
 
-    # Copier le template automatiquement
-    if [ -f deploy/.env.production ]; then
-        cp deploy/.env.production .env
-        log "Template .env copié — EDITE-LE avec tes vraies valeurs !"
-        echo ""
-        echo -e "${RED}  >>> nano $APP_DIR/.env <<<${NC}"
-        echo ""
-        echo "Puis relance : bash deploy/deploy.sh"
-        exit 1
-    fi
-    exit 1
-fi
-log "Fichier .env trouvé"
+cat > .env << ENVEOF
+DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
+AUTH_SECRET="${SECRET}"
+AUTH_TRUST_HOST=true
+AUTH_URL="https://t-delivery.com"
+NEXTAUTH_SECRET="${SECRET}"
+NEXTAUTH_URL="https://t-delivery.com"
+NODE_ENV="production"
+PORT=3001
+ENVEOF
+log "Fichier .env configuré"
 
 # Installer les dépendances
 info "Installation des dépendances npm..."
@@ -196,16 +200,12 @@ header "PHASE 3 — CONFIGURATION PM2"
 # Arrêter l'ancienne instance si elle existe
 pm2 delete "$PM2_APP_NAME" 2>/dev/null || true
 
-# Démarrer avec PM2
-info "Démarrage de l'application avec PM2..."
-pm2 start node_modules/.bin/tsx \
-    --name "$PM2_APP_NAME" \
-    -- server.ts \
-    --cwd "$APP_DIR" \
-    --env production
+# Créer le dossier de logs
+mkdir -p "$APP_DIR/logs"
 
-# Variables d'environnement pour PM2
-pm2 env "$PM2_APP_NAME" 2>/dev/null || true
+# Démarrer avec PM2 via ecosystem.config.js
+info "Démarrage de l'application avec PM2 (tsx server.ts)..."
+pm2 start ecosystem.config.js
 
 # Sauvegarder la config PM2
 pm2 save
@@ -231,11 +231,17 @@ if [ -d /etc/nginx/sites-enabled ]; then
     cp -r /etc/nginx/sites-enabled /etc/nginx/sites-enabled.bak.$(date +%Y%m%d) 2>/dev/null || true
 fi
 
-# Copier la config Nginx pour Telivra
+# Copier la config Nginx pour Telivra (gérer les conflits map directive)
 info "Installation de la config Nginx pour $DOMAIN..."
 if [ -f "$APP_DIR/deploy/nginx-t-delivery.conf" ]; then
-    cp "$APP_DIR/deploy/nginx-t-delivery.conf" /etc/nginx/sites-available/t-delivery.conf
+    if grep -rq 'map.*http_upgrade.*connection_upgrade' /etc/nginx/nginx.conf /etc/nginx/sites-enabled/ 2>/dev/null; then
+        warn "Map directive déjà définie, suppression du doublon"
+        sed '/^map \$http_upgrade/,/^}/d' "$APP_DIR/deploy/nginx-t-delivery.conf" > /etc/nginx/sites-available/t-delivery.conf
+    else
+        cp "$APP_DIR/deploy/nginx-t-delivery.conf" /etc/nginx/sites-available/t-delivery.conf
+    fi
     ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
+    rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
     log "Config Nginx installée"
 else
     err "Fichier nginx-t-delivery.conf non trouvé dans deploy/"
