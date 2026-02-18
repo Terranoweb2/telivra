@@ -124,7 +124,7 @@ export default function CommandesPage() {
 
   // Obtenir position GPS pour l'acceptation livreur
   useEffect(() => {
-    if (isDriver && navigator.geolocation) {
+    if (isDriver && !isAdmin && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => { posRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
         () => {},
@@ -360,11 +360,10 @@ export default function CommandesPage() {
   // Peut annuler?
   function canCancelOrder(order: any) {
     if (order.status === "DELIVERED" || order.status === "CANCELLED") return false;
-    // Admin et cook peuvent annuler les commandes non acceptees
+    if (isAdmin) return false;
     if (isDriver || isCook) {
       return order.status === "PENDING";
     }
-    // Client connecte : uniquement PENDING + especes
     return order.status === "PENDING" && order.paymentMethod === "CASH";
   }
 
@@ -566,73 +565,72 @@ export default function CommandesPage() {
               );
             }
 
-            // === ADMIN: onglet En attente — vue mixte ===
-            if (tab === "pending" && isAdmin) {
-              const isReady = order.status === "READY" && !order.delivery;
+            // === ADMIN: vue lecture seule ===
+            if (isAdmin) {
               return (
                 <Card key={order.id}>
                   <CardContent>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-                          order.status === "PENDING" ? "bg-yellow-600/20" :
-                          order.status === "PREPARING" ? "bg-orange-600/20" : "bg-green-600/20"
-                        )}>
-                          {order.status === "PENDING" ? <Clock className="w-4 h-4 text-yellow-400" /> :
-                           order.status === "PREPARING" ? <ChefHat className="w-4 h-4 text-orange-400" /> :
-                           <CheckCircle className="w-4 h-4 text-green-400" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white">
-                            {order.client?.name || order.guestName || `#${(order.id as string).slice(-6)}`}
-                          </p>
-                          {order.guestPhone && <p className="text-xs text-gray-400">{order.guestPhone}</p>}
-                          {order.deliveryAddress && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
-                              <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
+                    <Link href={`/track/${order.id}`} className="block">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0",
+                            order.status === "PENDING" ? "bg-yellow-600/20" :
+                            order.status === "PREPARING" ? "bg-orange-600/20" :
+                            order.status === "READY" ? "bg-cyan-600/20" :
+                            order.status === "DELIVERING" || order.delivery?.status === "DELIVERING" ? "bg-purple-600/20" :
+                            order.status === "DELIVERED" || order.delivery?.status === "DELIVERED" ? "bg-green-600/20" :
+                            order.status === "CANCELLED" ? "bg-red-600/20" : "bg-gray-600/20"
+                          )}>
+                            {order.status === "PENDING" ? <Clock className="w-4 h-4 text-yellow-400" /> :
+                             order.status === "PREPARING" ? <ChefHat className="w-4 h-4 text-orange-400" /> :
+                             order.status === "READY" ? <CheckCircle className="w-4 h-4 text-cyan-400" /> :
+                             order.status === "DELIVERING" || order.delivery?.status === "DELIVERING" ? <Truck className="w-4 h-4 text-purple-400" /> :
+                             order.status === "DELIVERED" || order.delivery?.status === "DELIVERED" ? <CheckCircle className="w-4 h-4 text-green-400" /> :
+                             order.status === "CANCELLED" ? <XCircle className="w-4 h-4 text-red-400" /> :
+                             <ShoppingBag className="w-4 h-4 text-gray-400" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white">
+                              {order.client?.name || order.guestName || `#${(order.id as string).slice(-6)}`}
                             </p>
-                          )}
+                            {order.guestPhone && <p className="text-xs text-gray-400">{order.guestPhone}</p>}
+                            <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
+                            {order.deliveryAddress && (
+                              <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                                <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <StatusBadge status={order.delivery?.status || order.status} type="order" />
+                          <p className="text-sm font-bold text-orange-400 mt-1">{order.totalAmount?.toLocaleString()} FCFA</p>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <StatusBadge status={order.status} type="order" />
-                        <p className="text-sm font-bold text-orange-400 mt-1">{order.totalAmount?.toLocaleString()} FCFA</p>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {order.items?.map((i: any) => (
+                          <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
+                            {i.product?.image ? (
+                              <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                            ) : null}
+                            <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {order.items?.map((i: any) => (
-                        <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
-                          {i.product?.image ? (
-                            <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
-                          ) : null}
-                          <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {isReady && (
-                      <div className="flex gap-2">
-                        <button onClick={() => acceptOrder(order.id)}
-                          className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
-                          <Truck className="w-4 h-4" /> Accepter la livraison
-                        </button>
-                        {order.deliveryLat && order.deliveryLng && (
-                          <Link
-                            href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}`}
-                            className="py-2.5 px-3 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
-                          >
-                            <Navigation className="w-4 h-4" />
-                          </Link>
-                        )}
+                      {order.cancelReason && (
+                        <p className="text-xs text-red-400 mb-1">Raison: {order.cancelReason}</p>
+                      )}
+                      {order.delivery?.driver && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Truck className="w-3 h-3" /> Livreur: {order.delivery.driver.name || "Assigné"}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-end mt-1">
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Eye className="w-3 h-3" /> Voir le detail
+                        </span>
                       </div>
-                    )}
-                    {!isReady && canCancelOrder(order) && (
-                      <button onClick={() => cancelOrder(order.id)}
-                        disabled={cancellingId === order.id}
-                        className="w-full py-2 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
-                        {cancellingId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                        Annuler
-                      </button>
-                    )}
+                    </Link>
                   </CardContent>
                 </Card>
               );
