@@ -1,13 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Loader2, Truck, CheckCircle, TrendingUp, User, Star, ChevronRight } from "lucide-react";
+import { Loader2, Truck, CheckCircle, TrendingUp, User, Star, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatCardCentered } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+
+function timeAgo(date: string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h}h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d}j`;
+}
+
+function isOnline(lastSeenAt: string | null) {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60 * 1000; // 5 min
+}
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -20,6 +35,16 @@ export default function DriversPage() {
     });
   }, []);
 
+  // Refresh every 30s for online status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch("/api/drivers").then((r) => r.json()).then((data) => {
+        if (Array.isArray(data)) setDrivers(data);
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   const totalActive = drivers.reduce((s, d) => s + d.stats.active, 0);
@@ -30,72 +55,75 @@ export default function DriversPage() {
     <div className="space-y-4">
       <PageHeader
         title="Livreurs"
-        subtitle={`${drivers.length} livreur${drivers.length > 1 ? "s" : ""} enregistrés`}
+        subtitle={`${drivers.length} livreur${drivers.length > 1 ? "s" : ""} enregistré${drivers.length > 1 ? "s" : ""}`}
       />
 
-      {/* Stats globales */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCardCentered icon={Truck} value={totalActive} label="En cours" color="purple" />
-        <StatCardCentered icon={CheckCircle} value={totalCompleted} label="Livrées" color="green" />
-        <StatCardCentered icon={TrendingUp} value={totalRevenue.toLocaleString()} label="FCFA total" color="orange" />
+      {/* Résumé global */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        {[
+          { icon: Truck, value: totalActive, label: "En cours", color: "text-purple-400" },
+          { icon: CheckCircle, value: totalCompleted, label: "Livrées", color: "text-green-400" },
+          { icon: TrendingUp, value: totalRevenue.toLocaleString() + " F", label: "Recette", color: "text-orange-400" },
+        ].map((s, i) => (
+          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-xl shrink-0">
+            <s.icon className={cn("w-4 h-4", s.color)} />
+            <span className="text-sm font-bold text-white">{s.value}</span>
+            <span className="text-[10px] text-gray-500">{s.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Liste livreurs */}
-      <div className="space-y-3">
-        {drivers.map((driver) => (
-          <Link key={driver.id} href={`/drivers/${driver.id}`}>
-            <Card hover className="mb-3">
-              <CardContent>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 bg-orange-600/20 rounded-full flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-orange-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{driver.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{driver.email}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {driver.stats.avgRating && (
-                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/10">
-                        <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                        <span className="text-xs font-medium text-yellow-400">{driver.stats.avgRating}</span>
+      <div className="space-y-2">
+        {drivers.map((driver) => {
+          const online = isOnline(driver.lastSeenAt);
+          return (
+            <Link key={driver.id} href={`/drivers/${driver.id}`}>
+              <Card hover>
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <div className="w-9 h-9 bg-purple-600/20 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-purple-400" />
                       </div>
-                    )}
-                    <div className={cn(
-                      "px-2 py-1 rounded-full text-[10px] font-medium",
-                      driver.stats.active > 0 ? "bg-green-500/20 text-green-400" : "bg-gray-700 text-gray-400"
-                    )}>
-                      {driver.stats.active > 0 ? `${driver.stats.active} en cours` : "Inactif"}
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900",
+                        online ? "bg-green-500" : "bg-gray-500"
+                      )} />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-white truncate">{driver.name}</p>
+                        {driver.stats.avgRating && (
+                          <span className="text-[9px] text-yellow-400 font-medium shrink-0 flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-yellow-400" /> {driver.stats.avgRating}
+                          </span>
+                        )}
+                        {online ? (
+                          <span className="text-[9px] text-green-400 font-medium shrink-0 flex items-center gap-0.5">
+                            <Wifi className="w-2.5 h-2.5" /> En ligne
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-gray-500 shrink-0 flex items-center gap-0.5">
+                            <WifiOff className="w-2.5 h-2.5" /> {driver.lastSeenAt ? timeAgo(driver.lastSeenAt) : "Jamais connecté"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 overflow-x-auto scrollbar-hide">
+                        <span className="text-[10px] text-purple-400 shrink-0 whitespace-nowrap">{driver.stats.active} en cours</span>
+                        <span className="text-[10px] text-green-400 shrink-0 whitespace-nowrap">{driver.stats.completed} livrées</span>
+                        <span className="text-[10px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{driver.stats.totalRevenue.toLocaleString()} F</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-600 shrink-0" />
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Card className="bg-gray-800/50 border-0">
-                    <CardContent className="p-2 text-center">
-                      <p className="text-sm font-bold text-white">{driver.stats.active}</p>
-                      <p className="text-[10px] text-gray-500">En cours</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gray-800/50 border-0">
-                    <CardContent className="p-2 text-center">
-                      <p className="text-sm font-bold text-white">{driver.stats.completed}</p>
-                      <p className="text-[10px] text-gray-500">Livrées</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gray-800/50 border-0">
-                    <CardContent className="p-2 text-center">
-                      <p className="text-sm font-bold text-white">{driver.stats.totalRevenue.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-500">FCFA</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
         {drivers.length === 0 && (
-          <EmptyState icon={Truck} message="Aucun livreur enregistre" />
+          <EmptyState icon={Truck} message="Aucun livreur enregistré" />
         )}
       </div>
     </div>

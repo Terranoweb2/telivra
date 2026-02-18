@@ -13,6 +13,11 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const asDriver = searchParams.get("as") === "driver";
 
+  // Update lastSeenAt for online status tracking (drivers)
+  if (asDriver || role === "DRIVER") {
+    prisma.user.update({ where: { id: userId }, data: { lastSeenAt: new Date() } }).catch(() => {});
+  }
+
   let where: any = {};
   if (role === "ADMIN") {
     // Admin sees ALL orders

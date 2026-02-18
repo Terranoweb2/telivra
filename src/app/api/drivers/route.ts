@@ -11,7 +11,7 @@ export async function GET() {
     const drivers = await prisma.user.findMany({
       where: { role: "DRIVER" },
       select: {
-        id: true, name: true, email: true, isActive: true, createdAt: true,
+        id: true, name: true, email: true, isActive: true, createdAt: true, lastSeenAt: true,
         _count: {
           select: { driverDeliveries: true },
         },
@@ -34,7 +34,7 @@ export async function GET() {
         .map((dl) => dl.order!.rating!.driverRating);
       const avgRating = ratings.length > 0 ? (ratings.reduce((s, r) => s + r, 0) / ratings.length).toFixed(1) : null;
       return {
-        id: d.id, name: d.name, email: d.email, isActive: d.isActive, createdAt: d.createdAt,
+        id: d.id, name: d.name, email: d.email, isActive: d.isActive, createdAt: d.createdAt, lastSeenAt: d.lastSeenAt,
         stats: { active, completed, totalRevenue: Math.round(totalRevenue), avgRating, ratingCount: ratings.length },
       };
     });
