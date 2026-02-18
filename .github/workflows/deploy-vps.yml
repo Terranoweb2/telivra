@@ -5,6 +5,7 @@ on:
     branches:
       - 'claude/analyze-project-8IHsf'
     paths:
+      - 'src/**'
       - '.github/workflows/deploy-vps.yml'
   workflow_dispatch:
 
@@ -111,7 +112,8 @@ jobs:
             if [ -d "$APP_DIR/.git" ]; then
               cd "$APP_DIR"
               git fetch origin
-              git reset --hard origin/main
+              git checkout claude/analyze-project-8IHsf 2>/dev/null || git checkout -b claude/analyze-project-8IHsf origin/claude/analyze-project-8IHsf
+              git reset --hard origin/claude/analyze-project-8IHsf
               echo "Code updated"
             else
               rm -rf "$APP_DIR"
