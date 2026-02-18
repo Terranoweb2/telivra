@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       deliveredAgg, allOrdersCount, deliveredCount, cancelledCount,
       discountAgg, cashAgg, onlineAgg,
       dailyRaw, topProductsRaw, statusCounts,
+      pickupCount, pickupDeliveredCount,
     ] = await Promise.all([
       prisma.order.aggregate({
         where: { status: "DELIVERED", createdAt: { gte: from, lte: to } },
@@ -93,6 +94,8 @@ export async function GET(request: NextRequest) {
         WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
         GROUP BY status
       `,
+      prisma.order.count({ where: { deliveryMode: "PICKUP", createdAt: { gte: from, lte: to } } }),
+      prisma.order.count({ where: { status: "DELIVERED", deliveryMode: "PICKUP", createdAt: { gte: from, lte: to } } }),
     ]);
 
     const totalRevenue = Math.round(deliveredAgg._sum.totalAmount || 0);
@@ -128,9 +131,15 @@ export async function GET(request: NextRequest) {
         totalOrders: allOrdersCount,
         deliveredOrders: deliveredCount,
         cancelledOrders: cancelledCount,
+        pickupOrders: pickupCount,
+        pickupDelivered: pickupDeliveredCount,
         averageOrderValue: avgOrderValue,
         discounts: totalDiscounts,
         netRevenue: totalRevenue - totalDiscounts,
+      },
+      deliveryModeBreakdown: {
+        pickup: pickupCount,
+        delivery: allOrdersCount - pickupCount,
       },
       paymentBreakdown: {
         cash: { revenue: Math.round(cashAgg._sum.totalAmount || 0), count: cashAgg._count },

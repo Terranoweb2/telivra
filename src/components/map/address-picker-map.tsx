@@ -170,7 +170,7 @@ export default function AddressPickerMap({
       <div className={cn(
         "flex items-center rounded-xl overflow-hidden",
         fullHeight
-          ? "bg-white shadow-[0_1px_4px_rgba(0,0,0,0.12)] border border-gray-100"
+          ? "bg-gray-900 shadow-[0_1px_4px_rgba(0,0,0,0.12)] border border-gray-700"
           : "bg-gray-800 border border-gray-700"
       )}>
         <Search className={cn("w-4 h-4 ml-3.5 shrink-0", fullHeight ? "text-[#5f6368]" : "text-gray-500")} />
@@ -194,14 +194,14 @@ export default function AddressPickerMap({
       {suggestions.length > 0 && (
         <div className={cn(
           "absolute top-full left-0 right-0 mt-1.5 rounded-xl overflow-hidden shadow-xl max-h-52 overflow-y-auto z-50",
-          fullHeight ? "bg-white border border-gray-100" : "bg-gray-900 border border-gray-700"
+          fullHeight ? "bg-gray-900 border border-gray-700" : "bg-gray-900 border border-gray-700"
         )}>
           {suggestions.map((item: any, idx: number) => (
             <button key={idx} onClick={() => selectSuggestion(item)}
               className={cn(
                 "w-full text-left px-3.5 py-2.5 text-sm flex items-start gap-2.5 transition-colors",
                 fullHeight
-                  ? "text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                  ? "text-gray-700 hover:bg-gray-800 border-b border-gray-700 last:border-0"
                   : "text-gray-300 hover:bg-gray-800 border-b border-gray-800 last:border-0"
               )}>
               <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
@@ -251,7 +251,7 @@ export default function AddressPickerMap({
             <button
               onClick={locateMe}
               disabled={locating}
-              className="bg-white/95 backdrop-blur-sm text-gray-700 text-sm px-5 py-2.5 rounded-full shadow-lg font-medium flex items-center gap-2 hover:bg-white active:scale-95 transition-all"
+              className="bg-gray-900/95 backdrop-blur-sm text-gray-300 text-sm px-5 py-2.5 rounded-full shadow-lg font-medium flex items-center gap-2 hover:bg-gray-800 active:scale-95 transition-all"
             >
               {locating ? (
                 <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
@@ -269,17 +269,17 @@ export default function AddressPickerMap({
           className="flex flex-col gap-2"
         >
           {/* Zoom */}
-          <div className="bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] overflow-hidden">
+          <div className="bg-gray-900 rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] overflow-hidden">
             <button
               onClick={() => mapRef.current?.zoomIn()}
-              className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors text-[#666]"
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 active:bg-gray-700 transition-colors text-[#666]"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
             </button>
             <div className="h-px bg-gray-200" />
             <button
               onClick={() => mapRef.current?.zoomOut()}
-              className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors text-[#666]"
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 active:bg-gray-700 transition-colors text-[#666]"
             >
               <Minus className="w-4 h-4" strokeWidth={2.5} />
             </button>
@@ -288,7 +288,7 @@ export default function AddressPickerMap({
           {/* Bascule Plan / Satellite */}
           <button
             onClick={() => setLayer(layer === "streets" ? "satellite" : "streets")}
-            className="w-10 h-10 bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            className="w-10 h-10 bg-gray-900 rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-800 active:bg-gray-700 transition-colors"
             title={layer === "streets" ? "Vue satellite" : "Vue plan"}
           >
             {layer === "streets" ? (
@@ -302,7 +302,7 @@ export default function AddressPickerMap({
           <button
             onClick={locateMe}
             disabled={locating}
-            className="w-10 h-10 bg-white rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            className="w-10 h-10 bg-gray-900 rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-800 active:bg-gray-700 transition-colors"
             title="Ma position"
           >
             {locating ? (
@@ -316,7 +316,7 @@ export default function AddressPickerMap({
         {/* Barre d'adresse en bas */}
         {address && (
           <div style={{ position: "absolute", bottom: 12, left: 12, right: 64, zIndex: 1000 }}>
-            <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-white rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.15)]">
+            <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-gray-900 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.15)]">
               <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
               <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{address}</p>
             </div>

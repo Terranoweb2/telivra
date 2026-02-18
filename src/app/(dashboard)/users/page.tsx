@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { Loader2, Users, Shield, Eye, Truck, ShoppingBag, UserCheck, UserX, ChefHat, Phone, UserMinus, MapPin } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +20,13 @@ const roleConfig: Record<string, { label: string; color: string; icon: any }> = 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("CLIENT");
+  const [filter, setFilterState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "CLIENT"; } return "CLIENT"; });
+  const setFilter = (v: string) => {
+    setFilterState(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", v);
+    window.history.replaceState({}, "", url.toString());
+  };
   const [guests, setGuests] = useState<any[]>([]);
   const [loadingGuests, setLoadingGuests] = useState(false);
 

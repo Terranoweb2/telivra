@@ -17,6 +17,7 @@ export async function GET() {
       heroTitle: null,
       heroSubtitle: null,
       chatEnabled: true,
+      pickupEnabled: false,
     }, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
@@ -44,6 +45,7 @@ export async function PUT(request: NextRequest) {
     heroTitle,
     heroSubtitle,
     chatEnabled,
+    pickupEnabled,
   } = body;
 
   const data: Record<string, unknown> = {};
@@ -57,6 +59,7 @@ export async function PUT(request: NextRequest) {
   if (heroTitle !== undefined) data.heroTitle = heroTitle ? String(heroTitle).slice(0, 200) : null;
   if (heroSubtitle !== undefined) data.heroSubtitle = heroSubtitle ? String(heroSubtitle).slice(0, 500) : null;
   if (chatEnabled !== undefined) data.chatEnabled = Boolean(chatEnabled);
+  if (pickupEnabled !== undefined) data.pickupEnabled = Boolean(pickupEnabled);
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "default" },

@@ -12,7 +12,7 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, isActive: true, createdAt: true,
       cookOrders: {
-        select: { id: true, status: true, cookAcceptedAt: true, cookReadyAt: true, totalAmount: true },
+        select: { id: true, status: true, cookAcceptedAt: true, cookReadyAt: true, totalAmount: true, deliveryMode: true },
         orderBy: { createdAt: "desc" },
         take: 100,
       },
@@ -28,9 +28,10 @@ export async function GET() {
     const totalRevenue = orders
       .filter((o) => o.status === "DELIVERED")
       .reduce((s, o) => s + (o.totalAmount || 0), 0);
+    const pickup = orders.filter((o) => o.deliveryMode === "PICKUP" && o.status === "DELIVERED").length;
     return {
       id: c.id, name: c.name, email: c.email, isActive: c.isActive, createdAt: c.createdAt,
-      stats: { inKitchen, ready, delivered, totalRevenue: Math.round(totalRevenue) },
+      stats: { inKitchen, ready, delivered, pickup, totalRevenue: Math.round(totalRevenue) },
     };
   });
 

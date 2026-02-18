@@ -26,13 +26,14 @@ export async function GET() {
   ]);
 
   // Batch 2: Counts (6 queries)
-  const [pendingCount, activeDeliveries, deliveredToday, preparingCount, readyCount, preparedToday] = await Promise.all([
+  const [pendingCount, activeDeliveries, deliveredToday, preparingCount, readyCount, preparedToday, pickupToday] = await Promise.all([
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.delivery.count({ where: { status: { in: ["PICKING_UP", "DELIVERING"] } } }),
     prisma.delivery.count({ where: { status: "DELIVERED", endTime: { gte: todayStart } } }),
     prisma.order.count({ where: { status: "PREPARING" } }),
     prisma.order.count({ where: { status: "READY" } }),
     prisma.order.count({ where: { status: { in: ["READY", "PICKED_UP", "DELIVERING", "DELIVERED"] }, cookReadyAt: { gte: todayStart } } }),
+    prisma.order.count({ where: { status: "DELIVERED", deliveryMode: "PICKUP", createdAt: { gte: todayStart } } }),
   ]);
   const pendingCookCount = pendingCount;
 
@@ -72,7 +73,7 @@ export async function GET() {
     today: { revenue: Math.round(todayAgg._sum.totalAmount || 0), orders: todayOrdersCount },
     week: { revenue: Math.round(weekAgg._sum.totalAmount || 0), orders: weekOrdersCount },
     month: { revenue: Math.round(monthAgg._sum.totalAmount || 0), orders: monthOrdersCount },
-    totals: { orders: allOrders, pending: pendingCount, activeDeliveries, deliveredToday },
+    totals: { orders: allOrders, pending: pendingCount, activeDeliveries, deliveredToday, pickupToday },
     dailyRevenue,
     cookStats: {
       pendingCook: pendingCookCount,

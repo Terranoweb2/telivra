@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { notifyRole } from "@/lib/notify";
 
 export async function POST(
   request: NextRequest,
@@ -10,63 +10,61 @@ export async function POST(
 
   try {
     const body = await request.json();
-    const { driverRating, mealRating, driverComment, mealComment, guestPhone } = body;
+    const { driverRating, mealRating, driverComment, mealComment } = body;
 
-    // Validation des notes
-    if (!driverRating || !mealRating) {
-      return NextResponse.json({ error: "Les deux notes sont requises" }, { status: 400 });
+    if (!mealRating) {
+      return NextResponse.json({ error: "La note du repas est requise" }, { status: 400 });
     }
-    const dr = Math.round(Number(driverRating));
     const mr = Math.round(Number(mealRating));
-    if (dr < 1 || dr > 5 || mr < 1 || mr > 5) {
+    if (mr < 1 || mr > 5) {
+      return NextResponse.json({ error: "Les notes doivent être entre 1 et 5" }, { status: 400 });
+    }
+    const dr = driverRating ? Math.round(Number(driverRating)) : 0;
+    if (dr !== 0 && (dr < 1 || dr > 5)) {
       return NextResponse.json({ error: "Les notes doivent être entre 1 et 5" }, { status: 400 });
     }
 
-    // Verifier que la commande existe et est livree
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { rating: true },
+      include: { rating: true, client: { select: { name: true } } },
     });
 
     if (!order) {
       return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
     }
     if (order.status !== "DELIVERED") {
-      return NextResponse.json({ error: "La commande n'est pas encore livree" }, { status: 400 });
+      return NextResponse.json({ error: "La commande n'est pas encore livrée" }, { status: 400 });
     }
     if (order.rating) {
       return NextResponse.json({ error: "Cette commande a déjà été notée" }, { status: 409 });
     }
 
-    // Autorisation : client authentifie ou guest avec bon telephone
-    const session = await auth();
-    const userId = (session?.user as any)?.id;
-
-    if (order.clientId) {
-      // Commande client authentifie
-      if (!userId || userId !== order.clientId) {
-        return NextResponse.json({ error: "Non autorise" }, { status: 403 });
-      }
-    } else if (order.guestPhone) {
-      // Commande guest : verifier le telephone
-      if (!guestPhone || guestPhone !== order.guestPhone) {
-        return NextResponse.json({ error: "Téléphone incorrect" }, { status: 403 });
-      }
-    } else {
-      return NextResponse.json({ error: "Impossible de vérifier l'identité" }, { status: 403 });
-    }
-
-    // Sanitiser les commentaires
     const safeDriverComment = driverComment ? String(driverComment).slice(0, 500).trim() : null;
     const safeMealComment = mealComment ? String(mealComment).slice(0, 500).trim() : null;
 
     const rating = await prisma.rating.create({
       data: {
         orderId: id,
-        driverRating: dr,
+        driverRating: dr || mr,
         mealRating: mr,
         driverComment: safeDriverComment || null,
         mealComment: safeMealComment || null,
+      },
+    });
+
+    const clientName = order.client?.name || (order as any).guestName || "Client";
+    const avgRating = dr > 0 ? ((dr + mr) / 2).toFixed(1) : mr.toFixed(1);
+    notifyRole("ADMIN", {
+      type: "RATING",
+      title: "Nouvelle note",
+      message: `${avgRating}/5 par ${clientName}`,
+      severity: "INFO",
+      data: { orderId: id, driverRating: dr, mealRating: mr, clientName },
+      pushPayload: {
+        title: "Nouvelle note",
+        body: `${avgRating}/5 par ${clientName}`,
+        url: "/alerts",
+        tag: `rating-${id}`,
       },
     });
 

@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getCachedSettings } from "@/lib/settings-cache";
+import { TourOverlay } from "@/components/tour-overlay";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -54,6 +55,8 @@ interface SiteSettings {
   deliveryFee: number;
   currency: string;
   buttonColor: string | null;
+  pickupEnabled?: boolean;
+  chatEnabled?: boolean;
 }
 
 export default function CommanderPage() {
@@ -69,6 +72,7 @@ export default function CommanderPage() {
   const [addressLng, setAddressLng] = useState(0);
   const [note, setNote] = useState("");
   const [ordering, setOrdering] = useState(false);
+  const [deliveryMode, setDeliveryMode] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [imgCounter, setImgCounter] = useState(0);
   const [showPromoDialog, setShowPromoDialog] = useState(false);
@@ -132,8 +136,10 @@ export default function CommanderPage() {
   const totalMeals = mealItems.reduce((s, i) => s + i.quantity, 0);
   const hasExtras = extras.length > 0;
   const deliveryFee = settings?.deliveryFee || 0;
+  const pickupEnabled = settings?.pickupEnabled === true;
+  const effectiveDeliveryFee = deliveryMode === "PICKUP" ? 0 : deliveryFee;
   const subtotal = cart.reduce((s, i) => s + (i.product.effectivePrice ?? i.product.price) * i.quantity, 0);
-  const total = subtotal + deliveryFee;
+  const total = subtotal + effectiveDeliveryFee;
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
   const adminMethod = settings?.defaultPaymentMethod || "CASH";
 
@@ -167,7 +173,7 @@ export default function CommanderPage() {
   }, []);
 
   async function placeOrder(method: "CASH" | "ONLINE") {
-    if (!address || !addressLat || !addressLng) return;
+    if (deliveryMode !== "PICKUP" && (!address || !addressLat || !addressLng)) return;
     setOrdering(true);
     try {
       const res = await fetch("/api/orders", {
@@ -180,6 +186,7 @@ export default function CommanderPage() {
           deliveryLng: addressLng,
           note,
           paymentMethod: method,
+          deliveryMode,
         }),
       });
       if (res.ok) {
@@ -456,8 +463,29 @@ export default function CommanderPage() {
 
               {/* Adresse (carte plein écran) */}
               {orderStep === "address" && (
-                <div className="absolute inset-0">
-                  <AddressPickerMap onSelect={handleAddressSelect} fullHeight />
+                <div className="absolute inset-0 flex flex-col">
+                  {pickupEnabled && (
+                    <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 shrink-0 z-10">
+                      <button onClick={() => setDeliveryMode("DELIVERY")} className={cn("flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2", deliveryMode === "DELIVERY" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-700")}>
+                        <Truck className="w-4 h-4" /> Livraison
+                      </button>
+                      <button onClick={() => setDeliveryMode("PICKUP")} className={cn("flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2", deliveryMode === "PICKUP" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-700")}>
+                        <ShoppingBag className="w-4 h-4" /> À emporter
+                      </button>
+                    </div>
+                  )}
+                  {deliveryMode === "PICKUP" ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                      <ShoppingBag className="w-16 h-16 text-orange-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">Commande a emporter</h3>
+                      <p className="text-sm text-gray-400">Votre commande sera préparée et vous pourrez venir la récupérer directement au restaurant.</p>
+                      <p className="text-sm text-green-400 mt-3 font-medium">Pas de frais de livraison</p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 relative">
+                      <AddressPickerMap onSelect={handleAddressSelect} fullHeight />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -491,10 +519,10 @@ export default function CommanderPage() {
                       <span>Sous-total</span>
                       <span>{subtotal.toLocaleString()} F</span>
                     </div>
-                    {deliveryFee > 0 && (
+                    {effectiveDeliveryFee > 0 && (
                       <div className="flex justify-between text-sm text-gray-400">
                         <span>Livraison</span>
-                        <span>{deliveryFee.toLocaleString()} F</span>
+                        <span>{effectiveDeliveryFee.toLocaleString()} F</span>
                       </div>
                     )}
                     <div className="flex justify-between text-base font-bold text-white pt-1">
@@ -532,9 +560,9 @@ export default function CommanderPage() {
               )}
 
               {orderStep === "address" && (
-                <button onClick={nextStep} disabled={!address || !addressLat || !addressLng}
+                <button onClick={nextStep} disabled={deliveryMode !== "PICKUP" && (!address || !addressLat || !addressLng)}
                   className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                  Confirmer l&apos;adresse <ChevronRight className="w-4 h-4" />
+                  {deliveryMode === "PICKUP" ? "Suivant" : "Confirmer l'adresse"} <ChevronRight className="w-4 h-4" />
                 </button>
               )}
 
@@ -636,6 +664,12 @@ export default function CommanderPage() {
         </div>
       )}
 
+      {/* Tour d'onboarding dynamique */}
+      <TourOverlay
+        chatEnabled={settings?.chatEnabled}
+        pickupEnabled={pickupEnabled}
+        hasPromotions={promotions.length > 0}
+      />
     </div>
   );
 }

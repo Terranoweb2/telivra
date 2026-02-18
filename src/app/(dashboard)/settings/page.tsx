@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette, MessageCircle } from "lucide-react";
+import { User, Shield, Bell, Save, Loader2, Check, CreditCard, Store, Phone, Upload, ImageIcon, Palette, MessageCircle, Cake, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,9 +28,22 @@ export default function SettingsPage() {
 
   // Profil
   const [profileName, setProfileName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   useEffect(() => {
     if (session?.user?.name) setProfileName(session.user.name);
   }, [session?.user?.name]);
+
+  // Charger la date de naissance
+  useEffect(() => {
+    fetch("/api/settings/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.dateOfBirth) {
+          setDateOfBirth(new Date(data.dateOfBirth).toISOString().slice(0, 10));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sécurité
   const [currentPassword, setCurrentPassword] = useState("");
@@ -50,6 +63,7 @@ export default function SettingsPage() {
   const [heroSubtitle, setHeroSubtitle] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [chatEnabled, setChatEnabled] = useState(true);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -65,6 +79,7 @@ export default function SettingsPage() {
         setHeroTitle(data.heroTitle || "");
         setHeroSubtitle(data.heroSubtitle || "");
         setChatEnabled(data.chatEnabled !== false);
+        setPickupEnabled(data.pickupEnabled === true);
       }).catch(() => {});
     }
   }, [isAdmin]);
@@ -76,11 +91,20 @@ export default function SettingsPage() {
     }
     setSaving(true);
     try {
+      // Sauvegarder le nom
       const res = await fetch("/api/users/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: profileName.trim() }),
       });
+
+      // Sauvegarder la date de naissance
+      await fetch("/api/settings/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dateOfBirth: dateOfBirth || null }),
+      });
+
       if (res.ok) {
         toast.success("Profil mis à jour");
         await updateSession();
@@ -130,7 +154,7 @@ export default function SettingsPage() {
   async function saveSiteSettings() {
     setSaving(true);
     try {
-      const body: any = { chatEnabled, restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
+      const body: any = { chatEnabled, pickupEnabled, restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
       const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
@@ -175,8 +199,17 @@ export default function SettingsPage() {
                 <p className="text-[11px] text-gray-600 mt-1">L&apos;email ne peut pas être modifié</p>
               </div>
               <div>
-                <label className="block text-[13px] text-gray-400 mb-1.5">Role</label>
-                <input type="text" value={role || "VIEWER"} disabled className={cn(inputClass, "opacity-50")} />
+                <label className="block text-[13px] text-gray-400 mb-1.5 flex items-center gap-1.5">
+                  <Cake className="w-3.5 h-3.5 text-orange-400" /> Date de naissance
+                </label>
+                <input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  className={inputClass}
+                />
+                <p className="text-[11px] text-gray-600 mt-1">Recevez un cadeau le jour de votre anniversaire</p>
               </div>
               <button onClick={saveProfile} disabled={saving}
                 className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl text-[13px] font-semibold transition-colors">
@@ -201,7 +234,7 @@ export default function SettingsPage() {
                 <label className="block text-[13px] text-gray-400 mb-1.5">Devise</label>
                 <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass} />
               </div>
-              <div className="border-t border-white/[0.06] pt-4">
+              <div className="border-t border-gray-800 pt-4">
                 <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
                   <MessageCircle className="w-4 h-4 text-orange-400" /> Messagerie
                 </h3>
@@ -212,6 +245,20 @@ export default function SettingsPage() {
                   </div>
                   <button type="button" onClick={() => setChatEnabled(!chatEnabled)} className={cn("relative w-11 h-6 rounded-full transition-colors", chatEnabled ? "bg-orange-600" : "bg-gray-700")}>
                     <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", chatEnabled ? "left-[22px]" : "left-0.5")} />
+                  </button>
+                </div>
+              </div>
+              <div className="border-t border-gray-800 pt-4">
+                <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-orange-400" /> À emporter
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[13px] text-gray-300">Activer le mode a emporter</p>
+                    <p className="text-[11px] text-gray-600">Les clients peuvent venir chercher leur commande</p>
+                  </div>
+                  <button type="button" onClick={() => setPickupEnabled(!pickupEnabled)} className={cn("relative w-11 h-6 rounded-full transition-colors", pickupEnabled ? "bg-orange-600" : "bg-gray-700")}>
+                    <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", pickupEnabled ? "left-[22px]" : "left-0.5")} />
                   </button>
                 </div>
               </div>
@@ -305,7 +352,7 @@ export default function SettingsPage() {
                   <option value="BOTH">Espèces + En ligne</option>
                 </select>
               </div>
-              <div className="border-t border-white/[0.06] pt-4">
+              <div className="border-t border-gray-800 pt-4">
                 <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
                   <Phone className="w-4 h-4 text-orange-400" /> MTN Mobile Money
                 </h3>

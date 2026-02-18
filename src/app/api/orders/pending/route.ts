@@ -8,7 +8,7 @@ export async function GET() {
 
   // Pour les livreurs: retourner les commandes READY (cuisine terminee)
   const orders = await prisma.order.findMany({
-    where: { status: "READY", delivery: null },
+    where: { status: "READY", delivery: null, deliveryMode: { not: "PICKUP" } },
     include: {
       items: { include: { product: true } },
       client: { select: { id: true, name: true } },

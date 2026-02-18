@@ -8,7 +8,7 @@ import {
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
 
 const statusLabels: Record<string, { text: string; color: string }> = {
-  PICKING_UP: { text: "Recuperation", color: "text-yellow-400 bg-yellow-600/20" },
+  PICKING_UP: { text: "Récupération", color: "text-yellow-400 bg-yellow-600/20" },
   DELIVERING: { text: "En livraison", color: "text-orange-400 bg-orange-600/20" },
 };
 

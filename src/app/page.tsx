@@ -13,12 +13,12 @@ import {
   ArrowDown, Phone, User, Timer, Droplets,
   Sun, Moon, Clock, Truck,
   ChevronLeft, ChevronRight,
-  HandMetal, MousePointerClick, MapPinned, CookingPot,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getCachedSettings } from "@/lib/settings-cache";
+import { TourOverlay } from "@/components/tour-overlay";
 
 const AddressPickerMap = dynamic(() => import("@/components/map/address-picker-map"), { ssr: false });
 
@@ -66,6 +66,8 @@ interface SiteSettings {
   buttonColor: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
+  pickupEnabled?: boolean;
+  chatEnabled?: boolean;
 }
 
 type OrderStep = "menu" | "extras" | "address" | "info" | "payment";
@@ -94,55 +96,12 @@ export default function LandingPage() {
   const [addressLng, setAddressLng] = useState(0);
   const [note, setNote] = useState("");
   const [ordering, setOrdering] = useState(false);
+  const [deliveryMode, setDeliveryMode] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
 
   // Détail produit
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Onboarding tour
-  const [showTour, setShowTour] = useState(false);
-  const [tourStep, setTourStep] = useState(0);
 
-  const tourSteps = [
-    {
-      icon: <HandMetal className="w-7 h-7 text-orange-400" />,
-      title: "Bienvenue !",
-      desc: "Découvrez comment commander vos repas en quelques étapes simples.",
-    },
-    {
-      icon: <UtensilsCrossed className="w-7 h-7 text-orange-400" />,
-      title: "1. Choisissez vos plats",
-      desc: "Parcourez le menu et utilisez la recherche pour trouver vos plats favoris.",
-    },
-    {
-      icon: <MousePointerClick className="w-7 h-7 text-orange-400" />,
-      title: "2. Ajoutez au panier",
-      desc: "Appuyez sur le bouton + pour ajouter un plat. Ajustez les quantités avec + et −.",
-    },
-    {
-      icon: <MapPinned className="w-7 h-7 text-orange-400" />,
-      title: "3. Livraison",
-      desc: "Renseignez vos informations et sélectionnez votre adresse sur la carte interactive.",
-    },
-    {
-      icon: <CookingPot className="w-7 h-7 text-orange-400" />,
-      title: "4. Validez et savourez !",
-      desc: "Choisissez votre mode de paiement, validez et suivez votre commande en temps réel. Bon appétit !",
-    },
-  ];
-
-  function nextTourStep() {
-    if (tourStep < tourSteps.length - 1) {
-      setTourStep((s) => s + 1);
-    } else {
-      completeTour();
-    }
-  }
-
-  function completeTour() {
-    setShowTour(false);
-    setTourStep(0);
-    try { localStorage.setItem("onboarding-tour-seen", "1"); } catch {}
-  }
 
   // Auth modal
   const [showAuth, setShowAuth] = useState(false);
@@ -256,12 +215,6 @@ export default function LandingPage() {
         const el = document.getElementById("menu");
         if (el) el.scrollIntoView({ behavior: "smooth" });
       }, 100);
-      // Afficher le tour d'onboarding pour les premiers visiteurs
-      try {
-        if (!localStorage.getItem("onboarding-tour-seen")) {
-          setTimeout(() => setShowTour(true), 1200);
-        }
-      } catch {}
     });
   }, []);
 
@@ -329,7 +282,9 @@ export default function LandingPage() {
   const totalMeals = mealItems.reduce((s, i) => s + i.quantity, 0);
   const subtotal = cart.reduce((s, i) => s + (i.product.effectivePrice ?? i.product.price) * i.quantity, 0);
   const deliveryFee = settings?.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
+  const pickupEnabled = settings?.pickupEnabled === true;
+  const effectiveDeliveryFee = deliveryMode === "PICKUP" ? 0 : deliveryFee;
+  const total = subtotal + effectiveDeliveryFee;
 
   // Step navigation
   const stepsList: { id: OrderStep; label: string }[] = [
@@ -384,6 +339,7 @@ export default function LandingPage() {
           guestName,
           guestPhone,
           paymentMethod: method,
+          deliveryMode,
         }),
       });
       if (res.ok) {
@@ -700,15 +656,42 @@ export default function LandingPage() {
 
               {/* ——— ÉTAPE : Adresse (carte plein écran) ——— */}
               {orderStep === "address" && (
-                <div className="absolute inset-0">
-                  <AddressPickerMap onSelect={handleAddressSelect} fullHeight />
+                <div className="absolute inset-0 flex flex-col">
+                  {pickupEnabled && (
+                    <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 shrink-0 z-10">
+                      <button onClick={() => setDeliveryMode("DELIVERY")} className={cn("flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2", deliveryMode === "DELIVERY" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-700")}>
+                        <Truck className="w-4 h-4" /> Livraison
+                      </button>
+                      <button onClick={() => setDeliveryMode("PICKUP")} className={cn("flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2", deliveryMode === "PICKUP" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-700")}>
+                        <ShoppingBag className="w-4 h-4" /> À emporter
+                      </button>
+                    </div>
+                  )}
+                  {deliveryMode === "PICKUP" ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                      <ShoppingBag className="w-16 h-16 text-orange-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">Commande a emporter</h3>
+                      <p className="text-sm text-gray-400">Votre commande sera préparée et vous pourrez venir la récupérer directement au restaurant.</p>
+                      <p className="text-sm text-green-400 mt-3 font-medium">Pas de frais de livraison</p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 relative">
+                      <AddressPickerMap onSelect={handleAddressSelect} fullHeight />
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* ——— ÉTAPE : Informations personnelles ——— */}
               {orderStep === "info" && (
                 <div className="space-y-3">
-                  {address && (
+                  {deliveryMode === "PICKUP" && (
+                    <div className="flex items-start gap-2 p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                      <ShoppingBag className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                      <p className="text-sm text-purple-300">Commande a emporter — sans frais de livraison</p>
+                    </div>
+                  )}
+                  {deliveryMode !== "PICKUP" && address && (
                     <div className="flex items-start gap-2 p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
                       <MapPin className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
                       <p className="text-sm text-gray-300 line-clamp-2">{address}</p>
@@ -777,10 +760,10 @@ export default function LandingPage() {
                       <span>Sous-total</span>
                       <span>{subtotal.toLocaleString()} F</span>
                     </div>
-                    {deliveryFee > 0 && (
+                    {effectiveDeliveryFee > 0 && (
                       <div className="flex justify-between text-sm text-gray-400">
                         <span>Livraison</span>
-                        <span>{deliveryFee.toLocaleString()} F</span>
+                        <span>{effectiveDeliveryFee.toLocaleString()} F</span>
                       </div>
                     )}
                     <div className="flex justify-between text-base font-bold text-white pt-1">
@@ -791,7 +774,7 @@ export default function LandingPage() {
 
                   {/* Infos livraison */}
                   <div className="bg-gray-800 rounded-xl p-3 space-y-1.5">
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Livraison</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">{deliveryMode === "PICKUP" ? "À emporter" : "Livraison"}</p>
                     <div className="flex items-center gap-2 text-sm text-gray-300">
                       <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                       <span>{guestName}</span>
@@ -825,9 +808,9 @@ export default function LandingPage() {
 
               {/* Address : Confirmer l'adresse */}
               {orderStep === "address" && (
-                <button onClick={nextStep} disabled={!address || !addressLat || !addressLng}
+                <button onClick={nextStep} disabled={deliveryMode !== "PICKUP" && (!address || !addressLat || !addressLng)}
                   className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                  Confirmer l&apos;adresse <ChevronRight className="w-4 h-4" />
+                  {deliveryMode === "PICKUP" ? "Suivant" : "Confirmer l'adresse"} <ChevronRight className="w-4 h-4" />
                 </button>
               )}
 
@@ -1082,62 +1065,13 @@ export default function LandingPage() {
       })()}
 
       {/* ============================================ */}
-      {/* Tour d'onboarding                             */}
-      {/* ============================================ */}
-      {showTour && (
-        <div className="fixed inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={completeTour} />
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl border-t border-gray-800 p-5 pb-8 animate-in slide-in-from-bottom duration-300">
-            {/* Progress dots */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex gap-1.5">
-                {tourSteps.map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-1 rounded-full transition-all duration-300",
-                      i <= tourStep ? "bg-orange-500 w-6" : "bg-gray-700 w-4"
-                    )}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={completeTour}
-                className="text-gray-500 hover:text-gray-300 text-xs font-medium transition-colors"
-              >
-                Passer
-              </button>
-            </div>
+      {/* Tour d'onboarding dynamique */}
+      <TourOverlay
+        chatEnabled={settings?.chatEnabled}
+        pickupEnabled={pickupEnabled}
+        hasPromotions={promotions.length > 0}
+      />
 
-            {/* Step content */}
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-14 h-14 bg-orange-600/15 rounded-2xl flex items-center justify-center shrink-0">
-                {tourSteps[tourStep].icon}
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">
-                  {tourSteps[tourStep].title}
-                </h3>
-                <p className="text-sm text-gray-400 mt-1 leading-relaxed">
-                  {tourSteps[tourStep].desc}
-                </p>
-              </div>
-            </div>
-
-            {/* Action button */}
-            <button
-              onClick={nextTourStep}
-              className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              {tourStep === tourSteps.length - 1 ? (
-                <>C&apos;est parti ! <ChevronRight className="w-4 h-4" /></>
-              ) : (
-                <>Suivant <ChevronRight className="w-4 h-4" /></>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Navigation mobile fixe */}
       <nav className="fixed bottom-3 left-3 right-3 z-30 lg:hidden">

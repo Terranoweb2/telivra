@@ -154,10 +154,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       )}
 
       <aside className={cn(
-        "fixed top-0 left-0 z-50 h-screen w-64 bg-[#1c1c1e] border-r border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out lg:sticky lg:translate-x-0",
+        "fixed top-0 left-0 z-50 h-screen w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 ease-in-out lg:sticky lg:translate-x-0",
         open ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             {brandLogo ? (
               <img decoding="async" src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />

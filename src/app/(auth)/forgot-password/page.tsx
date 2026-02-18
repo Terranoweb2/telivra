@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="bg-[#1c1c1e] sm:rounded-2xl p-6 sm:p-8 border-y sm:border border-white/[0.06] shadow-2xl shadow-black/40 w-full">
+    <div className="bg-gray-950 sm:rounded-2xl p-6 sm:p-8 border-y sm:border border-gray-800 shadow-2xl shadow-black/40 w-full">
       <div className="flex flex-col items-center mb-6">
         <div className="bg-orange-600 p-3 rounded-2xl mb-3">
           <UtensilsCrossed className="w-7 h-7 text-white" />

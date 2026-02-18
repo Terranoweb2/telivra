@@ -421,7 +421,7 @@ export default function NavMap({ myPos, destination, isNavigating, heading, spee
             <Popup><div className="text-sm"><p className="font-semibold text-red-600">Destination</p></div></Popup>
           </Marker>
         )}
-        {/* Planification : calcul itineraire via OSRM */}
+        {/* Planification : calcul itinéraire via OSRM */}
         {!isNavigating && myPos && destination && (
           <RoutingEngine from={planOrigin || myPos} to={destination} onRouteFound={handleRouteFound} />
         )}

@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState, useRef } from "react";
 import {
   Loader2, Package, Plus, Trash2, Search,
@@ -90,7 +91,13 @@ function RichTextArea({ initialValue, onChange }: { initialValue: string; onChan
 }
 
 export default function ProductsPage() {
-  const [tab, setTab] = useState<Tab>("products");
+  const [tab, setTabState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "products"; } return "products"; });
+  const setTab = (v: string) => {
+    setTabState(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", v);
+    window.history.replaceState({}, "", url.toString());
+  };
 
   // Lire ?tab= depuis l'URL au montage
   useEffect(() => {

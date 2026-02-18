@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, Trash2, Loader2, AlertTriangle, Info, ShieldAlert, UtensilsCrossed, WifiOff, MapPin, Zap, BatteryLow, Siren, Wrench, ChefHat, Percent } from "lucide-react";
+// removed duplicate from "react";
+import { Bell, Check, CheckCheck, Trash2, Loader2, AlertTriangle, Info, ShieldAlert, UtensilsCrossed, WifiOff, MapPin, Zap, BatteryLow, Siren, Wrench, ChefHat, Percent, Truck, UserCheck, UserPlus, Star, Banknote, Heart, Cake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -35,7 +36,18 @@ const typeConfig: Record<string, { label: string; icon: any; color: string }> = 
   MAINTENANCE: { label: "Maintenance", icon: Wrench, color: "text-blue-400" },
   ORDER_NOTIFICATION: { label: "Commande", icon: UtensilsCrossed, color: "text-orange-400" },
   PROMOTION: { label: "Promotion", icon: Percent, color: "text-orange-400" },
+  ORDER_READY: { label: "Commande prête", icon: Truck, color: "text-green-400" },
+  ORDER_TAKEN: { label: "Commande assignée", icon: UserCheck, color: "text-blue-400" },
+  NEW_CLIENT: { label: "Nouveau client", icon: UserPlus, color: "text-green-400" },
+  RATING: { label: "Note", icon: Star, color: "text-yellow-400" },
+  ENCAISSEMENT: { label: "Paiement", icon: Banknote, color: "text-green-400" },
+  LOYALTY: { label: "Client fidèle", icon: Heart, color: "text-pink-400" },
+  BIRTHDAY: { label: "Anniversaire", icon: Cake, color: "text-orange-400" },
 };
+
+function stripHtml(str: string) {
+  return str.replace(/<[^>]*>/g, "");
+}
 
 function notifyBadgeUpdate() {
   window.dispatchEvent(new Event("alerts-updated"));
@@ -44,7 +56,13 @@ function notifyBadgeUpdate() {
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("orders");
+  const [filter, setFilterState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "all"; } return "all"; });
+  const setFilter = (f: string) => {
+    setFilterState(f);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", f);
+    window.history.replaceState({}, "", url.toString());
+  };
 
   useEffect(() => {
     loadAlerts();
@@ -54,8 +72,10 @@ export default function AlertsPage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (filter === "unread") params.set("isRead", "false");
-    if (filter === "orders") params.set("type", "ORDER_NOTIFICATION");
+    if (filter === "orders") params.set("type", "ORDER_NOTIFICATION,ORDER_READY,ORDER_TAKEN");
     if (filter === "promotions") params.set("type", "PROMOTION");
+    if (filter === "clients") params.set("type", "NEW_CLIENT,RATING,LOYALTY,BIRTHDAY");
+    if (filter === "payments") params.set("type", "ENCAISSEMENT");
     if (["CRITICAL", "WARNING", "INFO"].includes(filter)) params.set("severity", filter);
 
     const res = await fetch(`/api/alerts?${params}`);
@@ -87,7 +107,6 @@ export default function AlertsPage() {
   }
 
   const unreadCount = alerts.filter((a) => !a.isRead).length;
-  const orderCount = alerts.filter((a) => a.type === "ORDER_NOTIFICATION").length;
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
@@ -102,6 +121,20 @@ export default function AlertsPage() {
     if (diffHrs < 24) return `Il y a ${diffHrs}h`;
     if (diffDays < 7) return `Il y a ${diffDays}j`;
     return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  }
+
+  function getActionLink(alert: Alert) {
+    switch (alert.type) {
+      case "ORDER_NOTIFICATION": return { href: "/cuisine", icon: ChefHat, label: "Voir en cuisine" };
+      case "ORDER_READY": return alert.data?.status === "DELIVERED" ? null : { href: "/navigate", icon: Truck, label: "Livrer la commande" };
+      case "PROMOTION": return { href: "/livraison", icon: Percent, label: "Voir les promotions" };
+      case "NEW_CLIENT": return { href: "/users", icon: UserPlus, label: "Voir le client" };
+      case "RATING": return { href: "/statistiques", icon: Star, label: "Voir les stats" };
+      case "ENCAISSEMENT": return { href: "/encaissement", icon: Banknote, label: "Voir l'encaissement" };
+      case "LOYALTY": return { href: "/users", icon: Heart, label: "Voir le client" };
+      case "BIRTHDAY": return { href: "/users", icon: Cake, label: "Voir le client" };
+      default: return null;
+    }
   }
 
   return (
@@ -124,7 +157,9 @@ export default function AlertsPage() {
         {[
           { key: "all", label: "Toutes" },
           { key: "unread", label: `Non lues (${unreadCount})` },
-          { key: "orders", label: `Commandes (${orderCount})` },
+          { key: "orders", label: "Commandes" },
+          { key: "clients", label: "Clients" },
+          { key: "payments", label: "Paiements" },
           { key: "CRITICAL", label: "Critiques" },
           { key: "WARNING", label: "Alertes" },
           { key: "INFO", label: "Info" },
@@ -156,7 +191,7 @@ export default function AlertsPage() {
             const sev = severityConfig[alert.severity] || severityConfig.INFO;
             const type = typeConfig[alert.type] || { label: alert.type, icon: Bell, color: "text-gray-400" };
             const TypeIcon = type.icon;
-            const isOrder = alert.type === "ORDER_NOTIFICATION";
+            const action = getActionLink(alert);
 
             return (
               <div
@@ -164,27 +199,35 @@ export default function AlertsPage() {
                 className={cn(
                   "rounded-xl border p-3 transition-all",
                   alert.isRead
-                    ? "bg-gray-900/40 border-gray-800"
-                    : "bg-gray-900/80 border-gray-700 shadow-sm"
+                    ? "bg-gray-800/50 border-gray-800"
+                    : "bg-gray-900 border-gray-700 shadow-sm"
                 )}
               >
                 <div className="flex items-start gap-3">
-                  <div className={cn("p-2 rounded-lg shrink-0", sev.bg)}>
+                  <div className={cn(
+                    "p-2 rounded-lg shrink-0",
+                    alert.isRead ? "opacity-50" : "",
+                    sev.bg
+                  )}>
                     <TypeIcon className={cn("w-4 h-4", type.color)} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={cn("text-sm font-medium truncate", alert.isRead ? "text-gray-300" : "text-white")}>
-                            {alert.title}
+                          <p className={cn("text-sm font-medium truncate", alert.isRead ? "text-gray-500" : "text-white")}>
+                            {stripHtml(alert.title)}
                           </p>
                           {!alert.isRead && (
                             <span className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded", sev.bg, type.color)}>
+                          <span className={cn(
+                            "text-[11px] font-medium px-1.5 py-0.5 rounded",
+                            alert.isRead ? "opacity-60" : "",
+                            sev.bg, type.color
+                          )}>
                             {type.label}
                           </span>
                           {alert.device && (
@@ -203,23 +246,24 @@ export default function AlertsPage() {
                         {formatDate(alert.createdAt)}
                       </span>
                     </div>
-                    <p className="text-[13px] text-gray-400 mt-1.5 line-clamp-2">{alert.message}</p>
-                    {isOrder && alert.data?.orderId && (
-                      <a
-                        href="/cuisine"
-                        className="inline-flex items-center gap-1.5 mt-2 text-[12px] text-orange-400 hover:text-orange-300 font-medium transition-colors"
-                      >
-                        <ChefHat className="w-3 h-3" />
-                        Accepter la commande
-                      </a>
+                    <p className={cn(
+                      "text-[13px] mt-1.5 line-clamp-2",
+                      alert.isRead ? "text-gray-600" : "text-gray-400"
+                    )}>
+                      {stripHtml(alert.message)}
+                    </p>
+                    {alert.data?.imageUrl && (
+                      <div className="mt-2">
+                        <img src={alert.data.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                      </div>
                     )}
-                    {alert.type === "PROMOTION" && (
+                    {action && !alert.isRead && (
                       <a
-                        href="/livraison"
+                        href={action.href}
                         className="inline-flex items-center gap-1.5 mt-2 text-[12px] text-orange-400 hover:text-orange-300 font-medium transition-colors"
                       >
-                        <Percent className="w-3 h-3" />
-                        Voir les promotions
+                        <action.icon className="w-3 h-3" />
+                        {action.label}
                       </a>
                     )}
                   </div>

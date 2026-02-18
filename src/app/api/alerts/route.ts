@@ -13,7 +13,17 @@ export async function GET(request: NextRequest) {
     const isRead = searchParams.get("isRead");
 
     const where: any = { userId: (session.user as any).id };
-    if (type) where.type = type;
+
+    // Support multi-type: "ORDER_NOTIFICATION,ORDER_READY,ORDER_TAKEN"
+    if (type) {
+      const types = type.split(",").map((t) => t.trim()).filter(Boolean);
+      if (types.length === 1) {
+        where.type = types[0];
+      } else if (types.length > 1) {
+        where.type = { in: types };
+      }
+    }
+
     if (severity) where.severity = severity;
     if (isRead !== null && isRead !== undefined) where.isRead = isRead === "true";
 

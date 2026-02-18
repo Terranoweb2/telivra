@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const value = parseFloat(discountValue);
   if (value <= 0) return NextResponse.json({ error: "Valeur de remise invalide" }, { status: 400 });
   if (discountType === "PERCENTAGE" && value > 100) return NextResponse.json({ error: "Pourcentage max 100%" }, { status: 400 });
-  if (new Date(endDate) <= new Date(startDate)) return NextResponse.json({ error: "Date fin doit etre apres date debut" }, { status: 400 });
+  if (new Date(endDate) <= new Date(startDate)) return NextResponse.json({ error: "Date fin doit être apres date debut" }, { status: 400 });
 
   const promotion = await prisma.promotion.create({
     data: {

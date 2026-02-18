@@ -7,7 +7,7 @@ import { playSound } from "@/lib/sounds";
 import {
   Loader2, Clock, CheckCircle, ChefHat, Bell, Wifi,
   User, Timer, XCircle, Truck, BellRing,
-  ChevronLeft, ChevronRight, Ban, Star, CreditCard,
+  ChevronLeft, ChevronRight, Ban, Star, CreditCard, ShoppingBag, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -81,6 +81,19 @@ export default function CuisinePage() {
       toast.error("Erreur lors de l'acceptation");
     }
     setAccepting(null);
+  }
+
+  async function markPickupDelivered(orderId: string) {
+    try {
+      const res = await fetch("/api/orders/" + orderId + "/pickup-delivered", { method: "POST" });
+      if (res.ok) {
+        toast.success("Commande remise au client");
+        loadOrders();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Erreur");
+      }
+    } catch { toast.error("Erreur reseau"); }
   }
 
   async function markReady(orderId: string) {
@@ -221,6 +234,19 @@ export default function CuisinePage() {
                       {order.client?.name || order.guestName || "Client"}
                     </p>
 
+                    <span className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
+                      order.deliveryMode === "PICKUP"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : "bg-blue-500/20 text-blue-400"
+                    )}>
+                      {order.deliveryMode === "PICKUP" ? (
+                        <><ShoppingBag className="w-2.5 h-2.5" /> À emporter</>
+                      ) : (
+                        <><Truck className="w-2.5 h-2.5" /> Livraison</>
+                      )}
+                    </span>
+
                     <div className="bg-gray-800/50 rounded-lg p-2 space-y-0.5">
                       {order.items?.slice(0, 3).map((item: any) => (
                         <p key={item.id} className="text-[10px] text-gray-300 truncate">
@@ -252,6 +278,13 @@ export default function CuisinePage() {
                       <CookingCountdown cookAcceptedAt={order.cookAcceptedAt} cookingTimeMin={maxCookTime} onConfirmReady={() => markReady(order.id)} />
                     )}
 
+                    {tab === "ready" && order.deliveryMode === "PICKUP" && (
+                      <button onClick={() => markPickupDelivered(order.id)}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-[12px] font-medium transition-colors">
+                        <Check className="w-3.5 h-3.5" /> Remis au client
+                      </button>
+                    )}
+
                     {order.note && (
                       <p className="text-[10px] text-yellow-400/80 bg-yellow-500/10 px-2 py-1 rounded truncate">
                         {order.note}
@@ -264,7 +297,7 @@ export default function CuisinePage() {
                       </p>
                     )}
 
-                    {/* Note client (commandes livrees) */}
+                    {/* Note client (commandes livrées) */}
                     {order.rating && (
                       <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 space-y-1">
                         <div className="flex items-center gap-2">

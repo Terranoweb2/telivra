@@ -87,6 +87,11 @@ export function useDeliverySocket(options: UseDeliverySocketOptions) {
       handlersRef.current.onStatusChange?.(data);
     });
 
+    // Commande pickup remise au client
+    socket.on("order:delivered", (data) => {
+      handlersRef.current.onStatusChange?.(data);
+    });
+
     return () => {
       socket.disconnect();
     };

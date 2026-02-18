@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChefHat, CheckCircle, TrendingUp, User, Flame } from "lucide-react";
+import { Loader2, ChefHat, CheckCircle, TrendingUp, User, Flame, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCardCentered } from "@/components/ui/stat-card";
@@ -24,6 +24,7 @@ export default function CooksPage() {
   const totalInKitchen = cooks.reduce((s, c) => s + c.stats.inKitchen, 0);
   const totalDelivered = cooks.reduce((s, c) => s + c.stats.delivered, 0);
   const totalRevenue = cooks.reduce((s, c) => s + c.stats.totalRevenue, 0);
+  const totalPickup = cooks.reduce((s, c) => s + (c.stats.pickup || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -51,6 +52,14 @@ export default function CooksPage() {
           label="FCFA total"
           color="purple"
         />
+        {totalPickup > 0 && (
+          <StatCardCentered
+            icon={ShoppingBag}
+            value={totalPickup}
+            label="À emporter"
+            color="purple"
+          />
+        )}
       </div>
 
       <div className="space-y-3">
@@ -72,7 +81,7 @@ export default function CooksPage() {
                   {cook.stats.inKitchen > 0 ? `${cook.stats.inKitchen} en cuisine` : "Inactif"}
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 <Card className="bg-gray-800/50 border-0">
                   <CardContent className="p-2 text-center">
                     <p className="text-sm font-bold text-orange-400">{cook.stats.inKitchen}</p>
@@ -89,6 +98,12 @@ export default function CooksPage() {
                   <CardContent className="p-2 text-center">
                     <p className="text-sm font-bold text-green-400">{cook.stats.delivered}</p>
                     <p className="text-[10px] text-gray-500">Livrées</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800/50 border-0">
+                  <CardContent className="p-2 text-center">
+                    <p className="text-sm font-bold text-purple-400">{cook.stats.pickup || 0}</p>
+                    <p className="text-[10px] text-gray-500">Emporter</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-gray-800/50 border-0">

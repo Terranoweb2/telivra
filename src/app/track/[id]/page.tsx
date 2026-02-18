@@ -309,8 +309,9 @@ export default function TrackDetailPage() {
   }
 
   async function submitRating() {
-    if (!order || driverRating === 0 || mealRating === 0) {
-      toast.error("Veuillez noter le livreur et le repas");
+    const isPickupOrder = order?.deliveryMode === "PICKUP";
+    if (!order || mealRating === 0 || (!isPickupOrder && driverRating === 0)) {
+      toast.error(isPickupOrder ? "Veuillez noter le repas" : "Veuillez noter le livreur et le repas");
       return;
     }
     setSubmittingRating(true);
@@ -319,7 +320,7 @@ export default function TrackDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          driverRating,
+          driverRating: order.deliveryMode === "PICKUP" ? 0 : driverRating,
           mealRating,
           driverComment: driverComment.trim() || undefined,
           mealComment: mealComment.trim() || undefined,
@@ -370,36 +371,152 @@ export default function TrackDetailPage() {
 
   // Texte résumé pour le sheet réduit
   function getStatusText() {
-    if (isCooking) return "Votre repas est en préparation";
-    if (isReady) return "Votre repas est prêt !";
+    const isPickup = order.deliveryMode === "PICKUP";
+    if (isCooking) return "Votre repas est en préparation...";
+    if (isReady) return isPickup ? "Votre commande est prête ! Venez la récupérer." : "Votre repas est prêt !";
     if (order.status === "DELIVERING" && driverName) return `${driverName} est en route`;
-    if (order.status === "PENDING") return "En attente du cuisinier...";
-    if (order.status === "DELIVERED") return "Commande livrée !";
+    if (order.status === "PENDING") return isPickup ? "Commande reçue, en attente du cuisinier..." : "En attente du cuisinier...";
+    if (order.status === "DELIVERED") return isPickup ? "Commande récupérée. Merci et bon appétit !" : "Commande livrée !";
     if (order.status === "CANCELLED") return "Commande annulée";
     return st.label;
   }
 
   return (
     <div className="h-screen w-full relative overflow-hidden brand-theme" style={{ "--brand": brandColor } as React.CSSProperties}>
-      {/* ========== CARTE PLEIN ECRAN ========== */}
-      <div className="absolute inset-0">
-        <GuestMap
-          driverPos={driverPos}
-          clientPos={clientPos}
-          positions={order.delivery?.positions || []}
-          driverLabel={driverName || "Le livreur"}
-          driverPhone={driverPhone}
-          clientLabel="Livraison"
-        />
-      </div>
+      {/* ========== CARTE ou PICKUP ========== */}
+      {order.deliveryMode === "PICKUP" ? (
+        <div className="absolute inset-0 bg-gray-950 flex flex-col items-center justify-center p-8 text-center">
+          <div className={cn(
+            "w-20 h-20 rounded-full flex items-center justify-center mb-5",
+            order.status === "DELIVERED" ? "bg-green-500/20" : "bg-orange-500/15"
+          )}>
+            <ShoppingBag className={cn("w-10 h-10", order.status === "DELIVERED" ? "text-green-400" : "text-orange-400")} />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-1">Commande a emporter</h2>
+          <p className="text-gray-400 text-sm mb-8">{getStatusText()}</p>
+          <div className="flex items-center gap-3">
+            {[
+              { icon: Clock, label: "Recue", active: true },
+              { icon: ChefHat, label: "Preparation", active: ["ACCEPTED","PREPARING","READY","DELIVERED"].includes(order.status) },
+              { icon: CheckCircle, label: "Prete", active: ["READY","DELIVERED"].includes(order.status) },
+              { icon: ShoppingBag, label: "Récupérée", active: order.status === "DELIVERED" },
+            ].map((step, i, arr) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                    step.active ? "bg-orange-500/20 text-orange-400" : "bg-gray-800 text-gray-600"
+                  )}>
+                    <step.icon className="w-5 h-5" />
+                  </div>
+                  <span className={cn("text-[10px] font-medium", step.active ? "text-orange-400" : "text-gray-600")}>{step.label}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={cn("w-6 h-0.5 rounded-full mb-5", arr[i + 1].active ? "bg-orange-500" : "bg-gray-700")} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Countdown cuisson pickup */}
+          {isCooking && order.cookAcceptedAt && (
+            <div className="w-full max-w-sm mt-8">
+              <CookingCountdown cookAcceptedAt={order.cookAcceptedAt} cookingTimeMin={maxCookTime} />
+            </div>
+          )}
+
+          {/* Message pret pickup */}
+          {isReady && (
+            <div className="mt-8 px-6 py-4 bg-green-500/15 border border-green-500/30 rounded-2xl max-w-sm">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-green-300">Votre commande est prête !</p>
+                  <p className="text-xs text-green-400/70 mt-0.5">Venez la récupérer au restaurant</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Message recuperee pickup */}
+          {order.status === "DELIVERED" && (
+            <div className="mt-8 px-6 py-4 bg-green-500/15 border border-green-500/30 rounded-2xl max-w-sm">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-400 shrink-0" />
+                <p className="text-sm font-semibold text-green-300">Commande recuperee. Bon appétit !</p>
+              </div>
+            </div>
+          )}
+
+          {/* Notation pickup inline */}
+          {order.status === "DELIVERED" && !order.rating && !ratingSubmitted && (
+            <div className="mt-6 w-full max-w-sm space-y-4 p-4 bg-gray-900/60 backdrop-blur rounded-2xl border border-gray-700">
+              <h3 className="text-sm font-bold text-white text-center">Donnez votre avis</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm font-medium text-gray-300">Le repas</span>
+                </div>
+                <div className="flex justify-center">
+                  <StarRating value={mealRating} onChange={setMealRating} size="lg" />
+                </div>
+                <textarea
+                  value={mealComment}
+                  onChange={(e) => setMealComment(e.target.value)}
+                  placeholder="Un commentaire sur le repas ? (optionnel)"
+                  rows={2}
+                  maxLength={500}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <button
+                onClick={submitRating}
+                disabled={submittingRating || mealRating === 0}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
+                Envoyer ma note
+              </button>
+            </div>
+          )}
+
+          {/* Note déjà soumise pickup */}
+          {order.status === "DELIVERED" && (order.rating || ratingSubmitted) && (
+            <div className="mt-6 w-full max-w-sm p-4 bg-gray-900/60 backdrop-blur rounded-2xl border border-gray-700 text-center space-y-3">
+              <CheckCircle className="w-8 h-8 text-green-400 mx-auto" />
+              <p className="text-sm font-semibold text-green-300">Merci pour votre avis !</p>
+              {order.rating && (
+                <div className="flex justify-center">
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-500 mb-1">Repas</p>
+                    <StarRating value={order.rating.mealRating} size="sm" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Info commande pickup */}
+          <p className="mt-4 text-xs text-gray-500">{order.orderNumber && <span className="font-medium text-gray-400">{order.orderNumber} - </span>}{(order.totalAmount || 0).toLocaleString()} FCFA</p>        </div>
+      ) : (
+        <div className="absolute inset-0">
+          <GuestMap
+            driverPos={driverPos}
+            clientPos={clientPos}
+            positions={order.delivery?.positions || []}
+            driverLabel={driverName || "Le livreur"}
+            driverPhone={driverPhone}
+            clientLabel="Livraison"
+          />
+        </div>
+      )}
 
       {/* ========== HEADER FLOTTANT ========== */}
       <div className="absolute top-0 left-0 right-0 z-[1000]">
         <div className="flex items-center gap-2 px-3 py-2 pt-3">
-          <Link href="/track" className="w-10 h-10 bg-white/70 backdrop-blur-md rounded-xl shadow-lg flex items-center justify-center text-gray-700 hover:bg-white/90 active:scale-95 transition-all">
+          <Link href="/track" className="glass-bar w-10 h-10 !border-b-0 rounded-xl shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-800 active:scale-95 transition-all">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div className="flex-1 bg-white/70 backdrop-blur-md rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+          <div className="glass-bar flex-1 !border-b-0 rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-800 flex-1">{order.orderNumber || "#" + (order.id as string).slice(-6)}</span>
             {(isActive || isCooking) && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full">
@@ -408,7 +525,7 @@ export default function TrackDetailPage() {
               </div>
             )}
           </div>
-          <button onClick={forceRefresh} disabled={refreshing} className="w-10 h-10 bg-white/70 backdrop-blur-md rounded-xl shadow-lg flex items-center justify-center text-gray-700 hover:bg-white/90 active:scale-95 transition-all">
+          <button onClick={forceRefresh} disabled={refreshing} className="glass-bar w-10 h-10 !border-b-0 rounded-xl shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-800 active:scale-95 transition-all">
             <RefreshCw className={cn("w-4 h-4 transition-transform", refreshing && "animate-spin")} />
           </button>
         </div>
@@ -417,19 +534,19 @@ export default function TrackDetailPage() {
         {isActive && (routeTime != null || routeDistance != null) && (
           <div className="flex gap-2 px-3 mt-2">
             {routeTime != null && (
-              <div className="bg-white/70 backdrop-blur-md rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
+              <div className="glass-bar !border-b-0 rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-orange-500" />
                 <span className="text-xs font-semibold text-gray-800">{fmtTime(routeTime)}</span>
               </div>
             )}
             {routeDistance != null && (
-              <div className="bg-white/70 backdrop-blur-md rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
+              <div className="glass-bar !border-b-0 rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
                 <Ruler className="w-3.5 h-3.5 text-purple-500" />
                 <span className="text-xs font-semibold text-gray-800">{fmtDist(routeDistance)}</span>
               </div>
             )}
             {driverSpeed != null && (
-              <div className="bg-white/70 backdrop-blur-md rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
+              <div className="glass-bar !border-b-0 rounded-lg shadow-lg px-3 py-1.5 flex items-center gap-1.5">
                 <Gauge className="w-3.5 h-3.5 text-green-500" />
                 <span className="text-xs font-semibold text-gray-800">{Math.round(driverSpeed)} km/h</span>
               </div>
@@ -438,7 +555,8 @@ export default function TrackDetailPage() {
         )}
       </div>
 
-      {/* ========== BOTTOM SHEET ========== */}
+      {/* ========== BOTTOM SHEET (masque pour pickup non-DELIVERED) ========== */}
+      {order.deliveryMode !== "PICKUP" && (
       <div
         className={cn(
           "absolute left-0 right-0 z-[1000] transition-all duration-300 ease-out",
@@ -446,7 +564,7 @@ export default function TrackDetailPage() {
         )}
       >
         <div className={cn(
-          "bg-white/75 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] flex flex-col",
+          "glass-panel flex flex-col",
           sheetExpanded ? "h-full rounded-t-2xl" : "rounded-t-2xl"
         )}>
           {/* Poignée + résumé statut (toujours visible) */}
@@ -502,7 +620,7 @@ export default function TrackDetailPage() {
                   <span>{order.items?.length || 0} repas</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-orange-600">{((order.totalAmount || 0) + deliveryFee).toLocaleString()} FCFA</p>
+                  <p className="text-sm font-bold text-orange-600">{((order.totalAmount || 0) + (order.deliveryMode === "PICKUP" ? 0 : deliveryFee)).toLocaleString()} FCFA</p>
 
                 </div>
               </div>
@@ -538,26 +656,30 @@ export default function TrackDetailPage() {
                     <CheckCircle className="w-5 h-5 text-emerald-500" />
                     <div>
                       <p className="text-sm font-semibold text-emerald-700">Votre repas est prêt !</p>
-                      <p className="text-xs text-emerald-600/70">En attente d&apos;un livreur</p>
+                      <p className="text-xs text-emerald-600/70">{order.deliveryMode === "PICKUP" ? "Venez le récupérer au restaurant" : "En attente d\u0027un livreur"}</p>
                     </div>
                   </div>
                 )}
 
-                {/* Progression */}
-                {currentStep >= 0 && (
+                {/* Progression (masquee pour pickup) */}
+                {currentStep >= 0 && order.deliveryMode !== "PICKUP" && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Progression</h3>
                     <div className="space-y-0">
-                      {progressSteps.filter((step) => step.key !== "PAYMENT" || order.paymentMethod === "ONLINE").map((step, i) => {
-                        const done = currentStep >= i;
-                        const isCurrent = currentStep === i;
+                      {progressSteps
+                        .filter((step) => step.key !== "PAYMENT" || order.paymentMethod === "ONLINE")
+                        .filter((step) => order.deliveryMode !== "PICKUP" || !["PICKED_UP", "DELIVERING"].includes(step.key))
+                        .map((step, i, filteredSteps) => {
+                        const stepIndex = progressSteps.findIndex((s) => s.key === step.key);
+                        const done = currentStep >= stepIndex;
+                        const isCurrent = currentStep === stepIndex;
                         return (
                           <div key={step.key} className="flex items-start gap-3">
                             <div className="flex flex-col items-center">
                               <div className={cn("w-3 h-3 rounded-full border-2 shrink-0",
                                 done ? "bg-orange-500 border-orange-500" : "bg-transparent border-gray-300",
                                 isCurrent && "ring-4 ring-orange-500/20")} />
-                              {i < progressSteps.length - 1 && <div className={cn("w-0.5 h-7", done ? "bg-orange-500/40" : "bg-gray-200")} />}
+                              {i < filteredSteps.length - 1 && <div className={cn("w-0.5 h-7", done ? "bg-orange-500/40" : "bg-gray-200")} />}
                             </div>
                             <p className={cn("text-sm -mt-0.5", done ? "text-gray-900 font-medium" : "text-gray-400")}>{step.label}</p>
                           </div>
@@ -588,7 +710,7 @@ export default function TrackDetailPage() {
                     })}
                   </div>
                   <div className="border-t border-gray-200 mt-2 pt-2 space-y-1.5">
-                    {deliveryFee > 0 && (
+                    {deliveryFee > 0 && order.deliveryMode !== "PICKUP" && (
                       <div className="flex justify-between text-xs text-gray-500">
                         <span>Frais de livraison</span>
                         <span>{deliveryFee.toLocaleString()} FCFA</span>
@@ -597,7 +719,7 @@ export default function TrackDetailPage() {
 
                     <div className="flex justify-between text-sm font-bold text-gray-900">
                       <span>Total</span>
-                      <span className="text-orange-600">{((order.totalAmount || 0) + deliveryFee).toLocaleString()} FCFA</span>
+                      <span className="text-orange-600">{((order.totalAmount || 0) + (order.deliveryMode === "PICKUP" ? 0 : deliveryFee)).toLocaleString()} FCFA</span>
                     </div>
                   </div>
                 </div>
@@ -606,8 +728,8 @@ export default function TrackDetailPage() {
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                   <MapPin className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Adresse de livraison</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{order.deliveryAddress}</p>
+                    <p className="text-sm font-medium text-gray-900">{order.deliveryMode === "PICKUP" ? "Mode de retrait" : "Adresse de livraison"}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{order.deliveryMode === "PICKUP" ? "Retrait au restaurant" : order.deliveryAddress}</p>
                   </div>
                 </div>
 
@@ -616,24 +738,26 @@ export default function TrackDetailPage() {
                   <div className="space-y-4 p-4 bg-orange-50 rounded-2xl border border-orange-200">
                     <h3 className="text-sm font-bold text-gray-900 text-center">Donnez votre avis</h3>
 
-                    {/* Note livreur */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm font-medium text-gray-700">Le livreur</span>
+                    {/* Note livreur (masquee pour pickup) */}
+                    {order.deliveryMode !== "PICKUP" && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-gray-700">Le livreur</span>
+                        </div>
+                        <div className="flex justify-center">
+                          <StarRating value={driverRating} onChange={setDriverRating} size="lg" />
+                        </div>
+                        <textarea
+                          value={driverComment}
+                          onChange={(e) => setDriverComment(e.target.value)}
+                          placeholder="Un commentaire sur la livraison ? (optionnel)"
+                          rows={2}
+                          maxLength={500}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-400 resize-none focus:outline-none focus:border-orange-400"
+                        />
                       </div>
-                      <div className="flex justify-center">
-                        <StarRating value={driverRating} onChange={setDriverRating} size="lg" />
-                      </div>
-                      <textarea
-                        value={driverComment}
-                        onChange={(e) => setDriverComment(e.target.value)}
-                        placeholder="Un commentaire sur la livraison ? (optionnel)"
-                        rows={2}
-                        maxLength={500}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:border-orange-400"
-                      />
-                    </div>
+                    )}
 
                     {/* Note repas */}
                     <div className="space-y-2">
@@ -650,13 +774,13 @@ export default function TrackDetailPage() {
                         placeholder="Un commentaire sur le repas ? (optionnel)"
                         rows={2}
                         maxLength={500}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:border-orange-400"
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-400 resize-none focus:outline-none focus:border-orange-400"
                       />
                     </div>
 
                     <button
                       onClick={submitRating}
-                      disabled={submittingRating || driverRating === 0 || mealRating === 0}
+                      disabled={submittingRating || mealRating === 0 || (order.deliveryMode !== "PICKUP" && driverRating === 0)}
                       className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
@@ -665,17 +789,19 @@ export default function TrackDetailPage() {
                   </div>
                 )}
 
-                {/* Note deja soumise */}
+                {/* Note déjà soumise */}
                 {order.status === "DELIVERED" && (order.rating || ratingSubmitted) && (
                   <div className="p-4 bg-green-50 rounded-2xl border border-green-200 text-center space-y-3">
                     <CheckCircle className="w-8 h-8 text-green-500 mx-auto" />
                     <p className="text-sm font-semibold text-green-700">Merci pour votre avis !</p>
                     {order.rating && (
                       <div className="flex justify-center gap-6">
-                        <div className="text-center">
-                          <p className="text-[10px] text-gray-500 mb-1">Livreur</p>
-                          <StarRating value={order.rating.driverRating} size="sm" />
-                        </div>
+                        {order.deliveryMode !== "PICKUP" && (
+                          <div className="text-center">
+                            <p className="text-[10px] text-gray-500 mb-1">Livreur</p>
+                            <StarRating value={order.rating.driverRating} size="sm" />
+                          </div>
+                        )}
                         <div className="text-center">
                           <p className="text-[10px] text-gray-500 mb-1">Repas</p>
                           <StarRating value={order.rating.mealRating} size="sm" />
@@ -697,19 +823,19 @@ export default function TrackDetailPage() {
                       <div className="p-4 bg-red-50 rounded-xl border border-red-200 space-y-3">
                         <p className="text-sm text-gray-900 font-medium">Pourquoi annuler ?</p>
                         <select value={cancelReason} onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
-                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800">
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-300">
                           <option value="">Choisir une raison...</option>
                           {cancelReasons.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
                         {cancelReason === "Autre" && (
                           <textarea value={customReason} onChange={(e) => setCustomReason(e.target.value)}
                             placeholder="Décrivez la raison..." rows={2}
-                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 resize-none" />
+                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-300 placeholder-gray-400 resize-none" />
                         )}
                         {cancelError && <p className="text-xs text-red-600">{cancelError}</p>}
                         <div className="flex gap-2">
                           <button onClick={() => { setShowCancel(false); setCancelReason(""); setCustomReason(""); }}
-                            className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium">Non, garder</button>
+                            className="flex-1 py-2.5 bg-gray-800 border border-gray-200 text-gray-300 rounded-lg text-sm font-medium">Non, garder</button>
                           <button onClick={handleCancel} disabled={cancelling || !cancelReason}
                             className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                             {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
@@ -727,6 +853,7 @@ export default function TrackDetailPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* ========== APPEL VoIP ========== */}
       <CallOverlay
@@ -782,7 +909,7 @@ export default function TrackDetailPage() {
 
       {/* ========== NAV MOBILE ========== */}
       <nav className="fixed bottom-0 left-0 right-0 z-[999] lg:hidden">
-        <div className="bg-white/70 backdrop-blur-xl border-t border-gray-200/50">
+        <div className="bg-gray-900/80 backdrop-blur-xl border-t border-gray-700">
           <div className="flex items-center justify-around h-14 px-2">
             <Link href="/track" className="flex flex-col items-center justify-center flex-1 py-1 group">
               <ClipboardList className="w-5 h-5 text-orange-500" />

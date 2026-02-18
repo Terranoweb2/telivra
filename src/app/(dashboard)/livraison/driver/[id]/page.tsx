@@ -228,7 +228,7 @@ export default function DriverDeliveryDetail() {
       return;
     }
     if (cancelReason === "Autre" && !customReason.trim()) {
-      setCancelError("Veuillez preciser la raison");
+      setCancelError("Veuillez préciser la raison");
       return;
     }
     setCancelling(true);
@@ -496,7 +496,7 @@ export default function DriverDeliveryDetail() {
                           onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
                           className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-red-500"
                         >
-                          <option value="">Selectionnez une raison</option>
+                          <option value="">Sélectionnez une raison</option>
                           {cancelReasons.map((r) => (
                             <option key={r} value={r}>{r}</option>
                           ))}

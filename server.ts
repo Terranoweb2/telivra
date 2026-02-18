@@ -97,6 +97,15 @@ app.prepare().then(() => {
       socket.leave("cooks");
     });
 
+    // Admin: ecoute les notifications admin
+    socket.on("subscribe:admin", () => {
+      socket.join("admins");
+      console.log(`[Socket.IO] ${socket.id} joined admins room`);
+    });
+    socket.on("unsubscribe:admin", () => {
+      socket.leave("admins");
+    });
+
     // Livraison: client ecoute ses commandes
     socket.on("subscribe:client", (clientId: string) => {
       socket.join(`client:${clientId}`);
@@ -235,6 +244,30 @@ app.prepare().then(() => {
       console.log("[Cron] Notifications promotions:", data);
     } catch (err) {
       console.error("[Cron] Erreur notifications promotions:", err);
+    }
+  });
+
+  // Cron quotidien à 7h — vérification anniversaires
+  cron.schedule("0 7 * * *", async () => {
+    console.log("[Cron] Verification des anniversaires...");
+    try {
+      const res = await fetch(`http://localhost:${port}/api/birthdays/check`, { method: "POST" });
+      const data = await res.json();
+      console.log("[Cron] Anniversaires:", data);
+    } catch (err) {
+      console.error("[Cron] Erreur anniversaires:", err);
+    }
+  });
+
+  // Cron hebdomadaire lundi 9h — détection clients fidèles
+  cron.schedule("0 9 * * 1", async () => {
+    console.log("[Cron] Detection des clients fideles...");
+    try {
+      const res = await fetch(`http://localhost:${port}/api/loyalty/check`, { method: "POST" });
+      const data = await res.json();
+      console.log("[Cron] Clients fideles:", data);
+    } catch (err) {
+      console.error("[Cron] Erreur clients fideles:", err);
     }
   });
 });

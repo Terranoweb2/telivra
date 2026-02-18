@@ -202,7 +202,7 @@ export default function MapPage() {
   async function sendPosition() {
     const lat = parseFloat(trackLat); const lng = parseFloat(trackLng);
     if (isNaN(lat) || isNaN(lng)) return setTrackMsg("Coordonnees invalides");
-    if (!trackSerial) return setTrackMsg("Selectionnez un appareil");
+    if (!trackSerial) return setTrackMsg("Sélectionnez un appareil");
     setSending(true); setTrackMsg("");
     try {
       const res = await fetch("/api/tracking/ingest", {
@@ -254,7 +254,7 @@ export default function MapPage() {
 
       {/* Barre de recherche */}
       <div className="absolute top-3 left-16 right-14 sm:left-16 sm:right-auto sm:w-96 z-[1000] lg:left-4">
-        <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
+        <div className="bg-gray-900 rounded-xl shadow-2xl overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3">
             {isNavigating ? (
               <>
@@ -282,7 +282,7 @@ export default function MapPage() {
           {searchResults.length > 0 && (
             <div className="border-t border-gray-100 max-h-64 overflow-y-auto">
               {searchResults.map((r, i) => (
-                <button key={i} onClick={() => selectPlace(r)} className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 text-left">
+                <button key={i} onClick={() => selectPlace(r)} className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-800 text-left">
                   <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   <span className="text-sm text-gray-700 line-clamp-2">{r.display_name}</span>
                 </button>
@@ -300,21 +300,21 @@ export default function MapPage() {
       {/* Boutons lateraux */}
       <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-2">
         <button onClick={() => { setShowDevices(!showDevices); setShowTracking(false); }}
-          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showDevices ? "bg-orange-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
+          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showDevices ? "bg-orange-600 text-white" : "bg-gray-900 text-gray-300 hover:bg-gray-800")}
           title="Appareils">
           <MapPin className="w-5 h-5" />
         </button>
         <button onClick={() => { setShowTracking(!showTracking); setShowDevices(false); }}
-          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showTracking ? "bg-orange-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
+          className={cn("p-2.5 rounded-full shadow-lg transition-colors", showTracking ? "bg-orange-600 text-white" : "bg-gray-900 text-gray-300 hover:bg-gray-800")}
           title="Tracking manuel">
           <Crosshair className="w-5 h-5" />
         </button>
         <button onClick={() => setTileLayer(tileLayer === "street" ? "satellite" : "street")}
-          className="bg-white text-gray-700 hover:bg-gray-50 p-2.5 rounded-full shadow-lg transition-colors" title="Vue satellite">
+          className="bg-gray-900 text-gray-300 hover:bg-gray-800 p-2.5 rounded-full shadow-lg transition-colors" title="Vue satellite">
           <Layers className="w-5 h-5" />
         </button>
         <button onClick={() => setSettingPos(!settingPos)}
-          className={cn("p-2.5 rounded-full shadow-lg transition-colors", settingPos ? "bg-orange-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50")}
+          className={cn("p-2.5 rounded-full shadow-lg transition-colors", settingPos ? "bg-orange-500 text-white" : "bg-gray-900 text-gray-300 hover:bg-gray-800")}
           title="Placer ma position manuellement">
           <PersonStanding className="w-5 h-5" />
         </button>
@@ -336,15 +336,15 @@ export default function MapPage() {
             Position manuelle
           </div>
         )}
-        <button onClick={recenter} className="bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors" title="Recentrer (GPS auto)">
+        <button onClick={recenter} className="bg-gray-900 rounded-full p-3 shadow-lg hover:bg-gray-800 transition-colors" title="Recentrer (GPS auto)">
           <Locate className="w-5 h-5 text-orange-600" />
         </button>
       </div>
 
       {/* Panneau appareils */}
       {showDevices && (
-        <div className="absolute top-16 right-3 z-[1000] w-72 bg-white rounded-xl shadow-2xl overflow-hidden max-h-[60vh]">
-          <div className="p-3 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
+        <div className="absolute top-16 right-3 z-[1000] w-72 bg-gray-900 rounded-xl shadow-2xl overflow-hidden max-h-[60vh]">
+          <div className="p-3 border-b border-gray-700 flex items-center justify-between sticky top-0 bg-gray-900">
             <p className="text-sm font-semibold text-gray-900">{devices.length} appareil(s)</p>
             <div className="flex items-center gap-2">
               <button onClick={refresh} className="p-1 hover:bg-gray-100 rounded"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
@@ -357,7 +357,7 @@ export default function MapPage() {
             ) : devices.map((d) => {
               const Icon = typeIcons[d.type] || MapPin;
               return (
-                <div key={d.id} className="px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                <div key={d.id} className="px-3 py-2.5 hover:bg-gray-800 border-b border-gray-50 transition-colors">
                   <div className="flex items-center gap-2">
                     <Icon className="w-4 h-4 text-orange-500 shrink-0" />
                     <span className="text-sm font-medium text-gray-900 truncate">{d.name}</span>
@@ -377,8 +377,8 @@ export default function MapPage() {
 
       {/* Panneau tracking */}
       {showTracking && (
-        <div className="absolute top-16 right-3 z-[1000] w-80 bg-white rounded-xl shadow-2xl overflow-hidden">
-          <div className="p-3 border-b border-gray-100">
+        <div className="absolute top-16 right-3 z-[1000] w-80 bg-gray-900 rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-3 border-b border-gray-700">
             <p className="text-sm font-semibold text-gray-900 flex items-center gap-2"><Crosshair className="w-4 h-4 text-orange-500" /> Tracking manuel</p>
           </div>
           <div className="p-3 space-y-3">
@@ -409,7 +409,7 @@ export default function MapPage() {
 
       {/* Panneau planification */}
       {destination && routeInfo && !isNavigating && (
-        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-2xl shadow-2xl">
+        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-gray-900 rounded-t-2xl shadow-2xl">
           <div className="px-4 pt-3 pb-2">
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
             <div className="flex items-center gap-3 mb-3">
@@ -444,7 +444,7 @@ export default function MapPage() {
 
       {/* Panneau navigation active */}
       {isNavigating && (
-        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-2xl shadow-2xl">
+        <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-gray-900 rounded-t-2xl shadow-2xl">
           <div className="px-4 pt-3 pb-4">
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
             {routeSteps.length > 0 && (

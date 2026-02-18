@@ -73,7 +73,7 @@ export function OfflineIndicator() {
     function handleSWMessage(event: MessageEvent) {
       if (event.data?.type === "mutation-queued") {
         setPendingCount((c) => c + 1);
-        toast.info("Action enregistree hors-ligne", {
+        toast.info("Action enregistrée hors-ligne", {
           description: "Sera synchronisee au retour de la connexion",
           icon: <RefreshCw className="w-4 h-4" />,
           duration: 3000,

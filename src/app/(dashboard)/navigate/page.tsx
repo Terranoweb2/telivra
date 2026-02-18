@@ -348,7 +348,7 @@ function NavigateContent() {
       return;
     }
     if (cancelReason === "Autre" && !customReason.trim()) {
-      setCancelError("Veuillez preciser la raison");
+      setCancelError("Veuillez préciser la raison");
       return;
     }
     setCancelling(true);
@@ -424,17 +424,17 @@ function NavigateContent() {
       </div>
 
       {/* ─── BANDEAU INFO COMMANDE ─── */}
-      <div className="absolute top-3 left-3 right-16 sm:left-4 sm:right-auto sm:w-[400px] z-[1000]">
+      <div className="absolute top-3 left-3 right-16 sm:left-4 sm:right-auto sm:w-[440px] z-[1000]">
         {infoCollapsed ? (
           /* ── Mode reduit : nom + montant + tel + expand ── */
           <div
-            className="flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all duration-300 bg-gray-900/60 border border-gray-800"
+            className="flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all duration-300 bg-white/85 shadow-lg border border-white/50 rounded-full"
             style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
           >
             <button onClick={() => setInfoCollapsed(false)} className="flex items-center gap-2 min-w-0 flex-1">
-              <User className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-              <span className="text-xs font-medium text-gray-800 truncate max-w-[100px]">{clientName || "Client"}</span>
-              {orderAmount && <span className="text-xs font-bold text-emerald-600">{Number(orderAmount).toLocaleString()} F</span>}
+              <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <span className="text-xs font-medium text-gray-900 truncate max-w-[100px]">{clientName || "Client"}</span>
+              {orderAmount && <span className="text-xs font-bold text-emerald-400">{Number(orderAmount).toLocaleString()} F</span>}
             </button>
             {clientPhone && (
               <a
@@ -447,13 +447,13 @@ function NavigateContent() {
               </a>
             )}
             <button onClick={() => setInfoCollapsed(false)} className="p-0.5 shrink-0">
-              <Maximize2 className="w-3 h-3 text-gray-400 animate-pulse" style={{ animationDuration: "2s" }} />
+              <Maximize2 className="w-3 h-3 text-gray-500 animate-pulse" style={{ animationDuration: "2s" }} />
             </button>
           </div>
         ) : (
           /* ── Mode complet ── */
           <div
-            className="rounded-2xl shadow-lg overflow-hidden transition-all duration-300 bg-gray-900/60 border border-gray-800"
+            className="rounded-2xl shadow-lg overflow-hidden transition-all duration-300 bg-white/90 shadow-lg border border-white/50"
             style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
           >
             <div className="px-3.5 py-3">
@@ -461,18 +461,18 @@ function NavigateContent() {
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                    <User className="w-3.5 h-3.5 text-gray-600" />
+                    <User className="w-3.5 h-3.5 text-gray-500" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-semibold text-gray-900 truncate block">
                       {clientName || "Client"}
                     </span>
-                    {orderId && <span className="text-[10px] text-gray-400 font-mono">#{orderId}</span>}
+                    {orderId && <span className="text-[10px] text-gray-500 font-mono">#{orderId}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {orderAmount && (
-                    <span className="text-sm font-bold text-emerald-600">{Number(orderAmount).toLocaleString()} F</span>
+                    <span className="text-sm font-bold text-orange-600">{Number(orderAmount).toLocaleString()} F</span>
                   )}
                   <button
                     onClick={() => setInfoCollapsed(true)}
@@ -487,27 +487,27 @@ function NavigateContent() {
               {/* Ligne 2 : Adresse */}
               <div className="flex items-start gap-2 mb-2.5 pl-1">
                 <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{destName || "Destination non definie"}</p>
+                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{destName || "Destination non définie"}</p>
               </div>
 
               {/* Ligne 3 : Stats route */}
               {routeInfo ? (
                 <div className="flex items-center gap-2 mb-2.5 pl-1">
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-800/60">
                     <Ruler className="w-3 h-3 text-orange-500" />
                     <span className="text-xs font-medium text-gray-800">{formatDistance(routeInfo.distance)}</span>
                   </div>
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-800/60">
                     <Clock className="w-3 h-3 text-orange-500" />
                     <span className="text-xs font-medium text-gray-800">{formatTime(routeInfo.time)}</span>
                   </div>
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100/80">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-800/60">
                     <Navigation className="w-3 h-3 text-orange-500" />
-                    <span className="text-xs text-gray-500">{getETA(routeInfo.time)}</span>
+                    <span className="text-xs text-gray-400">{getETA(routeInfo.time)}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 mb-2.5 pl-1">Calcul de l&apos;itineraire...</p>
+                <p className="text-xs text-gray-400 mb-2.5 pl-1">Calcul de l&apos;itinéraire...</p>
               )}
 
               {/* Bouton Appeler */}
@@ -529,61 +529,58 @@ function NavigateContent() {
       {/* ─── PANNEAU PLANIFICATION ─── */}
       {navState === "planning" && routeInfo && (
         <div
-          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-gray-900/90 border-t border-gray-800"
+          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-white/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] border-t border-gray-200"
           style={{ backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
         >
           {/* Poignee + toggle */}
           <button
             onClick={() => setPanelExpanded(!panelExpanded)}
-            className="w-full flex flex-col items-center pt-2.5 pb-1 cursor-pointer group"
+            className="w-full flex flex-col items-center pt-3 pb-1.5 cursor-pointer group"
           >
-            <div className="relative">
-              <div className="w-10 h-1.5 rounded-full transition-colors bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400" />
-              <div className="absolute inset-0 w-10 h-1.5 rounded-full animate-pulse bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 opacity-50 blur-sm" style={{ animationDuration: "1.5s" }} />
-            </div>
+            <div className="w-10 h-1 bg-gray-300 rounded-full" />
             <div className="mt-1 transition-transform duration-300 group-hover:scale-125">
               {panelExpanded ? (
-                <ChevronDown className="w-4 h-4 text-orange-500" />
+                <ChevronDown className="w-4 h-4 text-gray-400" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-orange-500 animate-bounce" style={{ animationDuration: "1.5s" }} />
+                <ChevronUp className="w-4 h-4 text-gray-400" />
               )}
             </div>
           </button>
 
           {/* Infos compactes : destination + stats */}
-          <div className="px-4 pb-3">
-            <div className="flex items-center gap-2.5 mb-2">
+          <div className="px-4 pb-4">
+            <div className="flex items-center gap-2.5 mb-3">
               <Flag className="w-4 h-4 text-red-500 shrink-0" />
               <p className="text-sm font-semibold text-gray-900 truncate flex-1">{destName}</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
                 <Ruler className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-sm font-semibold text-gray-700">{formatDistance(routeInfo.distance)}</span>
+                <span className="text-sm font-semibold text-gray-800">{formatDistance(routeInfo.distance)}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
                 <Clock className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-sm font-semibold text-gray-700">{formatTime(routeInfo.time)}</span>
+                <span className="text-sm font-semibold text-gray-800">{formatTime(routeInfo.time)}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
                 <Navigation className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-sm text-gray-600 font-medium">{getETA(routeInfo.time)}</span>
+                <span className="text-sm text-gray-500 font-medium">{getETA(routeInfo.time)}</span>
               </div>
             </div>
           </div>
 
           {/* Contenu expandable : boutons + etapes */}
           {panelExpanded && (
-            <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
+            <div className="px-3 pb-3 space-y-2 border-t border-gray-200 pt-2">
               <div className="flex gap-2">
                 {deliveryId && deliveryStatus === "DELIVERING" && (
                   <button
                     onClick={() => updateDeliveryStatus("DELIVERED")}
                     disabled={updatingStatus}
-                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
+                    className="flex-1 py-2.5 bg-green-500 hover:bg-green-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
                   >
                     {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                    Livree
+                    Livrée
                   </button>
                 )}
                 <button
@@ -596,7 +593,7 @@ function NavigateContent() {
                 {deliveryId && orderId && deliveryStatus !== "DELIVERED" && deliveryStatus !== "CANCELLED" && !showCancel && (
                   <button
                     onClick={() => { setShowCancel(true); setCancelReason(""); setCustomReason(""); setCancelError(""); }}
-                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-200/60 bg-red-50/50 hover:bg-red-100/60 transition-colors flex items-center justify-center gap-1"
+                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1"
                   >
                     <X className="w-3.5 h-3.5" /> Annuler
                   </button>
@@ -604,14 +601,14 @@ function NavigateContent() {
               </div>
               {/* Formulaire annulation */}
               {showCancel && (
-                <div className="bg-white/50 border border-red-200/60 rounded-xl p-2.5 space-y-2">
-                  <p className="text-xs text-gray-800 font-medium">Confirmer l&apos;annulation ?</p>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 space-y-2">
+                  <p className="text-xs text-gray-700 font-medium">Confirmer l&apos;annulation ?</p>
                   <select
                     value={cancelReason}
                     onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
-                    className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
+                    className="w-full bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
                   >
-                    <option value="">Selectionnez une raison</option>
+                    <option value="">Sélectionnez une raison</option>
                     {cancelReasons.map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
@@ -620,15 +617,15 @@ function NavigateContent() {
                     <textarea
                       value={customReason}
                       onChange={(e) => { setCustomReason(e.target.value); setCancelError(""); }}
-                      placeholder="Preciser la raison..."
+                      placeholder="Préciser la raison..."
                       rows={2}
-                      className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
+                      className="w-full bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
                     />
                   )}
                   {cancelError && <p className="text-[10px] text-red-500">{cancelError}</p>}
                   <div className="flex gap-2">
                     <button onClick={() => setShowCancel(false)}
-                      className="flex-1 py-2 bg-gray-100/60 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200/60 transition-colors">
+                      className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors">
                       Non, continuer
                     </button>
                     <button onClick={cancelOrder} disabled={cancelling}
@@ -641,18 +638,18 @@ function NavigateContent() {
               )}
               {/* Liste des etapes */}
               {routeSteps.length > 0 && (
-                <div className="max-h-44 overflow-y-auto pt-1">
+                <div className="max-h-80 overflow-y-auto pt-1">
                   {routeSteps.map((step, i) => (
                     <button
                       key={i}
                       onClick={() => selectStep(i)}
                       className={`w-full flex items-start gap-2 py-2 text-left transition-colors rounded-lg px-1.5 ${
-                        selectedStepIdx === i ? "bg-orange-50/60" : "hover:bg-white/30"
+                        selectedStepIdx === i ? "bg-orange-50" : "hover:bg-gray-50"
                       }`}
-                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.04)" } : {}}
+                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.06)" } : {}}
                     >
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200/60"
+                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200"
                       }`}>
                         <span className={`text-[10px] font-bold ${
                           selectedStepIdx === i ? "text-white" : "text-gray-500"
@@ -660,7 +657,7 @@ function NavigateContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs ${
-                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-700"
+                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-600"
                         }`}>{step.instruction}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{formatDistance(step.distance)}</p>
                       </div>
@@ -676,23 +673,20 @@ function NavigateContent() {
       {/* ─── PANNEAU NAVIGATION ACTIVE ─── */}
       {navState === "navigating" && (
         <div
-          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-gray-900/90 border-t border-gray-800"
+          className="absolute bottom-0 left-0 right-0 z-[1000] rounded-t-2xl shadow-lg transition-all duration-300 bg-white/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] border-t border-gray-200"
           style={{ backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
         >
           {/* Poignee + toggle */}
           <button
             onClick={() => setPanelExpanded(!panelExpanded)}
-            className="w-full flex flex-col items-center pt-2.5 pb-1 cursor-pointer group"
+            className="w-full flex flex-col items-center pt-3 pb-1.5 cursor-pointer group"
           >
-            <div className="relative">
-              <div className="w-10 h-1.5 rounded-full transition-colors bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400" />
-              <div className="absolute inset-0 w-10 h-1.5 rounded-full animate-pulse bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 opacity-50 blur-sm" style={{ animationDuration: "1.5s" }} />
-            </div>
+            <div className="w-10 h-1 bg-gray-300 rounded-full" />
             <div className="mt-1 transition-transform duration-300 group-hover:scale-125">
               {panelExpanded ? (
-                <ChevronDown className="w-4 h-4 text-orange-500" />
+                <ChevronDown className="w-4 h-4 text-gray-400" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-orange-500 animate-bounce" style={{ animationDuration: "1.5s" }} />
+                <ChevronUp className="w-4 h-4 text-gray-400" />
               )}
             </div>
           </button>
@@ -709,30 +703,30 @@ function NavigateContent() {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
-                <span className="text-sm font-semibold text-gray-700">{speed} km/h</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
+                <span className="text-sm font-semibold text-gray-800">{speed} km/h</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
-                <span className="text-sm font-semibold text-gray-700">{routeInfo ? formatDistance(routeInfo.distance) : "--"}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
+                <span className="text-sm font-semibold text-gray-800">{routeInfo ? formatDistance(routeInfo.distance) : "--"}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100/80">
-                <span className="text-sm text-gray-600 font-medium">{routeInfo ? getETA(routeInfo.time) : "--"}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100">
+                <span className="text-sm text-gray-500 font-medium">{routeInfo ? getETA(routeInfo.time) : "--"}</span>
               </div>
             </div>
           </div>
 
           {/* Contenu expandable : boutons + etapes */}
           {panelExpanded && (
-            <div className="px-3 pb-3 space-y-2 border-t border-white/20 pt-2">
+            <div className="px-3 pb-3 space-y-2 border-t border-gray-200 pt-2">
               <div className="flex gap-2">
                 {deliveryId && deliveryStatus === "DELIVERING" && (
                   <button
                     onClick={() => updateDeliveryStatus("DELIVERED")}
                     disabled={updatingStatus}
-                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
+                    className="flex-1 py-2.5 bg-green-500 hover:bg-green-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-50"
                   >
                     {updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                    Livree
+                    Livrée
                   </button>
                 )}
                 <button
@@ -744,7 +738,7 @@ function NavigateContent() {
                 {deliveryId && orderId && deliveryStatus !== "DELIVERED" && deliveryStatus !== "CANCELLED" && !showCancel && (
                   <button
                     onClick={() => { setShowCancel(true); setCancelReason(""); setCustomReason(""); setCancelError(""); }}
-                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-200/60 bg-red-50/50 hover:bg-red-100/60 transition-colors flex items-center justify-center gap-1"
+                    className="py-2.5 px-3 rounded-xl text-xs font-medium text-red-500 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1"
                   >
                     <XCircle className="w-3.5 h-3.5" /> Annuler
                   </button>
@@ -752,14 +746,14 @@ function NavigateContent() {
               </div>
               {/* Formulaire annulation */}
               {showCancel && (
-                <div className="bg-white/50 border border-red-200/60 rounded-xl p-2.5 space-y-2">
-                  <p className="text-xs text-gray-800 font-medium">Confirmer l&apos;annulation ?</p>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 space-y-2">
+                  <p className="text-xs text-gray-700 font-medium">Confirmer l&apos;annulation ?</p>
                   <select
                     value={cancelReason}
                     onChange={(e) => { setCancelReason(e.target.value); setCancelError(""); }}
-                    className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
+                    className="w-full bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-red-400"
                   >
-                    <option value="">Selectionnez une raison</option>
+                    <option value="">Sélectionnez une raison</option>
                     {cancelReasons.map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
@@ -768,15 +762,15 @@ function NavigateContent() {
                     <textarea
                       value={customReason}
                       onChange={(e) => { setCustomReason(e.target.value); setCancelError(""); }}
-                      placeholder="Preciser la raison..."
+                      placeholder="Préciser la raison..."
                       rows={2}
-                      className="w-full bg-white/80 border border-gray-200 text-gray-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
+                      className="w-full bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-red-400 resize-none"
                     />
                   )}
                   {cancelError && <p className="text-[10px] text-red-500">{cancelError}</p>}
                   <div className="flex gap-2">
                     <button onClick={() => setShowCancel(false)}
-                      className="flex-1 py-2 bg-gray-100/60 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200/60 transition-colors">
+                      className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors">
                       Non, continuer
                     </button>
                     <button onClick={cancelOrder} disabled={cancelling}
@@ -789,18 +783,18 @@ function NavigateContent() {
               )}
               {/* Liste des etapes */}
               {routeSteps.length > 0 && (
-                <div className="max-h-44 overflow-y-auto pt-1">
+                <div className="max-h-80 overflow-y-auto pt-1">
                   {routeSteps.map((step, i) => (
                     <button
                       key={i}
                       onClick={() => selectStep(i)}
                       className={`w-full flex items-start gap-2 py-2 text-left transition-colors rounded-lg px-1.5 ${
-                        selectedStepIdx === i ? "bg-orange-50/60" : "hover:bg-white/30"
+                        selectedStepIdx === i ? "bg-orange-50" : "hover:bg-gray-50"
                       }`}
-                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.04)" } : {}}
+                      style={i < routeSteps.length - 1 ? { borderBottom: "1px solid rgba(0,0,0,0.06)" } : {}}
                     >
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200/60"
+                        selectedStepIdx === i ? "bg-orange-500" : "bg-gray-200"
                       }`}>
                         <span className={`text-[10px] font-bold ${
                           selectedStepIdx === i ? "text-white" : "text-gray-500"
@@ -808,7 +802,7 @@ function NavigateContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs ${
-                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-700"
+                          selectedStepIdx === i ? "text-orange-600 font-semibold" : "text-gray-600"
                         }`}>{step.instruction}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{formatDistance(step.distance)}</p>
                       </div>

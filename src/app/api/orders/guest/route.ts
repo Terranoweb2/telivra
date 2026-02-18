@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateEffectivePrice, findBestPromotion } from "@/lib/pricing";
+import { notifyRole } from "@/lib/notify";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { items, deliveryAddress, deliveryLat, deliveryLng, note, guestName, guestPhone, paymentMethod } = body;
+  const { items, deliveryAddress, deliveryLat, deliveryLng, note, guestName, guestPhone, paymentMethod, deliveryMode } = body;
 
-  if (!items?.length || !deliveryAddress || !deliveryLat || !deliveryLng) {
+  const isPickup = deliveryMode === "PICKUP";
+  if (!items?.length) {
     return NextResponse.json({ error: "Donnees manquantes" }, { status: 400 });
+  }
+  if (!isPickup && (!deliveryAddress || !deliveryLat || !deliveryLng)) {
+    return NextResponse.json({ error: "Adresse de livraison requise" }, { status: 400 });
+  }
+  if (isPickup) {
+    const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+    if (!settings?.pickupEnabled) {
+      return NextResponse.json({ error: "Mode a emporter non disponible" }, { status: 400 });
+    }
   }
   if (!guestName || !guestPhone) {
     return NextResponse.json({ error: "Nom et telephone requis" }, { status: 400 });
@@ -60,9 +71,10 @@ export async function POST(request: NextRequest) {
       totalAmount: Math.round(totalAmount * 100) / 100,
       discountAmount: Math.round(totalDiscount * 100) / 100,
       promotionId: appliedPromotionId,
-      deliveryAddress,
-      deliveryLat,
-      deliveryLng,
+      deliveryMode: isPickup ? "PICKUP" : "DELIVERY",
+      deliveryAddress: isPickup ? "À emporter" : deliveryAddress,
+      deliveryLat: isPickup ? 0 : deliveryLat,
+      deliveryLng: isPickup ? 0 : deliveryLng,
       note,
       guestName,
       guestPhone,
@@ -74,6 +86,8 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  const itemsSummary = order.items.map((i: any) => `${i.quantity}x ${i.product?.name}`).join(", ");
+
   const io = (global as any).io;
   if (io) {
     io.to("cooks").emit("order:new", {
@@ -84,8 +98,30 @@ export async function POST(request: NextRequest) {
       items: order.items,
       createdAt: order.createdAt,
       status: "PENDING",
+      deliveryMode: isPickup ? "PICKUP" : "DELIVERY",
     });
   }
+
+  // Notifier cuisiniers + admins
+  const modeLabel = isPickup ? "[À emporter] " : "";
+  const msg = `${modeLabel}${guestName} — ${itemsSummary} (${Math.round(order.totalAmount)} XOF)`;
+  const firstImage = order.items?.[0]?.product?.image || null;
+    notifyRole("COOK", {
+    type: "ORDER_NOTIFICATION",
+    title: "Nouvelle commande",
+    message: msg,
+    severity: "WARNING",
+    data: { orderId: order.id },
+    pushPayload: { title: "Nouvelle commande", body: msg, url: "/cuisine", tag: `order-${order.id}` },
+  });
+  notifyRole("ADMIN", {
+    type: "ORDER_NOTIFICATION",
+    title: "Nouvelle commande",
+    message: msg,
+    severity: "INFO",
+    data: { orderId: order.id },
+    pushPayload: { title: "Nouvelle commande", body: msg, url: "/alerts", tag: `order-${order.id}` },
+  });
 
   return NextResponse.json(order, { status: 201 });
 }

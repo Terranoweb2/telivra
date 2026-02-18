@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notifyRole } from "@/lib/notify";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -17,10 +18,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Commande pas encore prête (cuisine en cours)" }, { status: 400 });
   }
 
+  const driverId = (session.user as any).id;
+  const driverName = (session.user as any).name;
+
   const delivery = await prisma.delivery.create({
     data: {
       orderId,
-      driverId: (session.user as any).id,
+      driverId,
       status: "DELIVERING",
       currentLat: latitude || null,
       currentLng: longitude || null,
@@ -38,7 +42,6 @@ export async function POST(request: NextRequest) {
 
   const io = (global as any).io;
   if (io) {
-    const driverName = (session.user as any).name;
     io.to(`order:${orderId}`).emit("delivery:accepted", {
       deliveryId: delivery.id,
       driverName,
@@ -66,6 +69,21 @@ export async function POST(request: NextRequest) {
       });
     }
   }
+
+  // Notifier les autres livreurs que la commande est prise
+  notifyRole("ADMIN", {
+    type: "ORDER_TAKEN",
+    title: "Commande assignée",
+    message: `Commande prise par ${driverName}`,
+    severity: "INFO",
+    data: { orderId },
+    pushPayload: {
+      title: "Commande assignée",
+      body: `Prise par ${driverName}`,
+      url: "/livraison",
+      tag: `taken-${orderId}`,
+    },
+  });
 
   return NextResponse.json(delivery, { status: 201 });
 }

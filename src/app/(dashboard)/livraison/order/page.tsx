@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter} from "next/navigation";
 import {
   Loader2, ShoppingBag, Clock, CheckCircle, Truck, XCircle, Eye, Wifi,
   MapPin, User, Bell, X, ChevronDown, ChefHat, Timer, Navigation,
@@ -90,8 +90,13 @@ export default function CommandesPage() {
   const clientId = (session?.user as any)?.id;
   const isCook = role === "COOK";
   const isDriver = role === "DRIVER" || role === "ADMIN";
-
-  const [tab, setTab] = useState<Tab>("pending");
+  const [tab, setTabState] = useState<Tab>(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab") as Tab) || "pending"; } return "pending"; });
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", t);
+    window.history.replaceState({}, "", url.toString());
+  };
 
   // Sync tab with role once session loads
   useEffect(() => {
@@ -406,14 +411,21 @@ export default function CommandesPage() {
                       <StatusBadge status="PENDING" type="order" />
                     </div>
 
-                    <div className="text-xs text-gray-400 space-y-0.5">
+                    <div className="space-y-1.5">
                       {order.items?.map((item: any) => (
-                        <p key={item.id || item.productId}>
-                          {item.quantity}x {item.product?.name || item.name}
-                          {item.product?.cookingTimeMin && (
-                            <span className="text-gray-600 ml-1">({item.product.cookingTimeMin} min)</span>
+                        <div key={item.id || item.productId} className="flex items-center gap-2">
+                          {item.product?.image ? (
+                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
                           )}
-                        </p>
+                          <span className="text-xs text-gray-400">
+                            {item.quantity}x {item.product?.name || item.name}
+                            {item.product?.cookingTimeMin && (
+                              <span className="text-gray-600 ml-1">({item.product.cookingTimeMin} min)</span>
+                            )}
+                          </span>
+                        </div>
                       ))}
                     </div>
 
@@ -457,9 +469,16 @@ export default function CommandesPage() {
                       <StatusBadge status="PREPARING" type="order" />
                     </div>
 
-                    <div className="text-xs text-gray-400 space-y-0.5">
+                    <div className="space-y-1.5">
                       {order.items?.map((item: any) => (
-                        <p key={item.id || item.productId}>{item.quantity}x {item.product?.name || item.name}</p>
+                        <div key={item.id || item.productId} className="flex items-center gap-2">
+                          {item.product?.image ? (
+                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
+                          )}
+                          <span className="text-xs text-gray-400">{item.quantity}x {item.product?.name || item.name}</span>
+                        </div>
                       ))}
                     </div>
 
@@ -498,9 +517,16 @@ export default function CommandesPage() {
                         En attente livreur
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 space-y-0.5">
+                    <div className="space-y-1.5">
                       {order.items?.map((item: any) => (
-                        <p key={item.id || item.productId}>{item.quantity}x {item.product?.name || item.name}</p>
+                        <div key={item.id || item.productId} className="flex items-center gap-2">
+                          {item.product?.image ? (
+                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
+                          )}
+                          <span className="text-xs text-gray-400">{item.quantity}x {item.product?.name || item.name}</span>
+                        </div>
                       ))}
                     </div>
                     <p className="text-sm font-bold text-orange-400">{order.totalAmount?.toLocaleString()} FCFA</p>
@@ -537,9 +563,14 @@ export default function CommandesPage() {
 
                       </div>
                     </div>
-                    <div className="text-xs text-gray-400 mb-3">
+                    <div className="flex flex-wrap gap-2 mb-3">
                       {order.items?.map((i: any) => (
-                        <span key={i.id || i.productId} className="mr-2">{i.quantity}x {i.product?.name || i.name}</span>
+                        <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
+                          {i.product?.image ? (
+                            <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                          ) : null}
+                          <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
+                        </div>
                       ))}
                     </div>
                     <div className="flex gap-2">
@@ -583,9 +614,16 @@ export default function CommandesPage() {
                         <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
                       </p>
                     )}
-                    <div className="text-xs text-gray-400 space-y-0.5">
+                    <div className="space-y-1.5">
                       {order.items?.map((item: any) => (
-                        <p key={item.id}>{item.quantity}x {item.product?.name}</p>
+                        <div key={item.id} className="flex items-center gap-2">
+                          {item.product?.image ? (
+                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
+                          )}
+                          <span className="text-xs text-gray-400">{item.quantity}x {item.product?.name}</span>
+                        </div>
                       ))}
                     </div>
                     {order.cancelReason && (
@@ -604,14 +642,14 @@ export default function CommandesPage() {
                     </div>
                   </Link>
 
-                  {/* Bouton itineraire pour livreur/admin */}
+                  {/* Bouton itinéraire pour livreur/admin */}
                   {isDriver && order.deliveryLat && order.deliveryLng && (tab === "active" || tab === "delivered") && (
                     <Link
                       href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                       className="mt-2 w-full py-2 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      Voir l&apos;itineraire
+                      Voir l&apos;itinéraire
                     </Link>
                   )}
 
@@ -642,7 +680,7 @@ export default function CommandesPage() {
                             }}
                             className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-red-500 appearance-none"
                           >
-                            <option value="" disabled>Selectionnez une raison...</option>
+                            <option value="" disabled>Sélectionnez une raison...</option>
                             {reasonsList.map((r) => (
                               <option key={r} value={r}>{r}</option>
                             ))}

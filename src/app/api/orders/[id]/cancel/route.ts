@@ -22,7 +22,7 @@ export async function POST(
   // Raison obligatoire
   const reason = body.reason?.trim();
   if (!reason) {
-    return NextResponse.json({ error: "Veuillez preciser la raison de l'annulation" }, { status: 400 });
+    return NextResponse.json({ error: "Veuillez préciser la raison de l'annulation" }, { status: 400 });
   }
 
   const userId = (session?.user as any)?.id;
@@ -48,7 +48,7 @@ export async function POST(
     const minutesSinceAccepted = (Date.now() - new Date(acceptedAt).getTime()) / 60000;
 
     if (isDriver || isAdmin) {
-      // Livreur et admin peuvent annuler à tout moment (sauf livree)
+      // Livreur et admin peuvent annuler à tout moment (sauf livrée)
     } else if ((isClient || isGuest) && minutesSinceAccepted <= 5) {
       // Client/Guest peut annuler dans les 5 minutes apres acceptation
     } else {

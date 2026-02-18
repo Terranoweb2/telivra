@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { notifyRole } from "@/lib/notify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +34,21 @@ export async function POST(request: NextRequest) {
         ...(phone ? { phone: phone.trim() } : {}),
       },
       select: { id: true, name: true, email: true, role: true },
+    });
+
+    // Notifier les admins du nouveau client
+    notifyRole("ADMIN", {
+      type: "NEW_CLIENT",
+      title: "Nouveau client",
+      message: `${user.name} (${user.email})`,
+      severity: "INFO",
+      data: { clientId: user.id, clientName: user.name, email: user.email },
+      pushPayload: {
+        title: "Nouveau client",
+        body: user.name,
+        url: "/users",
+        tag: `new-client-${user.id}`,
+      },
     });
 
     return NextResponse.json(user, { status: 201 });

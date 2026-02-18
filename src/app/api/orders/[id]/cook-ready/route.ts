@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notifyRole, notifyUser } from "@/lib/notify";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -12,6 +13,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const cookId = (session.user as any).id;
 
   const order = await prisma.order.findUnique({ where: { id } });
+  const isPickup = order?.deliveryMode === "PICKUP";
   if (!order) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
   if (order.cookId !== cookId && role !== "ADMIN") {
     return NextResponse.json({ error: "Cette commande n'est pas la votre" }, { status: 403 });
@@ -41,9 +43,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       deliveryAddress: updated.deliveryAddress,
       totalAmount: updated.totalAmount,
       items: updated.items,
+      deliveryMode: updated.deliveryMode,
     };
-    // Notifier les livreurs
-    io.to("drivers").emit("order:ready", eventData);
+    // Notifier les livreurs (seulement pour livraison)
+    if (!isPickup) {
+      io.to("drivers").emit("order:ready", eventData);
+    }
     // Notifier le client
     io.to(`order:${id}`).emit("order:ready", eventData);
     if (updated.clientId) {
@@ -51,5 +56,41 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Notifier tous les livreurs par alerte + push
+  const clientName = updated.client?.name || updated.guestName || "Client";
+  const firstImg = updated.items?.[0]?.product?.image || null;
+  if (!isPickup) {
+    notifyRole("DRIVER", {
+    type: "ORDER_READY",
+    title: "Commande prête !",
+    message: `${clientName} — ${updated.deliveryAddress}`,
+    severity: "WARNING",
+    data: { orderId: id, imageUrl: firstImg },
+    pushPayload: {
+      title: "Commande prête !",
+      body: `${clientName} — ${updated.deliveryAddress}`,
+      url: "/livraison",
+      tag: `ready-${id}`,
+    },
+  });
+  }
+
+
+  // Notification push au client pour pickup
+  if (isPickup && updated.clientId) {
+    notifyUser(updated.clientId, {
+      type: "ORDER_READY",
+      title: "Votre commande est prête !",
+      message: "Venez la récupérer au restaurant.",
+      severity: "INFO",
+      data: { orderId: id, status: "READY", imageUrl: firstImg, deliveryMode: "PICKUP" },
+      pushPayload: {
+        title: "Votre commande est prête !",
+        body: "Venez la récupérer au restaurant.",
+        url: `/track/${id}`,
+        tag: `pickup-ready-${id}`,
+      },
+    });
+  }
   return NextResponse.json(updated);
 }

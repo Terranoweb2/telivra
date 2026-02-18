@@ -157,6 +157,15 @@ export default function DashboardPage() {
             color="green"
             className="min-w-[10rem] shrink-0 lg:min-w-0"
           />
+          {revenue.totals.pickupToday > 0 && (
+            <StatCardBadge
+              icon={ShoppingBag}
+              value={revenue.totals.pickupToday}
+              label="À emporter auj."
+              color="purple"
+              className="min-w-[10rem] shrink-0 lg:min-w-0"
+            />
+          )}
         </div>
 
         {/* Repartition paiement */}
@@ -235,6 +244,11 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString("fr-FR")}</p>
                     </div>
+                    {order.deliveryMode === "PICKUP" ? (
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-medium whitespace-nowrap">À emporter</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-medium whitespace-nowrap">Livraison</span>
+                    )}
                     <StatusBadge status={order.status} type="order" />
                     <p className="text-sm font-bold text-orange-400 shrink-0">{order.totalAmount?.toLocaleString()} F</p>
                   </Card>
@@ -637,6 +651,11 @@ export default function DashboardPage() {
                             : (mealNames || `Commande #${order.id.slice(-6)}`)}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">
+                          {order.deliveryMode === "PICKUP" ? (
+                            <span className="text-purple-400 font-medium">À emporter · </span>
+                          ) : (
+                            <span className="text-blue-400 font-medium">Livraison · </span>
+                          )}
                           {!isDriverRole && role !== "COOK" && itemCount > 1 && (
                             <span className="text-gray-400">{itemCount} articles · </span>
                           )}

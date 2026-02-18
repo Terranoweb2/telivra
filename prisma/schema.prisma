@@ -16,6 +16,7 @@ model User {
   hashedPassword String
   role           UserRole  @default(VIEWER)
   isActive       Boolean   @default(true)
+  dateOfBirth    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -28,6 +29,7 @@ model User {
   cookOrders       Order[]    @relation("CookOrders")
   phone          String?
   sentMessages   Message[]  @relation("SentMessages")
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -262,6 +264,13 @@ enum AlertType {
   MAINTENANCE
   ORDER_NOTIFICATION
   PROMOTION
+  ORDER_READY
+  ORDER_TAKEN
+  NEW_CLIENT
+  RATING
+  ENCAISSEMENT
+  LOYALTY
+  BIRTHDAY
 }
 
 enum AlertSeverity {
@@ -304,6 +313,7 @@ model SiteSettings {
   heroTitle            String?
   heroSubtitle         String?
   chatEnabled          Boolean       @default(true)
+  pickupEnabled        Boolean       @default(false)
   updatedAt            DateTime      @updatedAt
 
   @@map("site_settings")
@@ -382,9 +392,10 @@ model Order {
   paymentConfirmed Boolean       @default(false)
   status           OrderStatus   @default(PENDING)
   totalAmount     Float
-  deliveryAddress String
-  deliveryLat     Float
-  deliveryLng     Float
+  deliveryMode    String        @default("DELIVERY")
+  deliveryAddress String?
+  deliveryLat     Float?
+  deliveryLng     Float?
   note            String?
   cancelReason    String?
   guestName       String?
@@ -545,4 +556,19 @@ model Message {
   @@index([orderId, createdAt])
   @@index([orderId, isRead])
   @@map("messages")
+}
+
+// ========== NOTIFICATIONS PUSH ==========
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

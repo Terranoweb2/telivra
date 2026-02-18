@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notifyRole } from "@/lib/notify";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +14,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Non autorise" }, { status: 403 });
   }
 
-  const order = await prisma.order.findUnique({ where: { id } });
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { client: { select: { name: true } } },
+  });
   if (!order) {
     return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
   }
@@ -60,6 +64,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
   }
+
+  // Notifier les admins de l'encaissement
+  const clientName = order.client?.name || order.guestName || "Client";
+  notifyRole("ADMIN", {
+    type: "ENCAISSEMENT",
+    title: "Paiement confirme",
+    message: `${Math.round(order.totalAmount)} XOF — ${clientName}`,
+    severity: "INFO",
+    data: { orderId: id, amount: order.totalAmount, clientName, paymentMethod: order.paymentMethod },
+    pushPayload: {
+      title: "Paiement confirme",
+      body: `${Math.round(order.totalAmount)} XOF — ${clientName}`,
+      url: "/encaissement",
+      tag: `payment-${id}`,
+    },
+  });
 
   return NextResponse.json(updated);
 }

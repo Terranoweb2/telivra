@@ -1,9 +1,10 @@
 "use client";
 
+
 import { useEffect, useState, useCallback } from "react";
 import {
   Loader2, Printer, Wallet, ShoppingBag, TrendingUp,
-  BarChart3, CreditCard, Tag, Calendar, ArrowRight,
+  BarChart3, CreditCard, Tag, Calendar, ArrowRight, Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,13 +19,13 @@ const PIE_COLORS = ["#f97316", "#06b6d4"];
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "En attente",
-  ACCEPTED: "Acceptee",
+  ACCEPTED: "Acceptée",
   PREPARING: "En cuisine",
   READY: "Prete",
-  PICKED_UP: "Recuperee",
+  PICKED_UP: "Récupérée",
   DELIVERING: "En livraison",
   DELIVERED: "Livree",
-  CANCELLED: "Annulee",
+  CANCELLED: "Annulée",
 };
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-yellow-500",
@@ -42,7 +43,13 @@ type Period = "today" | "week" | "month" | "year" | "custom";
 export default function StatistiquesPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriodState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "month"; } return "month"; });
+  const setPeriod = (v: string) => {
+    setPeriodState(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", v);
+    window.history.replaceState({}, "", url.toString());
+  };
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [restaurantName, setRestaurantName] = useState("Restaurant");
@@ -186,7 +193,7 @@ export default function StatistiquesPage() {
                 <div>
                   <p className="text-xs text-gray-500">Commandes</p>
                   <p className="text-lg font-bold text-white">{s.totalOrders}</p>
-                  <p className="text-[10px] text-gray-600">{s.deliveredOrders} livrees / {s.cancelledOrders} annulees</p>
+                  <p className="text-[10px] text-gray-600">{s.deliveredOrders} livrées / {s.cancelledOrders} annulées{s.pickupOrders > 0 && ` / ${s.pickupOrders} a emporter`}</p>
                 </div>
               </CardContent>
             </Card>
@@ -329,6 +336,34 @@ export default function StatistiquesPage() {
             </Card>
           )}
 
+          {/* Repartition par mode de livraison */}
+          {data.deliveryModeBreakdown && (data.deliveryModeBreakdown.pickup > 0 || data.deliveryModeBreakdown.delivery > 0) && (
+            <Card>
+              <CardContent>
+                <h3 className="text-sm font-semibold text-white mb-4">Repartition par mode</h3>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 rounded-xl">
+                    <Truck className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs text-gray-400">Livraison</span>
+                    <span className="text-sm font-bold text-white">{data.deliveryModeBreakdown.delivery}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 rounded-xl">
+                    <ShoppingBag className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs text-gray-400">À emporter</span>
+                    <span className="text-sm font-bold text-white">{data.deliveryModeBreakdown.pickup}</span>
+                  </div>
+                  {s.pickupDelivered > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 rounded-xl">
+                      <ShoppingBag className="w-4 h-4 text-green-400" />
+                      <span className="text-xs text-gray-400">Remis au client</span>
+                      <span className="text-sm font-bold text-white">{s.pickupDelivered}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Tableau comptable detaille */}
           {data.dailyData?.length > 0 && (
             <Card>
@@ -341,7 +376,7 @@ export default function StatistiquesPage() {
                         <th className="text-left py-2 px-2 text-xs text-gray-500 font-medium">Date</th>
                         <th className="text-right py-2 px-2 text-xs text-gray-500 font-medium">Commandes</th>
                         <th className="text-right py-2 px-2 text-xs text-gray-500 font-medium">Livrees</th>
-                        <th className="text-right py-2 px-2 text-xs text-gray-500 font-medium">Annulees</th>
+                        <th className="text-right py-2 px-2 text-xs text-gray-500 font-medium">Annulées</th>
                         <th className="text-right py-2 px-2 text-xs text-gray-500 font-medium">Recette</th>
                       </tr>
                     </thead>

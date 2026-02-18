@@ -38,7 +38,7 @@ export default function DevicesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white">Appareils</h1>
-          <p className="text-gray-400 text-sm mt-1">{devices.length} appareil(s) enregistre(s)</p>
+          <p className="text-gray-400 text-sm mt-1">{devices.length} appareil(s) enregistré(s)</p>
         </div>
         <Link
           href="/devices/new"
