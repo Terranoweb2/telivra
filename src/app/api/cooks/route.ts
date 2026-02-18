@@ -10,7 +10,7 @@ export async function GET() {
   const cooks = await prisma.user.findMany({
     where: { role: "COOK" },
     select: {
-      id: true, name: true, email: true, isActive: true, createdAt: true,
+      id: true, name: true, email: true, isActive: true, createdAt: true, lastSeenAt: true,
       cookOrders: {
         select: { id: true, status: true, cookAcceptedAt: true, cookReadyAt: true, totalAmount: true, deliveryMode: true },
         orderBy: { createdAt: "desc" },
@@ -30,7 +30,7 @@ export async function GET() {
       .reduce((s, o) => s + (o.totalAmount || 0), 0);
     const pickup = orders.filter((o) => o.deliveryMode === "PICKUP" && o.status === "DELIVERED").length;
     return {
-      id: c.id, name: c.name, email: c.email, isActive: c.isActive, createdAt: c.createdAt,
+      id: c.id, name: c.name, email: c.email, isActive: c.isActive, createdAt: c.createdAt, lastSeenAt: c.lastSeenAt,
       stats: { inKitchen, ready, delivered, pickup, totalRevenue: Math.round(totalRevenue) },
     };
   });

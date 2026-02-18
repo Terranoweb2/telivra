@@ -1,12 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChefHat, CheckCircle, TrendingUp, Flame, ShoppingBag, ChevronRight } from "lucide-react";
+import { Loader2, ChefHat, CheckCircle, TrendingUp, Flame, ShoppingBag, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+
+function timeAgo(date: string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h}h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d}j`;
+}
+
+function isOnline(lastSeenAt: string | null) {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60 * 1000; // 5 min
+}
 
 export default function CooksPage() {
   const [cooks, setCooks] = useState<any[]>([]);
@@ -17,6 +33,16 @@ export default function CooksPage() {
       setCooks(Array.isArray(data) ? data : []);
       setLoading(false);
     });
+  }, []);
+
+  // Refresh every 30s for online status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch("/api/cooks").then((r) => r.json()).then((data) => {
+        if (Array.isArray(data)) setCooks(data);
+      });
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
@@ -51,38 +77,50 @@ export default function CooksPage() {
 
       {/* Liste cuisiniers */}
       <div className="space-y-2">
-        {cooks.map((cook) => (
-          <Link key={cook.id} href={`/cooks/${cook.id}`}>
-            <Card hover>
-              <CardContent className="py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-orange-600/20 rounded-full flex items-center justify-center shrink-0">
-                    <ChefHat className="w-4 h-4 text-orange-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{cook.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 overflow-x-auto scrollbar-hide">
-                      <span className="text-[10px] text-orange-400 shrink-0 whitespace-nowrap">{cook.stats.inKitchen} en cuisine</span>
-                      <span className="text-[10px] text-cyan-400 shrink-0 whitespace-nowrap">{cook.stats.ready} prêtes</span>
-                      <span className="text-[10px] text-green-400 shrink-0 whitespace-nowrap">{cook.stats.delivered} livrées</span>
-                      {cook.stats.pickup > 0 && <span className="text-[10px] text-purple-400 shrink-0 whitespace-nowrap">{cook.stats.pickup} à emporter</span>}
-                      <span className="text-[10px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{cook.stats.totalRevenue.toLocaleString()} F</span>
+        {cooks.map((cook) => {
+          const online = isOnline(cook.lastSeenAt);
+          return (
+            <Link key={cook.id} href={`/cooks/${cook.id}`}>
+              <Card hover>
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <div className="w-9 h-9 bg-orange-600/20 rounded-full flex items-center justify-center">
+                        <ChefHat className="w-4 h-4 text-orange-400" />
+                      </div>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900",
+                        online ? "bg-green-500" : "bg-gray-500"
+                      )} />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-medium",
-                      cook.stats.inKitchen > 0 ? "bg-orange-500/20 text-orange-400" : "bg-gray-700 text-gray-400"
-                    )}>
-                      {cook.stats.inKitchen > 0 ? "Actif" : "Inactif"}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-white truncate">{cook.name}</p>
+                        {online ? (
+                          <span className="text-[9px] text-green-400 font-medium shrink-0 flex items-center gap-0.5">
+                            <Wifi className="w-2.5 h-2.5" /> En ligne
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-gray-500 shrink-0 flex items-center gap-0.5">
+                            <WifiOff className="w-2.5 h-2.5" /> {cook.lastSeenAt ? timeAgo(cook.lastSeenAt) : "Jamais connecté"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 overflow-x-auto scrollbar-hide">
+                        <span className="text-[10px] text-orange-400 shrink-0 whitespace-nowrap">{cook.stats.inKitchen} en cuisine</span>
+                        <span className="text-[10px] text-cyan-400 shrink-0 whitespace-nowrap">{cook.stats.ready} prêtes</span>
+                        <span className="text-[10px] text-green-400 shrink-0 whitespace-nowrap">{cook.stats.delivered} livrées</span>
+                        {cook.stats.pickup > 0 && <span className="text-[10px] text-purple-400 shrink-0 whitespace-nowrap">{cook.stats.pickup} à emporter</span>}
+                        <span className="text-[10px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{cook.stats.totalRevenue.toLocaleString()} F</span>
+                      </div>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-600 shrink-0" />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
         {cooks.length === 0 && (
           <EmptyState icon={ChefHat} message="Aucun cuisinier enregistré" />
         )}
