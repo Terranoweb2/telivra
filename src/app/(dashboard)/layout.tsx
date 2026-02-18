@@ -42,13 +42,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex min-h-screen bg-gray-900 brand-theme"
+      className="flex h-screen overflow-hidden bg-gray-900 brand-theme"
       style={{ "--brand": brandColor } as React.CSSProperties}
     >
       <div className="no-print"><Sidebar open={open} onClose={close} /></div>
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="no-print"><TopBar onMenuToggle={toggle} /></div>
-        <main className="flex-1 p-4 sm:p-6 pb-20 lg:pb-6">{children}</main>
+        <div className="no-print shrink-0"><TopBar onMenuToggle={toggle} /></div>
+        <main className="flex-1 p-4 sm:p-6 pb-20 lg:pb-6 overflow-y-auto">{children}</main>
       </div>
       <div className="no-print"><MobileNav /></div>
       <div className="no-print"><PushRegistration /></div>
