@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
@@ -29,96 +31,112 @@ jobs:
           done
           exit 1
 
-      - name: Full VPS Diagnostics
-        uses: appleboy/ssh-action@v1
-        with:
-          host: 161.35.110.36
-          username: root
-          password: GynecoTerrano2026
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 3m
-          script: |
-            echo "========================================"
-            echo "  VPS FULL DIAGNOSTICS"
-            echo "========================================"
+      - name: Run diagnostics and save output
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          sshpass -p 'GynecoTerrano2026' ssh $SSH_OPTS -p ${{ steps.ssh.outputs.port }} root@161.35.110.36 bash << 'REMOTESCRIPT' > diagnostics-output.txt 2>&1
+          echo "========================================"
+          echo "  VPS FULL DIAGNOSTICS - $(date)"
+          echo "========================================"
 
+          echo ""
+          echo "=== 1. ALL NGINX SITE CONFIGS ==="
+          echo "--- sites-enabled listing ---"
+          ls -la /etc/nginx/sites-enabled/ 2>/dev/null || echo "No sites-enabled dir"
+          echo ""
+          for f in /etc/nginx/sites-enabled/*; do
+            echo ">>> FILE: $f <<<"
+            cat "$f" 2>/dev/null || echo "(empty)"
             echo ""
-            echo "=== 1. ALL NGINX CONFIGS ==="
-            echo "--- sites-enabled ---"
-            ls -la /etc/nginx/sites-enabled/ 2>/dev/null || echo "No sites-enabled"
-            echo ""
-            echo "--- Each config content ---"
-            for f in /etc/nginx/sites-enabled/*; do
-              echo ">>> FILE: $f <<<"
-              cat "$f" 2>/dev/null
-              echo ""
-              echo "---"
-            done
-            echo ""
-            echo "--- conf.d ---"
-            ls -la /etc/nginx/conf.d/ 2>/dev/null || echo "No conf.d"
-            for f in /etc/nginx/conf.d/*.conf; do
-              echo ">>> FILE: $f <<<"
-              cat "$f" 2>/dev/null
-              echo ""
-            done
+            echo "--- end $f ---"
+          done
 
-            echo ""
-            echo "=== 2. NGINX MAIN CONFIG (server blocks) ==="
-            grep -n 'server_name\|listen\|proxy_pass\|default_server' /etc/nginx/nginx.conf 2>/dev/null || echo "No matches"
+          echo ""
+          echo "=== 2. NGINX CONF.D ==="
+          ls -la /etc/nginx/conf.d/ 2>/dev/null || echo "No conf.d"
+          for f in /etc/nginx/conf.d/*; do
+            [ -f "$f" ] && echo ">>> $f <<<" && cat "$f" && echo ""
+          done
 
-            echo ""
-            echo "=== 3. PM2 STATUS ==="
-            pm2 list 2>/dev/null || echo "PM2 not running"
+          echo ""
+          echo "=== 3. NGINX.CONF (relevant lines) ==="
+          grep -n 'server_name\|listen\|proxy_pass\|default_server\|include' /etc/nginx/nginx.conf 2>/dev/null || echo "No matches"
 
-            echo ""
-            echo "=== 4. PM2 LOGS (t-delivery) ==="
-            pm2 logs t-delivery --lines 40 --nostream 2>/dev/null || echo "No t-delivery app"
+          echo ""
+          echo "=== 4. PM2 STATUS ==="
+          pm2 list 2>/dev/null || echo "PM2 not installed/running"
 
-            echo ""
-            echo "=== 5. PORT CHECK ==="
-            ss -tlnp 2>/dev/null | head -20 || netstat -tlnp 2>/dev/null | head -20
+          echo ""
+          echo "=== 5. PM2 LOGS t-delivery (last 50 lines) ==="
+          pm2 logs t-delivery --lines 50 --nostream 2>/dev/null || echo "No t-delivery logs"
 
-            echo ""
-            echo "=== 6. DIRECT APP TEST ==="
-            echo "Port 3001:"
-            curl -s -o /dev/null -w "  HTTP %{http_code}\n" http://localhost:3001/ 2>/dev/null || echo "  Not responding"
-            echo "Port 3001 content (first 200 chars):"
-            curl -s http://localhost:3001/ 2>/dev/null | head -c 200 || echo "  No content"
-            echo ""
-            echo "Port 3000:"
-            curl -s -o /dev/null -w "  HTTP %{http_code}\n" http://localhost:3000/ 2>/dev/null || echo "  Not responding"
+          echo ""
+          echo "=== 6. PORTS LISTENING ==="
+          ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null
 
-            echo ""
-            echo "=== 7. NGINX HOST ROUTING TEST ==="
-            echo "Host: t-delivery.com -> port 80:"
-            curl -s -H "Host: t-delivery.com" -o /dev/null -w "  HTTP %{http_code}\n" http://localhost:80/ 2>/dev/null || echo "  Not responding"
-            echo "Content:"
-            curl -s -H "Host: t-delivery.com" http://localhost:80/ 2>/dev/null | head -c 200 || echo "  No content"
-            echo ""
-            echo "Host: gyneco -> port 80:"
-            curl -s -o /dev/null -w "  HTTP %{http_code}\n" http://localhost:80/ 2>/dev/null || echo "  Not responding"
+          echo ""
+          echo "=== 7. DIRECT APP TESTS ==="
+          echo "--- Port 3001 (Telivra) ---"
+          RESP3001=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/ 2>/dev/null)
+          echo "HTTP Status: $RESP3001"
+          echo "Title:"
+          curl -s http://localhost:3001/ 2>/dev/null | grep -oP '<title>.*?</title>' || echo "No title found"
+          echo "First 300 chars:"
+          curl -s http://localhost:3001/ 2>/dev/null | head -c 300
+          echo ""
 
-            echo ""
-            echo "=== 8. APP DIRECTORY CHECK ==="
-            echo "--- /root/t-delivery ---"
-            ls -la /root/t-delivery/.next/ 2>/dev/null | head -5 || echo "No .next"
-            echo ""
-            echo "--- .env exists? ---"
-            ls -la /root/t-delivery/.env 2>/dev/null || echo "No .env"
-            echo ""
-            echo "--- ecosystem.config.js ---"
-            cat /root/t-delivery/ecosystem.config.js 2>/dev/null || echo "No ecosystem config"
+          echo ""
+          echo "--- Port 3000 (Gyneco) ---"
+          RESP3000=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null)
+          echo "HTTP Status: $RESP3000"
+          echo "Title:"
+          curl -s http://localhost:3000/ 2>/dev/null | grep -oP '<title>.*?</title>' || echo "No title found"
 
-            echo ""
-            echo "=== 9. CLOUDFLARED STATUS ==="
-            systemctl status cloudflared --no-pager 2>/dev/null || echo "Not running"
+          echo ""
+          echo "=== 8. NGINX ROUTING WITH HOST HEADER ==="
+          echo "--- Host: t-delivery.com ---"
+          curl -s -H "Host: t-delivery.com" -o /dev/null -w "HTTP %{http_code}\n" http://localhost/ 2>/dev/null
+          echo "Title:"
+          curl -s -H "Host: t-delivery.com" http://localhost/ 2>/dev/null | grep -oP '<title>.*?</title>' || echo "No title"
+          echo ""
+          echo "--- No specific host ---"
+          curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost/ 2>/dev/null
 
-            echo ""
-            echo "=== 10. PROCESS LIST ==="
-            ps aux | grep -E 'next|node|nginx|cloudflared' | grep -v grep || echo "No relevant processes"
+          echo ""
+          echo "=== 9. .ENV FILE ==="
+          cat /root/t-delivery/.env 2>/dev/null | sed 's/PASSWORD=.*/PASSWORD=***/' | sed 's/SECRET=.*/SECRET=***/' || echo "No .env"
 
-            echo ""
-            echo "========================================"
-            echo "  DIAGNOSTICS COMPLETE"
-            echo "========================================"
+          echo ""
+          echo "=== 10. ECOSYSTEM CONFIG ==="
+          cat /root/t-delivery/ecosystem.config.js 2>/dev/null || echo "Not found"
+
+          echo ""
+          echo "=== 11. CLOUDFLARED ==="
+          systemctl status cloudflared --no-pager 2>/dev/null || echo "Not running"
+          echo ""
+          cloudflared --version 2>/dev/null || echo "Not installed"
+
+          echo ""
+          echo "=== 12. PROCESS LIST ==="
+          ps aux | grep -E 'next|node|nginx|cloudflared|pm2' | grep -v grep
+
+          echo ""
+          echo "=== 13. DISK SPACE ==="
+          df -h /
+
+          echo ""
+          echo "========================================"
+          echo "  DIAGNOSTICS COMPLETE"
+          echo "========================================"
+          REMOTESCRIPT
+
+          echo "Diagnostics saved to diagnostics-output.txt"
+          cat diagnostics-output.txt
+
+      - name: Commit diagnostics output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagnostics-output.txt
+          git commit -m "chore: VPS diagnostics output $(date -u +%Y%m%d-%H%M%S)" || echo "Nothing to commit"
+          git push origin claude/analyze-project-8IHsf || echo "Push failed"
