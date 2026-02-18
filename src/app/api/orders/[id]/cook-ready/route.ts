@@ -35,6 +35,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   });
 
   const io = (global as any).io;
+  if (io) io.to("admins").emit("staff:refresh");
   if (io) {
     const eventData = {
       orderId: id,

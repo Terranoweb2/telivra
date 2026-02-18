@@ -16,7 +16,17 @@ export async function GET() {
           select: { driverDeliveries: true },
         },
         driverDeliveries: {
-          select: { id: true, status: true, order: { select: { totalAmount: true, rating: { select: { driverRating: true } } } } },
+          select: {
+            id: true, status: true,
+            order: {
+              select: {
+                id: true, totalAmount: true, deliveryAddress: true,
+                client: { select: { name: true } },
+                guestName: true,
+                rating: { select: { driverRating: true } },
+              },
+            },
+          },
         },
       },
       orderBy: { name: "asc" },
@@ -33,9 +43,15 @@ export async function GET() {
         .filter((dl) => dl.order?.rating?.driverRating && dl.order.rating.driverRating > 0)
         .map((dl) => dl.order!.rating!.driverRating);
       const avgRating = ratings.length > 0 ? (ratings.reduce((s, r) => s + r, 0) / ratings.length).toFixed(1) : null;
+      const activeDl = deliveries.find((dl) => ["PICKING_UP", "DELIVERING"].includes(dl.status));
       return {
         id: d.id, name: d.name, email: d.email, isActive: d.isActive, createdAt: d.createdAt, lastSeenAt: d.lastSeenAt,
         stats: { active, completed, totalRevenue: Math.round(totalRevenue), avgRating, ratingCount: ratings.length },
+        activeDelivery: activeDl ? {
+          orderId: (activeDl.order as any)?.id,
+          clientName: (activeDl.order as any)?.client?.name || (activeDl.order as any)?.guestName || "Client",
+          address: (activeDl.order as any)?.deliveryAddress,
+        } : null,
       };
     });
 

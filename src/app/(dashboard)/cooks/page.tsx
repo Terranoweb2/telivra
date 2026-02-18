@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
 import { Loader2, ChefHat, CheckCircle, TrendingUp, Flame, ShoppingBag, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -19,31 +20,51 @@ function timeAgo(date: string) {
   return `il y a ${d}j`;
 }
 
-function isOnline(lastSeenAt: string | null) {
-  if (!lastSeenAt) return false;
-  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60 * 1000; // 5 min
-}
-
 export default function CooksPage() {
   const [cooks, setCooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const socketRef = useRef<Socket | null>(null);
 
-  useEffect(() => {
+  const fetchCooks = useCallback(() => {
     fetch("/api/cooks").then((r) => r.json()).then((data) => {
-      setCooks(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) setCooks(data);
       setLoading(false);
     });
   }, []);
 
-  // Refresh every 30s for online status
+  useEffect(() => { fetchCooks(); }, [fetchCooks]);
+
+  // WebSocket: real-time presence + stats refresh
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch("/api/cooks").then((r) => r.json()).then((data) => {
-        if (Array.isArray(data)) setCooks(data);
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const socket = io({ path: "/socket.io", transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("subscribe:admin");
+      socket.emit("presence:list");
+    });
+
+    socket.on("presence:list", (list: { userId: string; role: string; online: boolean }[]) => {
+      const cookIds = new Set(list.filter((u) => u.role === "COOK" && u.online).map((u) => u.userId));
+      setOnlineUsers(cookIds);
+    });
+
+    socket.on("presence:update", ({ userId, role, online }: { userId: string; role: string; name: string; online: boolean }) => {
+      if (role === "COOK") {
+        setOnlineUsers((prev) => {
+          const next = new Set(prev);
+          if (online) next.add(userId);
+          else next.delete(userId);
+          return next;
+        });
+      }
+    });
+
+    socket.on("staff:refresh", () => { fetchCooks(); });
+
+    return () => { socket.disconnect(); };
+  }, [fetchCooks]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
@@ -78,7 +99,7 @@ export default function CooksPage() {
       {/* Liste cuisiniers */}
       <div className="space-y-2">
         {cooks.map((cook) => {
-          const online = isOnline(cook.lastSeenAt);
+          const online = onlineUsers.has(cook.id);
           return (
             <Link key={cook.id} href={`/cooks/${cook.id}`}>
               <Card hover>

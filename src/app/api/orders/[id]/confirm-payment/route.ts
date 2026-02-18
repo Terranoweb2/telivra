@@ -45,6 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
 
   const io = (global as any).io;
+  if (io) io.to("admins").emit("staff:refresh");
   if (io) {
     io.to("order:" + id).emit("order:payment-confirmed", { orderId: id });
 

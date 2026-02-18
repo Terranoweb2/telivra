@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
   const itemsSummary = order.items.map((i: any) => `${i.quantity}x ${i.product?.name}`).join(", ");
 
   const io = (global as any).io;
+  if (io) io.to("admins").emit("staff:refresh");
   if (io) {
     io.to("cooks").emit("order:new", {
       id: order.id,

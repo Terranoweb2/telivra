@@ -115,13 +115,21 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     if (status !== "authenticated" || !role) return;
     const isCook = role === "COOK";
     const isAdmin = role === "ADMIN";
-    if (!isCook && !isAdmin) return;
+    const isDriver = role === "DRIVER";
+    if (!isCook && !isAdmin && !isDriver) return;
 
     const socket = io({ path: "/socket.io", transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {
       if (isCook || isAdmin) socket.emit("subscribe:cook");
+      if (isDriver) socket.emit("subscribe:driver");
+      if (isAdmin) socket.emit("subscribe:admin");
+      if (isCook || isDriver) {
+        const userId = (session?.user as any)?.id;
+        const userName = (session?.user as any)?.name || "Utilisateur";
+        socket.emit("presence:join", { userId, role, name: userName });
+      }
     });
 
     // Notification instantanée quand l'admin notifie les cuisiniers

@@ -56,6 +56,10 @@ app.prepare().then(() => {
     io.to(`chat:${orderId}`).emit("chat:presence", { orderId, count });
   }
 
+  // Presence tracking: userId -> { socketIds, role, name }
+  const presenceMap = new Map<string, { socketIds: Set<string>; role: string; name: string }>();
+  const disconnectTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
   io.on("connection", (socket) => {
     console.log("[Socket.IO] Client connected:", socket.id);
 
@@ -104,6 +108,28 @@ app.prepare().then(() => {
     });
     socket.on("unsubscribe:admin", () => {
       socket.leave("admins");
+    });
+
+    // === Presence system for cook/driver online detection ===
+    socket.on("presence:join", ({ userId, role, name }: { userId: string; role: string; name: string }) => {
+      (socket as any).presenceUserId = userId;
+      if (disconnectTimeouts.has(userId)) {
+        clearTimeout(disconnectTimeouts.get(userId)!);
+        disconnectTimeouts.delete(userId);
+      }
+      if (!presenceMap.has(userId)) {
+        presenceMap.set(userId, { socketIds: new Set(), role, name });
+      }
+      presenceMap.get(userId)!.socketIds.add(socket.id);
+      io.to("admins").emit("presence:update", { userId, role, name, online: true });
+      console.log(`[Presence] ${name} (${role}) online`);
+    });
+
+    socket.on("presence:list", () => {
+      const list = Array.from(presenceMap.entries()).map(([userId, d]) => ({
+        userId, role: d.role, name: d.name, online: true,
+      }));
+      socket.emit("presence:list", list);
     });
 
     // Livraison: client ecoute ses commandes
@@ -219,6 +245,29 @@ app.prepare().then(() => {
     });
 
     socket.on("disconnect", () => {
+      // Presence cleanup with 5s grace period (handles page refresh)
+      const presUserId = (socket as any).presenceUserId as string | undefined;
+      if (presUserId) {
+        const entry = presenceMap.get(presUserId);
+        if (entry) {
+          entry.socketIds.delete(socket.id);
+          if (entry.socketIds.size === 0) {
+            const t = setTimeout(() => {
+              const e = presenceMap.get(presUserId);
+              if (e && e.socketIds.size === 0) {
+                presenceMap.delete(presUserId);
+                io.to("admins").emit("presence:update", {
+                  userId: presUserId, role: e.role, name: e.name, online: false,
+                });
+                console.log(`[Presence] ${e.name} (${e.role}) offline`);
+              }
+              disconnectTimeouts.delete(presUserId);
+            }, 5000);
+            disconnectTimeouts.set(presUserId, t);
+          }
+        }
+      }
+
       // Clean up presence from all chat rooms
       for (const [orderId, members] of chatPresence.entries()) {
         if (members.has(socket.id)) {

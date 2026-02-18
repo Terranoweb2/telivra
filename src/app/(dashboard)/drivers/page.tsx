@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Truck, CheckCircle, TrendingUp, User, Star, ChevronRight, Wifi, WifiOff } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
+import { Loader2, Truck, CheckCircle, TrendingUp, User, Star, ChevronRight, Wifi, WifiOff, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,31 +20,51 @@ function timeAgo(date: string) {
   return `il y a ${d}j`;
 }
 
-function isOnline(lastSeenAt: string | null) {
-  if (!lastSeenAt) return false;
-  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60 * 1000; // 5 min
-}
-
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const socketRef = useRef<Socket | null>(null);
 
-  useEffect(() => {
+  const fetchDrivers = useCallback(() => {
     fetch("/api/drivers").then((r) => r.json()).then((data) => {
-      setDrivers(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) setDrivers(data);
       setLoading(false);
     });
   }, []);
 
-  // Refresh every 30s for online status
+  useEffect(() => { fetchDrivers(); }, [fetchDrivers]);
+
+  // WebSocket: real-time presence + stats refresh
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch("/api/drivers").then((r) => r.json()).then((data) => {
-        if (Array.isArray(data)) setDrivers(data);
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const socket = io({ path: "/socket.io", transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("subscribe:admin");
+      socket.emit("presence:list");
+    });
+
+    socket.on("presence:list", (list: { userId: string; role: string; online: boolean }[]) => {
+      const driverIds = new Set(list.filter((u) => u.role === "DRIVER" && u.online).map((u) => u.userId));
+      setOnlineUsers(driverIds);
+    });
+
+    socket.on("presence:update", ({ userId, role, online }: { userId: string; role: string; name: string; online: boolean }) => {
+      if (role === "DRIVER") {
+        setOnlineUsers((prev) => {
+          const next = new Set(prev);
+          if (online) next.add(userId);
+          else next.delete(userId);
+          return next;
+        });
+      }
+    });
+
+    socket.on("staff:refresh", () => { fetchDrivers(); });
+
+    return () => { socket.disconnect(); };
+  }, [fetchDrivers]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
@@ -76,7 +97,7 @@ export default function DriversPage() {
       {/* Liste livreurs */}
       <div className="space-y-2">
         {drivers.map((driver) => {
-          const online = isOnline(driver.lastSeenAt);
+          const online = onlineUsers.has(driver.id);
           return (
             <Link key={driver.id} href={`/drivers/${driver.id}`}>
               <Card hover>
@@ -110,12 +131,30 @@ export default function DriversPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 overflow-x-auto scrollbar-hide">
-                        <span className="text-[10px] text-purple-400 shrink-0 whitespace-nowrap">{driver.stats.active} en cours</span>
+                        {driver.activeDelivery ? (
+                          <>
+                            <span className="text-[10px] text-orange-400 font-semibold shrink-0 whitespace-nowrap animate-pulse">En livraison</span>
+                            <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap truncate max-w-[120px]">{driver.activeDelivery.clientName}</span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-purple-400 shrink-0 whitespace-nowrap">{driver.stats.active} en cours</span>
+                        )}
                         <span className="text-[10px] text-green-400 shrink-0 whitespace-nowrap">{driver.stats.completed} livrées</span>
                         <span className="text-[10px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{driver.stats.totalRevenue.toLocaleString()} F</span>
                       </div>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+                    <div className="flex items-center gap-1 shrink-0">
+                      {driver.activeDelivery && (
+                        <Link
+                          href={`/track/${driver.activeDelivery.orderId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 bg-orange-500/20 rounded-lg hover:bg-orange-500/30 transition-colors"
+                        >
+                          <Navigation className="w-3.5 h-3.5 text-orange-400" />
+                        </Link>
+                      )}
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
