@@ -24,7 +24,7 @@ const roleConfig: Record<string, { label: string; color: string; bg: string; ico
 };
 
 export default function UsersPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const currentUserId = (session?.user as any)?.id;
   const userRole = (session?.user as any)?.role;
   const isManager = userRole === "MANAGER";
@@ -57,7 +57,7 @@ export default function UsersPage() {
     });
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { if (status === "authenticated") fetchUsers(); }, [fetchUsers, status]);
 
   useEffect(() => {
     if (filter === "guest" && guests.length === 0 && !loadingGuests) {
@@ -120,7 +120,30 @@ export default function UsersPage() {
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
+  if (loading || status !== "authenticated") return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-8 w-40 bg-gray-800 rounded-xl" />
+      <div className="h-5 w-24 bg-gray-800/60 rounded-lg" />
+      <div className="flex gap-2 overflow-x-auto">
+        {[1, 2, 3, 4].map((i) => <div key={i} className="h-8 w-20 bg-gray-800 rounded-xl shrink-0" />)}
+      </div>
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="flex items-center gap-3 p-3 bg-gray-800/40 rounded-2xl border border-gray-800">
+            <div className="w-9 h-9 bg-gray-700 rounded-full shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3.5 w-28 bg-gray-700 rounded" />
+              <div className="h-2.5 w-40 bg-gray-800 rounded" />
+            </div>
+            <div className="flex gap-1">
+              <div className="w-7 h-7 bg-gray-700 rounded-lg" />
+              <div className="w-7 h-7 bg-gray-700 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const filtered = filter === "guest" ? [] : users.filter((u) => u.role === filter);
   const roleCounts = users.reduce((acc: any, u) => { acc[u.role] = (acc[u.role] || 0) + 1; return acc; }, {} as any);
