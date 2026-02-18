@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     const d = new Date(from);
     while (d <= to) {
       const dateStr = d.toISOString().slice(0, 10);
-      const found = dailyRaw.find((r: any) => String(r.day).slice(0, 10) === dateStr);
+      const found = dailyRaw.find((r: any) => new Date(r.day).toISOString().slice(0, 10) === dateStr);
       dailyData.push({
         date: dateStr,
         label: d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),

@@ -12,10 +12,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getCachedSettings } from "@/lib/settings-cache";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
 } from "recharts";
 
-const PIE_COLORS = ["#f97316", "#06b6d4"];
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "En attente",
@@ -84,8 +82,27 @@ export default function StatistiquesPage() {
     }
   }, [fetchData]);
 
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printSections, setPrintSections] = useState({
+    summary: true,
+    chart: true,
+    topProducts: true,
+    statusBreakdown: true,
+    deliveryMode: true,
+    accounting: true,
+  });
+
   function handlePrint() {
-    window.print();
+    setShowPrintModal(true);
+  }
+
+  function executePrint() {
+    setShowPrintModal(false);
+    setTimeout(() => window.print(), 200);
+  }
+
+  function togglePrintSection(key: string) {
+    setPrintSections((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   }
 
   const periodLabel = period === "today" ? "Aujourd'hui"
@@ -99,11 +116,7 @@ export default function StatistiquesPage() {
   }
 
   const s = data?.summary || {};
-  const pieData = data?.paymentBreakdown ? [
-    { name: "Especes", value: data.paymentBreakdown.cash?.revenue || 0, count: data.paymentBreakdown.cash?.count || 0 },
-    { name: "En ligne", value: data.paymentBreakdown.online?.revenue || 0, count: data.paymentBreakdown.online?.count || 0 },
-  ] : [];
-  const pieTotal = pieData.reduce((a: number, b: any) => a + b.value, 0);
+
 
   return (
     <div className="space-y-5 pb-10">
@@ -179,7 +192,7 @@ export default function StatistiquesPage() {
       {data && !loading && (
         <>
           {/* Cartes resume */}
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+          <div data-print-section="summary" className={cn(!printSections.summary && "print-hide", "flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0")}>
             <Card className="min-w-[11rem] shrink-0 lg:min-w-0">
               <CardContent className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-green-500/10"><Wallet className="w-5 h-5 text-green-400" /></div>
@@ -237,71 +250,37 @@ export default function StatistiquesPage() {
             </Card>
           </div>
 
-          {/* Graphiques côte à côte */}
-          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0">
-            {/* Graphique barres */}
-            {data.dailyData?.length > 0 && (
-              <Card className="min-w-[20rem] shrink-0 lg:min-w-0">
-                <CardContent>
-                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
-                  </h3>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                        <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} width={40}
-                          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px" }}
-                          labelStyle={{ color: "#9ca3af" }}
-                          formatter={(value) => [`${Number(value || 0).toLocaleString()} FCFA`, "Recette"]}
-                        />
-                        <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Pie chart paiement */}
-            {pieTotal > 0 && (
-              <Card className="min-w-[18rem] shrink-0 lg:min-w-0">
-                <CardContent>
-                  <h3 className="text-sm font-semibold text-white mb-4">Répartition paiement</h3>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                          innerRadius={50} outerRadius={80} paddingAngle={4}>
-                          {pieData.map((_: any, i: number) => (
-                            <Cell key={i} fill={PIE_COLORS[i]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px" }}
-                          formatter={(value) => [`${Number(value || 0).toLocaleString()} FCFA`]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex justify-center gap-6 mt-2">
-                    {pieData.map((d: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
-                        <span className="text-xs text-gray-400">{d.name} ({d.count})</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          {/* Graphique barres */}
+          <div className={cn(!printSections.chart && "print-hide")}>
+          {data.dailyData?.length > 0 && (
+            <Card>
+              <CardContent>
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
+                </h3>
+                <div className="h-56 overflow-x-auto"><div className="min-w-[500px] h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                      <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} width={50}
+                        tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px" }}
+                        labelStyle={{ color: "#9ca3af" }}
+                        formatter={(value) => [`${Number(value || 0).toLocaleString()} FCFA`, "Recette"]}
+                      />
+                      <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div></div>
+              </CardContent>
+            </Card>
+          )}
           </div>
 
           {/* Top produits */}
-          <div className="grid grid-cols-1 gap-4">
-            {data.topProducts?.length > 0 && (
+          <div className={cn(!printSections.topProducts && "print-hide")}>
+          {data.topProducts?.length > 0 && (
               <Card>
                 <CardContent>
                   <h3 className="text-sm font-semibold text-white mb-4">Top 10 produits</h3>
@@ -318,11 +297,12 @@ export default function StatistiquesPage() {
                     ))}
                   </div>
                 </CardContent>
-              </Card>
-            )}
+            </Card>
+          )}
           </div>
 
           {/* Repartition par statut */}
+          <div className={cn(!printSections.statusBreakdown && "print-hide")}>
           {data.ordersByStatus && Object.keys(data.ordersByStatus).length > 0 && (
             <Card>
               <CardContent>
@@ -339,8 +319,10 @@ export default function StatistiquesPage() {
               </CardContent>
             </Card>
           )}
+          </div>
 
           {/* Repartition par mode de livraison */}
+          <div className={cn(!printSections.deliveryMode && "print-hide")}>
           {data.deliveryModeBreakdown && (data.deliveryModeBreakdown.pickup > 0 || data.deliveryModeBreakdown.delivery > 0) && (
             <Card>
               <CardContent>
@@ -367,8 +349,10 @@ export default function StatistiquesPage() {
               </CardContent>
             </Card>
           )}
+          </div>
 
           {/* Tableau comptable detaille */}
+          <div className={cn(!printSections.accounting && "print-hide")}>
           {data.dailyData?.length > 0 && (
             <Card>
               <CardContent>
@@ -408,6 +392,47 @@ export default function StatistiquesPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+          </div>
+
+          {/* Modal impression */}
+          {showPrintModal && (
+            <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPrintModal(false)}>
+              <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-white mb-1">Imprimer le rapport</h3>
+                <p className="text-xs text-gray-500 mb-4">Choisissez les sections a inclure</p>
+                <div className="space-y-2 mb-5">
+                  {[
+                    { key: "summary", label: "Resume (cartes)" },
+                    { key: "chart", label: "Graphique recettes" },
+                    { key: "topProducts", label: "Top 10 produits" },
+                    { key: "statusBreakdown", label: "Repartition par statut" },
+                    { key: "deliveryMode", label: "Mode de livraison" },
+                    { key: "accounting", label: "Tableau comptable" },
+                  ].map((item) => (
+                    <label key={item.key} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-800/50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={printSections[item.key as keyof typeof printSections]}
+                        onChange={() => togglePrintSection(item.key)}
+                        className="w-4 h-4 rounded border-gray-600 text-orange-500 focus:ring-orange-500 bg-gray-800"
+                      />
+                      <span className="text-sm text-gray-300">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowPrintModal(false)}
+                    className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-medium transition-colors">
+                    Annuler
+                  </button>
+                  <button onClick={executePrint}
+                    className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <Printer className="w-4 h-4" /> Imprimer
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
