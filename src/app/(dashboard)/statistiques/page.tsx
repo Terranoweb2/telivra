@@ -237,39 +237,39 @@ export default function StatistiquesPage() {
             </Card>
           </div>
 
-          {/* Graphique barres */}
-          {data.dailyData?.length > 0 && (
-            <Card>
-              <CardContent>
-                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
-                </h3>
-                <div className="h-64 overflow-x-auto -ml-2"><div className="min-w-[500px] h-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                      <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} width={50}
-                        tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px" }}
-                        labelStyle={{ color: "#9ca3af" }}
-                        formatter={(value) => [`${Number(value || 0).toLocaleString()} FCFA`, "Recette"]}
-                      />
-                      <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div></div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Pie chart paiement + Top produits */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Pie */}
-            {pieTotal > 0 && (
-              <Card>
+          {/* Graphiques côte à côte */}
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0">
+            {/* Graphique barres */}
+            {data.dailyData?.length > 0 && (
+              <Card className="min-w-[20rem] shrink-0 lg:min-w-0">
                 <CardContent>
-                  <h3 className="text-sm font-semibold text-white mb-4">Repartition paiement</h3>
+                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
+                  </h3>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} width={40}
+                          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px" }}
+                          labelStyle={{ color: "#9ca3af" }}
+                          formatter={(value) => [`${Number(value || 0).toLocaleString()} FCFA`, "Recette"]}
+                        />
+                        <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pie chart paiement */}
+            {pieTotal > 0 && (
+              <Card className="min-w-[18rem] shrink-0 lg:min-w-0">
+                <CardContent>
+                  <h3 className="text-sm font-semibold text-white mb-4">Répartition paiement</h3>
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -297,8 +297,10 @@ export default function StatistiquesPage() {
                 </CardContent>
               </Card>
             )}
+          </div>
 
-            {/* Top produits */}
+          {/* Top produits */}
+          <div className="grid grid-cols-1 gap-4">
             {data.topProducts?.length > 0 && (
               <Card>
                 <CardContent>
