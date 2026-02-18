@@ -88,8 +88,9 @@ export default function CommandesPage() {
   useEffect(() => { setMounted(true); }, []);
   const role = (session?.user as any)?.role || "CLIENT";
   const clientId = (session?.user as any)?.id;
+  const isAdmin = role === "ADMIN";
   const isCook = role === "COOK";
-  const isDriver = role === "DRIVER" || role === "ADMIN";
+  const isDriver = role === "DRIVER" || isAdmin;
   const [tab, setTabState] = useState<Tab>(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab") as Tab) || "pending"; } return "pending"; });
   const setTab = (t: Tab) => {
     setTabState(t);
@@ -98,12 +99,13 @@ export default function CommandesPage() {
     window.history.replaceState({}, "", url.toString());
   };
 
-  // Sync tab with role once session loads
+  // Sync tab with role once session loads (only if no URL param)
   useEffect(() => {
     if (sessionStatus === "authenticated") {
-      const r = (session?.user as any)?.role || "CLIENT";
-      if (r === "COOK") setTab("pending");
-      else setTab("pending");
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      if (!urlTab) {
+        setTabState("pending");
+      }
     }
   }, [sessionStatus, session]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -134,6 +136,14 @@ export default function CommandesPage() {
       // Cuisinier: charger depuis l'API cook
       const data = await fetch("/api/orders/cook").then((r) => r.json());
       setOrders(Array.isArray(data) ? data : []);
+    } else if (isAdmin) {
+      // Admin: load ALL orders + pending (ready without driver)
+      const [pending, allOrders] = await Promise.all([
+        fetch("/api/orders/pending").then((r) => r.json()),
+        fetch("/api/orders").then((r) => r.json()),
+      ]);
+      setPendingOrders(Array.isArray(pending) ? pending : []);
+      setOrders(Array.isArray(allOrders) ? allOrders : []);
     } else if (isDriver) {
       const [pending, driverOrders] = await Promise.all([
         fetch("/api/orders/pending").then((r) => r.json()),
@@ -150,9 +160,9 @@ export default function CommandesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Polling pour cuisinier (fallback)
+  // Polling pour cuisinier et admin (fallback)
   useEffect(() => {
-    if (!isCook) return;
+    if (!isCook && !isAdmin) return;
     const interval = setInterval(loadData, 8000);
     return () => clearInterval(interval);
   }, [isCook, loadData]);
@@ -300,21 +310,27 @@ export default function CommandesPage() {
   // === Filtrage par onglet selon le role ===
   const pendingList = isCook
     ? orders.filter((o) => o.status === "PENDING")
-    : isDriver
-      ? pendingOrders
-      : orders.filter((o) => ["PENDING", "PREPARING", "READY"].includes(o.status));
+    : isAdmin
+      ? orders.filter((o) => ["PENDING", "PREPARING", "READY"].includes(o.status))
+      : isDriver
+        ? pendingOrders
+        : orders.filter((o) => ["PENDING", "PREPARING", "READY"].includes(o.status));
 
   const activeList = isCook
     ? orders.filter((o) => ["ACCEPTED", "PREPARING"].includes(o.status))
-    : isDriver
+    : isAdmin
       ? orders.filter((o) => o.delivery && ["PICKING_UP", "DELIVERING"].includes(o.delivery.status))
-      : orders.filter((o) => ["PICKED_UP", "DELIVERING"].includes(o.status));
+      : isDriver
+        ? orders.filter((o) => o.delivery && ["PICKING_UP", "DELIVERING"].includes(o.delivery.status))
+        : orders.filter((o) => ["PICKED_UP", "DELIVERING"].includes(o.status));
 
   const deliveredList = isCook
     ? orders.filter((o) => o.status === "READY")
-    : isDriver
-      ? orders.filter((o) => o.delivery?.status === "DELIVERED")
-      : orders.filter((o) => o.status === "DELIVERED");
+    : isAdmin
+      ? orders.filter((o) => ["DELIVERED", "CANCELLED"].includes(o.status))
+      : isDriver
+        ? orders.filter((o) => o.delivery?.status === "DELIVERED")
+        : orders.filter((o) => o.status === "DELIVERED");
 
   // Labels dynamiques selon role
   const tabItems: { key: Tab; label: string; count: number; icon?: any }[] = isCook
@@ -323,11 +339,17 @@ export default function CommandesPage() {
         { key: "active", label: "En cuisine", count: activeList.length, icon: ChefHat },
         { key: "delivered", label: "Prêtes", count: deliveredList.length, icon: CheckCircle },
       ]
-    : [
-        { key: "pending", label: isDriver ? "Prêtes" : "En attente", count: pendingList.length },
-        { key: "active", label: "En cours", count: activeList.length },
-        { key: "delivered", label: "Livrées", count: deliveredList.length },
-      ];
+    : isAdmin
+      ? [
+          { key: "pending", label: "En attente", count: pendingList.length, icon: Clock },
+          { key: "active", label: "En livraison", count: activeList.length, icon: Truck },
+          { key: "delivered", label: "Terminées", count: deliveredList.length, icon: CheckCircle },
+        ]
+      : [
+          { key: "pending", label: isDriver ? "Prêtes" : "En attente", count: pendingList.length },
+          { key: "active", label: "En cours", count: activeList.length },
+          { key: "delivered", label: "Livrées", count: deliveredList.length },
+        ];
 
   const currentList = tab === "pending" ? pendingList : tab === "active" ? activeList : deliveredList;
 
@@ -346,13 +368,15 @@ export default function CommandesPage() {
 
   const emptyMessage = isCook
     ? (tab === "pending" ? "Aucune nouvelle commande" : tab === "active" ? "Aucune commande en préparation" : "Aucune commande prête")
-    : tab === "pending"
-      ? (isDriver ? "Aucune commande prête" : "Aucune commande en attente")
-      : tab === "active"
-        ? "Aucune commande en cours"
-        : "Aucune commande livrée";
+    : isAdmin
+      ? (tab === "pending" ? "Aucune commande en attente" : tab === "active" ? "Aucune livraison en cours" : "Aucune commande terminée")
+      : tab === "pending"
+        ? (isDriver ? "Aucune commande prête" : "Aucune commande en attente")
+        : tab === "active"
+          ? "Aucune commande en cours"
+          : "Aucune commande livrée";
 
-  const subtitle = isCook ? "Gérez les commandes à préparer" : isDriver ? "Gérez vos livraisons" : "Suivez vos commandes";
+  const subtitle = isCook ? "Gérez les commandes à préparer" : isAdmin ? "Vue globale de toutes les commandes" : isDriver ? "Gérez vos livraisons" : "Suivez vos commandes";
 
   return (
     <div className="space-y-4">

@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
   const asDriver = searchParams.get("as") === "driver";
 
   let where: any = {};
-  if (asDriver || role === "DRIVER") {
+  if (role === "ADMIN") {
+    // Admin sees ALL orders
+    where = {};
+  } else if (asDriver || role === "DRIVER") {
     where = { delivery: { driverId: userId } };
   } else {
     where = { clientId: userId };
