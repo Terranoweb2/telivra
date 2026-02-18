@@ -17,6 +17,7 @@ env:
   VPS_PASS: "GynecoTerrano2026"
   APP_DIR: "/root/t-delivery"
   REPO_URL: "https://github.com/Terranoweb2/telivra.git"
+  DEPLOY_SECRET: "8825d84896081a6e606bdff3c81f336f4053c551eb800fa0d32ccc77cba7f596"
   CF_TUNNEL_TOKEN: "eyJhIjoiMzYwMDhhYWVhYTlmODYwM2FlN2FkN2ZhNTE1MTI3NWQiLCJ0IjoiYTMyN2VlMmQtMTY4MC00ODQ3LTk0ZTAtMDJkZWMyYzQ0OWZmIiwicyI6Ik9USTRNVGN4TkdJdE9HWTBPUzAwTjJWbExUbGxaR0l0Tm1Oak9XVTJNRGMxTVRSaiJ9"
 
 jobs:
@@ -25,10 +26,46 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Install sshpass
+      - name: Try HTTP webhook deployment (no SSH needed)
+        id: webhook
+        run: |
+          echo "=== Trying HTTP webhook deployment ==="
+
+          # Check if webhook endpoint exists
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+            "https://t-delivery.com/api/deploy-webhook" 2>/dev/null || echo "000")
+
+          echo "Webhook check: HTTP $STATUS"
+
+          if [ "$STATUS" = "200" ]; then
+            echo "Webhook available! Triggering deployment..."
+            RESPONSE=$(curl -s --max-time 600 \
+              -X POST \
+              -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+              -H "Content-Type: application/json" \
+              "https://t-delivery.com/api/deploy-webhook" 2>&1)
+
+            echo "Response: $RESPONSE"
+
+            if echo "$RESPONSE" | grep -q '"success":true'; then
+              echo "webhook_success=true" >> $GITHUB_OUTPUT
+              echo "Deployment via webhook succeeded!"
+            else
+              echo "webhook_success=false" >> $GITHUB_OUTPUT
+              echo "Webhook deployment failed, will try SSH fallback"
+            fi
+          else
+            echo "webhook_success=false" >> $GITHUB_OUTPUT
+            echo "Webhook not available (HTTP $STATUS), will try SSH fallback"
+          fi
+
+      - name: Install sshpass (SSH fallback)
+        if: steps.webhook.outputs.webhook_success != 'true'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-      - name: Find working SSH port
+      - name: Find working SSH port (fallback)
+        if: steps.webhook.outputs.webhook_success != 'true'
         id: ssh
         run: |
           SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30"
@@ -36,6 +73,7 @@ jobs:
             echo "Trying port $PORT..."
             if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS -p $PORT ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo OK" 2>/dev/null; then
               echo "port=$PORT" >> $GITHUB_OUTPUT
+              echo "ssh_ok=true" >> $GITHUB_OUTPUT
               echo "Connected on port $PORT!"
               exit 0
             fi
@@ -44,24 +82,31 @@ jobs:
           if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS ${{ env.VPS_USER }}@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
             echo "port=22" >> $GITHUB_OUTPUT
             echo "host_override=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
+            echo "ssh_ok=true" >> $GITHUB_OUTPUT
             echo "Connected via Cloudflare!"
             exit 0
           fi
-          echo "::error::Cannot connect to VPS on any port"
-          exit 1
+          echo "ssh_ok=false" >> $GITHUB_OUTPUT
+          echo "::warning::SSH not available on any port. First deploy must be manual."
+          echo ""
+          echo "=== MANUAL FIRST DEPLOYMENT REQUIRED ==="
+          echo "Run this on the VPS:"
+          echo "  cd /root && rm -rf t-delivery && git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git t-delivery && cd t-delivery && bash deploy/deploy.sh"
 
-      - name: Deploy — System packages & PostgreSQL
+      - name: Deploy via SSH — Full setup
+        if: steps.webhook.outputs.webhook_success != 'true' && steps.ssh.outputs.ssh_ok == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
           username: ${{ env.VPS_USER }}
           password: ${{ env.VPS_PASS }}
           port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 10m
+          command_timeout: 20m
           script: |
             set -e
-            echo "=== Phase 1: System Setup ==="
+            echo "=== Full SSH Deployment ==="
 
+            # Phase 1: System packages
             apt-get update -qq
             apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential
 
@@ -78,7 +123,6 @@ jobs:
             fi
             echo "Node: $(node -v) / npm: $(npm -v)"
 
-            # PM2 + tsx
             command -v pm2 &>/dev/null || npm install -g pm2
             npm list -g tsx &>/dev/null 2>&1 || npm install -g tsx
             pm2 startup systemd -u root --hp /root 2>/dev/null || true
@@ -96,98 +140,53 @@ jobs:
               sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
             sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
 
-            echo "=== Phase 1 Complete ==="
-
-      - name: Deploy — Clone repo, .env, dependencies
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          password: ${{ env.VPS_PASS }}
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 10m
-          script: |
-            set -e
-            echo "=== Phase 2: Code & Dependencies ==="
-
+            # Phase 2: Code
             APP_DIR="/root/t-delivery"
             if [ -d "$APP_DIR/.git" ]; then
               cd "$APP_DIR"
               git fetch origin
               git checkout claude/analyze-project-8IHsf 2>/dev/null || git checkout -b claude/analyze-project-8IHsf origin/claude/analyze-project-8IHsf
               git reset --hard origin/claude/analyze-project-8IHsf
-              echo "Code updated"
             else
               rm -rf "$APP_DIR"
-              git clone https://github.com/Terranoweb2/telivra.git "$APP_DIR"
+              git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git "$APP_DIR"
               cd "$APP_DIR"
-              echo "Repo cloned"
             fi
 
             cd "$APP_DIR"
 
-            # Always ensure .env has correct auth variables (NextAuth v5)
+            # .env
             AUTH_SECRET_VALUE=$(grep '^AUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
             NEXTAUTH_SECRET_VALUE=$(grep '^NEXTAUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
             SECRET="${AUTH_SECRET_VALUE:-${NEXTAUTH_SECRET_VALUE:-$(openssl rand -base64 32)}}"
 
-            cat > .env << ENVEOF
+            cat > .env << 'ENVEOF'
             DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
-            AUTH_SECRET="${SECRET}"
+            DEPLOY_SECRET="8825d84896081a6e606bdff3c81f336f4053c551eb800fa0d32ccc77cba7f596"
             AUTH_TRUST_HOST=true
             AUTH_URL="https://t-delivery.com"
-            NEXTAUTH_SECRET="${SECRET}"
-            NEXTAUTH_URL="https://t-delivery.com"
             NODE_ENV="production"
             PORT=3001
             ENVEOF
+            # Add secrets separately to avoid heredoc escaping issues
+            echo "AUTH_SECRET=\"${SECRET}\"" >> .env
+            echo "NEXTAUTH_SECRET=\"${SECRET}\"" >> .env
+            echo "NEXTAUTH_URL=\"https://t-delivery.com\"" >> .env
             sed -i 's/^            //' .env
-            echo ".env updated with auth variables"
-            cat .env | grep -v SECRET | grep -v PASSWORD
 
             npm ci --production=false 2>/dev/null || npm install
-            echo "=== Phase 2 Complete ==="
 
-      - name: Deploy — Prisma & Build
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          password: ${{ env.VPS_PASS }}
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 15m
-          script: |
-            set -e
-            echo "=== Phase 3: Prisma & Build ==="
-
-            cd /root/t-delivery
+            # Phase 3: Prisma & Build
             npx prisma generate
-            npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || echo "DB sync warning"
-
-            # Always re-seed to ensure all accounts exist
+            npx prisma db push --accept-data-loss 2>/dev/null || echo "DB sync warning"
             rm -f .seed_done
-            npx tsx prisma/seed.ts && touch .seed_done && echo "Seed done" || echo "Seed warning"
-
-            mkdir -p public/uploads
+            npx tsx prisma/seed.ts && touch .seed_done || echo "Seed warning"
+            mkdir -p public/uploads logs
             chmod 755 public/uploads
 
             NODE_ENV=production npm run build
-            echo "=== Phase 3 Complete ==="
 
-      - name: Deploy — PM2 & Nginx
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          password: ${{ env.VPS_PASS }}
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 5m
-          script: |
-            echo "=== Phase 4: PM2 & Nginx ==="
-
-            cd /root/t-delivery
-
-            # Create PM2 ecosystem config (uses tsx server.ts for Socket.IO/WebRTC/Chat)
+            # Phase 4: PM2
             cat > ecosystem.config.js << 'ECOEOF'
             module.exports = {
               apps: [{
@@ -208,49 +207,37 @@ jobs:
             };
             ECOEOF
             sed -i 's/^            //' ecosystem.config.js
-            mkdir -p logs
 
-            # PM2 — restart app
             pm2 delete t-delivery 2>/dev/null || true
             pm2 start ecosystem.config.js
             pm2 save
             sleep 5
             pm2 list
-            echo "PM2 started"
 
-            # Nginx — remove map directive if already defined elsewhere
+            # Phase 5: Nginx
             mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
 
-            # Check if map directive already exists in main nginx config
-            if grep -q 'map.*http_upgrade.*connection_upgrade' /etc/nginx/nginx.conf 2>/dev/null; then
-              echo "Map directive exists in nginx.conf, removing from our config"
-              sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /tmp/t-delivery-nginx.conf
+            if grep -rq 'map.*http_upgrade.*connection_upgrade' /etc/nginx/nginx.conf /etc/nginx/sites-enabled/ 2>/dev/null; then
+              sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /etc/nginx/sites-available/t-delivery.conf
             else
-              # Check if another site defines it
-              if grep -rq 'map.*http_upgrade.*connection_upgrade' /etc/nginx/sites-enabled/ 2>/dev/null; then
-                echo "Map directive exists in another site, removing from our config"
-                sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /tmp/t-delivery-nginx.conf
-              else
-                cp deploy/nginx-t-delivery.conf /tmp/t-delivery-nginx.conf
-              fi
+              cp deploy/nginx-t-delivery.conf /etc/nginx/sites-available/t-delivery.conf
             fi
-
-            cp /tmp/t-delivery-nginx.conf /etc/nginx/sites-available/t-delivery.conf
             ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
-
-            # Remove default site if it conflicts
             rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-            nginx -t
-            if [ $? -eq 0 ]; then
-              systemctl reload nginx || systemctl restart nginx
-              echo "Nginx configured"
-            else
-              echo "Nginx config test failed, trying without our config..."
-              rm -f /etc/nginx/sites-enabled/t-delivery.conf
-              nginx -t && systemctl reload nginx
-              echo "WARNING: Nginx reverted, manual config needed"
+            nginx -t && systemctl reload nginx || echo "Nginx issue - check manually"
+
+            # Phase 6: Cloudflare tunnel
+            if ! command -v cloudflared &>/dev/null; then
+              curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+              dpkg -i /tmp/cloudflared.deb
+              rm -f /tmp/cloudflared.deb
             fi
+            systemctl stop cloudflared 2>/dev/null || true
+            cloudflared service uninstall 2>/dev/null || true
+            cloudflared service install ${{ env.CF_TUNNEL_TOKEN }}
+            systemctl enable cloudflared
+            systemctl start cloudflared
 
             # Firewall
             ufw allow 80/tcp 2>/dev/null || true
@@ -258,175 +245,30 @@ jobs:
             ufw allow 22/tcp 2>/dev/null || true
             ufw allow 2215/tcp 2>/dev/null || true
 
-            echo "=== Phase 4 Complete ==="
-
-      - name: Deploy — Install Cloudflare Tunnel
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          password: ${{ env.VPS_PASS }}
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 5m
-          script: |
-            set -e
-            echo "=== Phase 5: Cloudflare Tunnel ==="
-
-            # Install cloudflared
-            if ! command -v cloudflared &>/dev/null; then
-              echo "Installing cloudflared..."
-              curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
-              dpkg -i /tmp/cloudflared.deb
-              rm -f /tmp/cloudflared.deb
-            fi
-            cloudflared --version
-
-            # Remove old service if exists
-            systemctl stop cloudflared 2>/dev/null || true
-            cloudflared service uninstall 2>/dev/null || true
-
-            # Install tunnel service with token
-            cloudflared service install eyJhIjoiMzYwMDhhYWVhYTlmODYwM2FlN2FkN2ZhNTE1MTI3NWQiLCJ0IjoiYTMyN2VlMmQtMTY4MC00ODQ3LTk0ZTAtMDJkZWMyYzQ0OWZmIiwicyI6Ik9USTRNVGN4TkdJdE9HWTBPUzAwTjJWbExUbGxaR0l0Tm1Oak9XVTJNRGMxTVRSaiJ9
-
-            systemctl enable cloudflared
-            systemctl start cloudflared
+            # Final check
             sleep 3
-            systemctl status cloudflared --no-pager || true
+            curl -s -o /dev/null -w "App: HTTP %{http_code}\n" http://localhost:3001/ || echo "App not ready"
+            echo "=== Deployment Complete ==="
 
-            echo "=== Phase 5 Complete ==="
+      - name: Verify deployment
+        if: always()
+        run: |
+          echo "=== Verifying deployment ==="
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://t-delivery.com/" 2>/dev/null || echo "000")
+          echo "t-delivery.com: HTTP $STATUS"
 
-      - name: Fix Nginx routing and verify
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          password: ${{ env.VPS_PASS }}
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 5m
-          script: |
-            echo "=== FIXING NGINX ROUTING ==="
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "308" ]; then
+            echo "Site is reachable!"
+          else
+            echo "::warning::Site returned HTTP $STATUS"
+          fi
 
-            echo "--- Current Nginx configs ---"
-            ls -la /etc/nginx/sites-enabled/ 2>/dev/null || true
-            echo ""
+          # Check webhook availability for future deploys
+          WH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+            "https://t-delivery.com/api/deploy-webhook" 2>/dev/null || echo "000")
+          echo "Deploy webhook: HTTP $WH_STATUS"
 
-            echo "--- Checking all server_name directives ---"
-            grep -r 'server_name' /etc/nginx/sites-enabled/ 2>/dev/null || true
-            grep -r 'server_name' /etc/nginx/conf.d/ 2>/dev/null || true
-            echo ""
-
-            echo "--- Current PM2 apps ---"
-            pm2 list
-            echo ""
-
-            echo "--- Ports in use ---"
-            ss -tlnp | grep -E ':(80|3000|3001)' || true
-            echo ""
-
-            echo "--- Test port 3001 directly ---"
-            curl -s -o /dev/null -w "Port 3001: HTTP %{http_code}\n" http://localhost:3001/ 2>/dev/null || echo "Port 3001 not responding"
-            echo ""
-
-            echo "--- Test port 3000 directly ---"
-            curl -s -o /dev/null -w "Port 3000: HTTP %{http_code}\n" http://localhost:3000/ 2>/dev/null || echo "Port 3000 not responding"
-            echo ""
-
-            # Write a clean nginx config for t-delivery that ensures proper routing
-            cat > /etc/nginx/sites-available/t-delivery.conf << 'NGINXEOF'
-            # Upgrade map for WebSocket (only if not already defined)
-            map $http_upgrade $t_delivery_upgrade {
-                default upgrade;
-                ''      close;
-            }
-
-            server {
-                listen 80;
-                listen [::]:80;
-                server_name t-delivery.com www.t-delivery.com;
-
-                location / {
-                    proxy_pass http://127.0.0.1:3001;
-                    proxy_http_version 1.1;
-                    proxy_set_header Upgrade $http_upgrade;
-                    proxy_set_header Connection $t_delivery_upgrade;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    proxy_cache_bypass $http_upgrade;
-                    proxy_read_timeout 86400s;
-                    proxy_send_timeout 86400s;
-                }
-
-                location /socket.io/ {
-                    proxy_pass http://127.0.0.1:3001/socket.io/;
-                    proxy_http_version 1.1;
-                    proxy_set_header Upgrade $http_upgrade;
-                    proxy_set_header Connection $t_delivery_upgrade;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    proxy_read_timeout 86400s;
-                    proxy_send_timeout 86400s;
-                }
-
-                location /uploads/ {
-                    alias /root/t-delivery/public/uploads/;
-                    expires 1y;
-                    add_header Cache-Control "public, immutable";
-                    try_files $uri =404;
-                }
-
-                location /_next/static/ {
-                    proxy_pass http://127.0.0.1:3001/_next/static/;
-                    expires 1y;
-                    add_header Cache-Control "public, immutable";
-                }
-
-                client_max_body_size 10M;
-                gzip on;
-                gzip_vary on;
-                gzip_proxied any;
-                gzip_comp_level 6;
-                gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
-            }
-            NGINXEOF
-            sed -i 's/^            //' /etc/nginx/sites-available/t-delivery.conf
-
-            ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
-
-            echo "--- Testing new Nginx config ---"
-            nginx -t 2>&1
-            if [ $? -eq 0 ]; then
-              systemctl reload nginx
-              echo "Nginx reloaded with fixed config"
-            else
-              echo "Config test failed, trying to fix..."
-              # Maybe the map variable conflicts - remove it
-              sed -i '/^map/,/^}/d' /etc/nginx/sites-available/t-delivery.conf
-              # Use $connection_upgrade if it exists from another config
-              sed -i 's/\$t_delivery_upgrade/$connection_upgrade/g' /etc/nginx/sites-available/t-delivery.conf
-              nginx -t 2>&1
-              if [ $? -eq 0 ]; then
-                systemctl reload nginx
-                echo "Nginx reloaded (using existing map variable)"
-              else
-                echo "Still failing, showing error..."
-                nginx -t 2>&1
-              fi
-            fi
-
-            sleep 2
-
-            echo ""
-            echo "--- Final health check via Host header ---"
-            curl -s -o /dev/null -w "Direct 3001: HTTP %{http_code}\n" http://localhost:3001/ || true
-            curl -s -H "Host: t-delivery.com" -o /dev/null -w "Nginx t-delivery.com: HTTP %{http_code}\n" http://localhost:80/ || true
-            echo ""
-
-            echo "--- PM2 logs ---"
-            pm2 logs t-delivery --lines 30 --nostream 2>/dev/null || true
-
-            echo ""
-            echo "=== NGINX FIX COMPLETE ==="
+          if [ "$WH_STATUS" = "200" ]; then
+            echo "Webhook ready for future zero-SSH deployments!"
+          fi

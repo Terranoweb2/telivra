@@ -160,6 +160,7 @@ NEXTAUTH_SECRET="${SECRET}"
 NEXTAUTH_URL="https://t-delivery.com"
 NODE_ENV="production"
 PORT=3001
+DEPLOY_SECRET="8825d84896081a6e606bdff3c81f336f4053c551eb800fa0d32ccc77cba7f596"
 ENVEOF
 log "Fichier .env configuré"
 
