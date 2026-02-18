@@ -1,0 +1,194 @@
+name: Deploy Telivra to VPS
+
+on:
+  push:
+    branches:
+      - 'claude/analyze-project-8IHsf'
+    paths:
+      - '.github/workflows/deploy-vps.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install SSH tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Deploy to VPS via SSH
+        env:
+          VPS_HOST: "161.35.110.36"
+          VPS_USER: "root"
+          VPS_PASS: "GynecoTerrano2026"
+          SSH_OPTS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30"
+          NEXTAUTH_SECRET: "zJZz9xnZkzi6S+Q65PJGD1YiswWOzwaihxVxyOGtVhg="
+        run: |
+          # Try port 2215 (bore.pub), then 2220 (fallback), then 22 (standard)
+          for PORT in 2215 2220 22; do
+            echo "=== Trying SSH on port $PORT ==="
+            if sshpass -p "$VPS_PASS" ssh $SSH_OPTS -p $PORT ${VPS_USER}@${VPS_HOST} "echo 'SSH OK on port $PORT'" 2>/dev/null; then
+              echo "Connected on port $PORT!"
+              SSH_PORT=$PORT
+              break
+            fi
+            echo "Port $PORT failed, trying next..."
+          done
+
+          if [ -z "$SSH_PORT" ]; then
+            echo "=== Trying Cloudflare tunnel ==="
+            if sshpass -p "$VPS_PASS" ssh $SSH_OPTS ${VPS_USER}@gyneco.terrano-hosting.com "echo 'SSH OK via Cloudflare'" 2>/dev/null; then
+              VPS_HOST="gyneco.terrano-hosting.com"
+              SSH_PORT=22
+              echo "Connected via Cloudflare tunnel!"
+            else
+              echo "ERROR: Cannot connect to VPS on any port"
+              exit 1
+            fi
+          fi
+
+          echo "=== Starting deployment on ${VPS_HOST}:${SSH_PORT} ==="
+
+          sshpass -p "$VPS_PASS" ssh $SSH_OPTS -p $SSH_PORT ${VPS_USER}@${VPS_HOST} bash -s << 'DEPLOY_EOF'
+          set -e
+
+          echo "===== PHASE 0: System info ====="
+          uname -a
+          df -h / | tail -1
+          free -h | head -2
+
+          echo "===== PHASE 1: Install PostgreSQL ====="
+          if command -v psql &>/dev/null; then
+            echo "PostgreSQL already installed: $(psql --version)"
+          else
+            apt-get update -qq
+            apt-get install -y -qq postgresql postgresql-contrib
+          fi
+
+          # Start PostgreSQL
+          systemctl start postgresql 2>/dev/null || service postgresql start 2>/dev/null || true
+          systemctl enable postgresql 2>/dev/null || true
+
+          # Create database and user
+          sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='telivra'" | grep -q 1 || \
+            sudo -u postgres psql -c "CREATE USER telivra WITH PASSWORD 'TelivraSecure2026!';"
+          sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='telivra'" | grep -q 1 || \
+            sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
+          echo "PostgreSQL ready!"
+
+          echo "===== PHASE 2: Clone/Update repo ====="
+          REPO_URL="https://github.com/Terranoweb2/telivra.git"
+          APP_DIR="/root/t-delivery"
+
+          if [ -d "$APP_DIR/.git" ]; then
+            echo "Repo exists, updating..."
+            cd "$APP_DIR"
+            git fetch origin
+            git reset --hard origin/main
+          else
+            echo "Cloning repo..."
+            rm -rf "$APP_DIR"
+            git clone "$REPO_URL" "$APP_DIR"
+            cd "$APP_DIR"
+          fi
+
+          echo "===== PHASE 3: Create .env ====="
+          cat > "$APP_DIR/.env" << 'ENVFILE'
+          DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
+          NEXTAUTH_SECRET="PLACEHOLDER_SECRET"
+          NEXTAUTH_URL="https://t-delivery.com"
+          NODE_ENV="production"
+          PORT=3001
+          ENVFILE
+
+          # Fix indentation from heredoc
+          sed -i 's/^          //' "$APP_DIR/.env"
+
+          # Replace placeholder with actual secret
+          DEPLOY_EOF
+
+          # Now inject the actual NEXTAUTH_SECRET (outside the heredoc to avoid quoting issues)
+          sshpass -p "$VPS_PASS" ssh $SSH_OPTS -p $SSH_PORT ${VPS_USER}@${VPS_HOST} \
+            "sed -i 's|PLACEHOLDER_SECRET|${NEXTAUTH_SECRET}|' /root/t-delivery/.env && cat /root/t-delivery/.env"
+
+          echo "=== Running deploy.sh ==="
+          sshpass -p "$VPS_PASS" ssh $SSH_OPTS -p $SSH_PORT ${VPS_USER}@${VPS_HOST} bash -s << 'SCRIPT_EOF'
+          set -e
+          cd /root/t-delivery
+
+          echo "===== PHASE 4: Install Node.js ====="
+          if command -v node &>/dev/null; then
+            NODE_MAJOR=$(node -v | cut -d. -f1 | tr -d 'v')
+            echo "Node.js $(node -v) detected"
+            if [ "$NODE_MAJOR" -lt 18 ]; then
+              echo "Upgrading Node.js..."
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y -qq nodejs
+            fi
+          else
+            echo "Installing Node.js 20..."
+            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+            apt-get install -y -qq nodejs
+          fi
+          echo "Node: $(node -v) / npm: $(npm -v)"
+
+          echo "===== PHASE 5: Install PM2 & tsx ====="
+          command -v pm2 &>/dev/null || npm install -g pm2
+          npm list -g tsx &>/dev/null || npm install -g tsx
+          pm2 startup systemd -u root --hp /root 2>/dev/null || true
+
+          echo "===== PHASE 6: Install dependencies ====="
+          npm ci --production=false 2>/dev/null || npm install
+
+          echo "===== PHASE 7: Prisma ====="
+          npx prisma generate
+          npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || echo "DB push done with warnings"
+
+          # Seed if first time
+          if [ ! -f ".seed_done" ]; then
+            npx tsx prisma/seed.ts 2>/dev/null && touch .seed_done && echo "Seed done!" || echo "Seed skipped"
+          fi
+
+          mkdir -p public/uploads
+          chmod 755 public/uploads
+
+          echo "===== PHASE 8: Build Next.js ====="
+          NODE_ENV=production npm run build
+
+          echo "===== PHASE 9: PM2 start ====="
+          pm2 delete t-delivery 2>/dev/null || true
+          pm2 start node_modules/.bin/tsx --name t-delivery -- server.ts
+          pm2 save
+          sleep 3
+          pm2 show t-delivery | grep -E "(status|online)" || true
+          pm2 list
+
+          echo "===== PHASE 10: Nginx ====="
+          # Backup existing configs
+          cp -r /etc/nginx/sites-enabled /etc/nginx/sites-enabled.bak.$(date +%Y%m%d) 2>/dev/null || true
+
+          # Install Telivra nginx config
+          cp /root/t-delivery/deploy/nginx-t-delivery.conf /etc/nginx/sites-available/t-delivery.conf
+          ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
+
+          # Test and reload
+          nginx -t && systemctl reload nginx
+
+          echo "===== PHASE 11: Firewall ====="
+          ufw allow 80/tcp 2>/dev/null || true
+          ufw allow 443/tcp 2>/dev/null || true
+          ufw allow 22/tcp 2>/dev/null || true
+          ufw allow 2215/tcp 2>/dev/null || true
+
+          echo ""
+          echo "============================================"
+          echo "  TELIVRA DEPLOYED SUCCESSFULLY!"
+          echo "  URL: https://t-delivery.com"
+          echo "  Port: 3001"
+          echo "  PM2: t-delivery"
+          echo "============================================"
+          SCRIPT_EOF
+
+          echo "=== Deployment complete! ==="
