@@ -27,9 +27,9 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 };
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const role = (session?.user as any)?.role || "VIEWER";
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || role === "MANAGER";
 
   const [revenue, setRevenue] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
   useEffect(() => {
+    if (status !== "authenticated") return;
     const promises: Promise<any>[] = [];
 
     if (isAdmin) {
@@ -69,9 +70,58 @@ export default function DashboardPage() {
       setOrders(Array.isArray(ord) ? ord : []);
       setLoading(false);
     });
-  }, [isAdmin, role]);
+  }, [isAdmin, role, status]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
+  if (loading || status !== "authenticated") return (
+    <div className="space-y-5 animate-pulse">
+      <div className="space-y-1">
+        <div className="h-7 w-36 bg-gray-800 rounded-xl" />
+        <div className="h-4 w-52 bg-gray-800/60 rounded-lg" />
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="min-w-[10rem] shrink-0 lg:min-w-0 p-4 bg-gray-800/40 rounded-2xl border border-gray-800 space-y-2">
+            <div className="w-8 h-8 bg-gray-700 rounded-xl" />
+            <div className="h-6 w-20 bg-gray-700 rounded" />
+            <div className="h-3 w-28 bg-gray-800 rounded" />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="min-w-[10rem] shrink-0 lg:min-w-0 p-4 bg-gray-800/40 rounded-2xl border border-gray-800 space-y-2">
+            <div className="w-8 h-8 bg-gray-700 rounded-xl" />
+            <div className="h-5 w-12 bg-gray-700 rounded" />
+            <div className="h-3 w-20 bg-gray-800 rounded" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-gray-800/40 rounded-2xl border border-gray-800 p-4 space-y-3">
+        <div className="h-4 w-40 bg-gray-700 rounded" />
+        <div className="flex items-end justify-between gap-2 h-32">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full bg-gray-700 rounded-t-lg" style={{ height: `${20 + i * 10}%` }} />
+              <div className="h-2 w-6 bg-gray-800 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 w-36 bg-gray-700 rounded" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-3 p-3 bg-gray-800/40 rounded-2xl border border-gray-800">
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3.5 w-28 bg-gray-700 rounded" />
+              <div className="h-2.5 w-40 bg-gray-800 rounded" />
+            </div>
+            <div className="h-5 w-16 bg-gray-700 rounded-full" />
+            <div className="h-4 w-14 bg-gray-700 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const activeOrders = orders.filter((o) => ["PENDING", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERING"].includes(o.status));
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
