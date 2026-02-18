@@ -67,34 +67,41 @@ jobs:
       - name: Find working SSH port (fallback)
         if: steps.webhook.outputs.webhook_success != 'true'
         id: ssh
+        continue-on-error: true
+        shell: bash {0}
         run: |
-          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
+          FOUND=false
           for PORT in 2215 2220 22; do
             echo "Trying port $PORT..."
             if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS -p $PORT ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo OK" 2>/dev/null; then
               echo "port=$PORT" >> $GITHUB_OUTPUT
               echo "ssh_ok=true" >> $GITHUB_OUTPUT
               echo "Connected on port $PORT!"
-              exit 0
+              FOUND=true
+              break
             fi
+            echo "Port $PORT: no response"
           done
-          echo "Trying Cloudflare host..."
-          if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS ${{ env.VPS_USER }}@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
-            echo "port=22" >> $GITHUB_OUTPUT
-            echo "host_override=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
-            echo "ssh_ok=true" >> $GITHUB_OUTPUT
-            echo "Connected via Cloudflare!"
-            exit 0
+          if [ "$FOUND" = "false" ]; then
+            echo "Trying Cloudflare host..."
+            if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS ${{ env.VPS_USER }}@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
+              echo "port=22" >> $GITHUB_OUTPUT
+              echo "host_override=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
+              echo "ssh_ok=true" >> $GITHUB_OUTPUT
+              echo "Connected via Cloudflare!"
+              FOUND=true
+            fi
           fi
-          echo "ssh_ok=false" >> $GITHUB_OUTPUT
-          echo "::warning::SSH not available on any port. First deploy must be manual."
-          echo ""
-          echo "=== MANUAL FIRST DEPLOYMENT REQUIRED ==="
-          echo "Run this on the VPS:"
-          echo "  cd /root && rm -rf t-delivery && git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git t-delivery && cd t-delivery && bash deploy/deploy.sh"
+          if [ "$FOUND" = "false" ]; then
+            echo "ssh_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::SSH not available. Run manually on VPS: cd /root && rm -rf t-delivery && git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git t-delivery && cd t-delivery && bash deploy/deploy.sh"
+          fi
+          exit 0
 
       - name: Deploy via SSH — Full setup
         if: steps.webhook.outputs.webhook_success != 'true' && steps.ssh.outputs.ssh_ok == 'true'
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
