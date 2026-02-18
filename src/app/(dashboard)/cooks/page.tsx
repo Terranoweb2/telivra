@@ -33,32 +33,12 @@ export default function CooksPage() {
         subtitle={`${cooks.length} cuisinier${cooks.length > 1 ? "s" : ""} enregistré${cooks.length > 1 ? "s" : ""}`}
       />
 
-      <div className="grid grid-cols-3 gap-3">
-        <StatCardCentered
-          icon={Flame}
-          value={totalInKitchen}
-          label="En cuisine"
-          color="orange"
-        />
-        <StatCardCentered
-          icon={CheckCircle}
-          value={totalDelivered}
-          label="Livrées"
-          color="green"
-        />
-        <StatCardCentered
-          icon={TrendingUp}
-          value={totalRevenue.toLocaleString()}
-          label="FCFA total"
-          color="purple"
-        />
+      <div className="flex gap-3">
+        <StatCardCentered className="flex-1" icon={Flame} value={totalInKitchen} label="En cuisine" color="orange" />
+        <StatCardCentered className="flex-1" icon={CheckCircle} value={totalDelivered} label="Livrées" color="green" />
+        <StatCardCentered className="flex-1" icon={TrendingUp} value={totalRevenue.toLocaleString()} label="FCFA total" color="purple" />
         {totalPickup > 0 && (
-          <StatCardCentered
-            icon={ShoppingBag}
-            value={totalPickup}
-            label="À emporter"
-            color="purple"
-          />
+          <StatCardCentered className="flex-1" icon={ShoppingBag} value={totalPickup} label="À emporter" color="purple" />
         )}
       </div>
 
