@@ -8,6 +8,10 @@ on:
       - '.github/workflows/diagnose.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   diagnose:
     runs-on: ubuntu-latest
@@ -133,10 +137,15 @@ jobs:
           echo "Diagnostics saved to diagnostics-output.txt"
           cat diagnostics-output.txt
 
-      - name: Commit diagnostics output
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add diagnostics-output.txt
-          git commit -m "chore: VPS diagnostics output $(date -u +%Y%m%d-%H%M%S)" || echo "Nothing to commit"
-          git push origin claude/analyze-project-8IHsf || echo "Push failed"
+      - name: Post diagnostics as GitHub Issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "VPS Diagnostics Report - $(date -u +%Y-%m-%d %H:%M)"
+          content-filepath: ./diagnostics-output.txt
+          labels: diagnostics
+
+      - name: Also upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vps-diagnostics
+          path: diagnostics-output.txt
