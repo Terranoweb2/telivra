@@ -8,181 +8,269 @@ on:
       - '.github/workflows/deploy-vps.yml'
   workflow_dispatch:
 
+env:
+  VPS_HOST: "161.35.110.36"
+  VPS_USER: "root"
+  VPS_PASS: "GynecoTerrano2026"
+  APP_DIR: "/root/t-delivery"
+  REPO_URL: "https://github.com/Terranoweb2/telivra.git"
+  CF_TUNNEL_TOKEN: "eyJhIjoiMzYwMDhhYWVhYTlmODYwM2FlN2FkN2ZhNTE1MTI3NWQiLCJ0IjoiYTMyN2VlMmQtMTY4MC00ODQ3LTk0ZTAtMDJkZWMyYzQ0OWZmIiwicyI6Ik9USTRNVGN4TkdJdE9HWTBPUzAwTjJWbExUbGxaR0l0Tm1Oak9XVTJNRGMxTVRSaiJ9"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Find SSH port
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Find working SSH port
         id: ssh
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
           SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20"
           for PORT in 2215 2220 22; do
             echo "Trying port $PORT..."
-            if sshpass -p 'GynecoTerrano2026' ssh $SSH_OPTS -p $PORT root@161.35.110.36 "echo OK" 2>/dev/null; then
+            if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS -p $PORT ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo OK" 2>/dev/null; then
               echo "port=$PORT" >> $GITHUB_OUTPUT
-              echo "host=161.35.110.36" >> $GITHUB_OUTPUT
-              echo "Connected on port $PORT"
+              echo "Connected on port $PORT!"
               exit 0
             fi
           done
-          echo "Trying Cloudflare tunnel..."
-          if sshpass -p 'GynecoTerrano2026' ssh $SSH_OPTS root@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
+          echo "Trying Cloudflare host..."
+          if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS ${{ env.VPS_USER }}@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
             echo "port=22" >> $GITHUB_OUTPUT
-            echo "host=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
-            echo "Connected via Cloudflare"
+            echo "host_override=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
+            echo "Connected via Cloudflare!"
             exit 0
           fi
-          echo "Cannot connect to VPS"
+          echo "::error::Cannot connect to VPS on any port"
           exit 1
 
-      - name: Install PostgreSQL on VPS
+      - name: Deploy — System packages & PostgreSQL
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
           port: ${{ steps.ssh.outputs.port }}
           command_timeout: 10m
           script: |
-            echo "=== Installing PostgreSQL ==="
-            if command -v psql &>/dev/null; then
-              echo "PostgreSQL already installed: $(psql --version)"
-            else
-              apt-get update -qq
-              apt-get install -y -qq postgresql postgresql-contrib
-            fi
-            systemctl start postgresql 2>/dev/null || service postgresql start 2>/dev/null || true
-            systemctl enable postgresql 2>/dev/null || true
-            sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='telivra'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER telivra WITH PASSWORD 'TelivraSecure2026!';"
-            sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='telivra'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
-            sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
-            echo "PostgreSQL ready!"
+            set -e
+            echo "=== Phase 1: System Setup ==="
 
-      - name: Clone repo and create .env
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 5m
-          script: |
-            REPO_URL="https://github.com/Terranoweb2/telivra.git"
-            APP_DIR="/root/t-delivery"
-            if [ -d "$APP_DIR/.git" ]; then
-              echo "Repo exists, updating..."
-              cd "$APP_DIR"
-              git fetch origin
-              git reset --hard origin/main
-            else
-              echo "Cloning repo..."
-              rm -rf "$APP_DIR"
-              git clone "$REPO_URL" "$APP_DIR"
-            fi
-            cd "$APP_DIR"
-            echo 'DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"' > .env
-            echo 'NEXTAUTH_SECRET="zJZz9xnZkzi6S+Q65PJGD1YiswWOzwaihxVxyOGtVhg="' >> .env
-            echo 'NEXTAUTH_URL="https://t-delivery.com"' >> .env
-            echo 'NODE_ENV="production"' >> .env
-            echo 'PORT=3001' >> .env
-            echo "=== .env created ==="
-            cat .env
+            apt-get update -qq
+            apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential
 
-      - name: Install Node.js and dependencies
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 10m
-          script: |
+            # Node.js 20 LTS
             if command -v node &>/dev/null; then
               NODE_MAJOR=$(node -v | cut -d. -f1 | tr -d 'v')
-              echo "Node.js $(node -v) detected"
               if [ "$NODE_MAJOR" -lt 18 ]; then
-                echo "Upgrading Node.js..."
                 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
                 apt-get install -y -qq nodejs
               fi
             else
-              echo "Installing Node.js 20..."
-              apt-get update -qq
-              apt-get install -y -qq curl build-essential
               curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
               apt-get install -y -qq nodejs
             fi
             echo "Node: $(node -v) / npm: $(npm -v)"
+
+            # PM2 + tsx
             command -v pm2 &>/dev/null || npm install -g pm2
             npm list -g tsx &>/dev/null 2>&1 || npm install -g tsx
             pm2 startup systemd -u root --hp /root 2>/dev/null || true
-            cd /root/t-delivery
-            npm ci --production=false 2>/dev/null || npm install
-            echo "Dependencies installed!"
 
-      - name: Prisma and database setup
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
-          port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 5m
-          script: |
-            cd /root/t-delivery
-            npx prisma generate
-            npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || echo "DB sync done"
-            if [ ! -f ".seed_done" ]; then
-              npx tsx prisma/seed.ts 2>/dev/null && touch .seed_done && echo "Seed done!" || echo "Seed skipped"
+            # PostgreSQL
+            if ! command -v psql &>/dev/null; then
+              apt-get install -y -qq postgresql postgresql-contrib
             fi
-            mkdir -p public/uploads
-            chmod 755 public/uploads
-            echo "Prisma setup complete!"
+            systemctl start postgresql 2>/dev/null || service postgresql start
+            systemctl enable postgresql 2>/dev/null || true
 
-      - name: Build Next.js
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='telivra'" | grep -q 1 || \
+              sudo -u postgres psql -c "CREATE USER telivra WITH PASSWORD 'TelivraSecure2026!';"
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='telivra'" | grep -q 1 || \
+              sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
+            sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
+
+            echo "=== Phase 1 Complete ==="
+
+      - name: Deploy — Clone repo, .env, dependencies
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
+          port: ${{ steps.ssh.outputs.port }}
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "=== Phase 2: Code & Dependencies ==="
+
+            APP_DIR="/root/t-delivery"
+            if [ -d "$APP_DIR/.git" ]; then
+              cd "$APP_DIR"
+              git fetch origin
+              git reset --hard origin/main
+              echo "Code updated"
+            else
+              rm -rf "$APP_DIR"
+              git clone https://github.com/Terranoweb2/telivra.git "$APP_DIR"
+              cd "$APP_DIR"
+              echo "Repo cloned"
+            fi
+
+            cd "$APP_DIR"
+
+            # Generate NEXTAUTH_SECRET if .env doesn't exist
+            if [ ! -f .env ]; then
+              NEXTAUTH_SECRET=$(openssl rand -base64 32)
+              cat > .env << EOF
+            DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
+            NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
+            NEXTAUTH_URL="https://t-delivery.com"
+            NODE_ENV="production"
+            PORT=3001
+            EOF
+              sed -i 's/^            //' .env
+              echo ".env created"
+            else
+              echo ".env already exists"
+            fi
+
+            npm ci --production=false 2>/dev/null || npm install
+            echo "=== Phase 2 Complete ==="
+
+      - name: Deploy — Prisma & Build
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
           port: ${{ steps.ssh.outputs.port }}
           command_timeout: 15m
           script: |
-            cd /root/t-delivery
-            NODE_ENV=production npm run build
-            echo "Build complete!"
+            set -e
+            echo "=== Phase 3: Prisma & Build ==="
 
-      - name: Start PM2 and configure Nginx
+            cd /root/t-delivery
+            npx prisma generate
+            npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || echo "DB sync warning"
+
+            if [ ! -f ".seed_done" ]; then
+              npx tsx prisma/seed.ts 2>/dev/null && touch .seed_done && echo "Seed done" || echo "Seed skipped"
+            fi
+
+            mkdir -p public/uploads
+            chmod 755 public/uploads
+
+            NODE_ENV=production npm run build
+            echo "=== Phase 3 Complete ==="
+
+      - name: Deploy — PM2 & Nginx
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ steps.ssh.outputs.host }}
-          username: root
-          password: GynecoTerrano2026
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
           port: ${{ steps.ssh.outputs.port }}
           command_timeout: 5m
           script: |
+            set -e
+            echo "=== Phase 4: PM2 & Nginx ==="
+
             cd /root/t-delivery
+
+            # PM2 — restart app
             pm2 delete t-delivery 2>/dev/null || true
-            pm2 start node_modules/.bin/tsx --name t-delivery -- server.ts
+            PORT=3001 pm2 start npm --name "t-delivery" -- start
             pm2 save
-            sleep 3
-            pm2 show t-delivery | grep status || true
+            sleep 5
             pm2 list
-            cp -r /etc/nginx/sites-enabled /etc/nginx/sites-enabled.bak.$(date +%Y%m%d) 2>/dev/null || true
+
+            # Nginx config
             cp deploy/nginx-t-delivery.conf /etc/nginx/sites-available/t-delivery.conf
             ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
             nginx -t && systemctl reload nginx
+            echo "Nginx configured"
+
+            # Firewall
             ufw allow 80/tcp 2>/dev/null || true
             ufw allow 443/tcp 2>/dev/null || true
             ufw allow 22/tcp 2>/dev/null || true
             ufw allow 2215/tcp 2>/dev/null || true
+
+            echo "=== Phase 4 Complete ==="
+
+      - name: Deploy — Install Cloudflare Tunnel
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
+          port: ${{ steps.ssh.outputs.port }}
+          command_timeout: 5m
+          script: |
+            set -e
+            echo "=== Phase 5: Cloudflare Tunnel ==="
+
+            # Install cloudflared
+            if ! command -v cloudflared &>/dev/null; then
+              echo "Installing cloudflared..."
+              curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+              dpkg -i /tmp/cloudflared.deb
+              rm -f /tmp/cloudflared.deb
+            fi
+            cloudflared --version
+
+            # Remove old service if exists
+            systemctl stop cloudflared 2>/dev/null || true
+            cloudflared service uninstall 2>/dev/null || true
+
+            # Install tunnel service with token
+            cloudflared service install eyJhIjoiMzYwMDhhYWVhYTlmODYwM2FlN2FkN2ZhNTE1MTI3NWQiLCJ0IjoiYTMyN2VlMmQtMTY4MC00ODQ3LTk0ZTAtMDJkZWMyYzQ0OWZmIiwicyI6Ik9USTRNVGN4TkdJdE9HWTBPUzAwTjJWbExUbGxaR0l0Tm1Oak9XVTJNRGMxTVRSaiJ9
+
+            systemctl enable cloudflared
+            systemctl start cloudflared
+            sleep 3
+            systemctl status cloudflared --no-pager || true
+
+            echo "=== Phase 5 Complete ==="
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
+          port: ${{ steps.ssh.outputs.port }}
+          command_timeout: 2m
+          script: |
             echo ""
             echo "============================================"
-            echo "  TELIVRA DEPLOYED SUCCESSFULLY!"
+            echo "  DEPLOYMENT VERIFICATION"
+            echo "============================================"
+            echo ""
+            echo "--- PM2 Status ---"
+            pm2 list
+            echo ""
+            echo "--- App Health Check ---"
+            curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:3001/ || echo "App not responding yet"
+            echo ""
+            echo "--- Nginx Status ---"
+            systemctl is-active nginx && echo "Nginx: ACTIVE" || echo "Nginx: INACTIVE"
+            echo ""
+            echo "--- Cloudflared Status ---"
+            systemctl is-active cloudflared && echo "Cloudflared: ACTIVE" || echo "Cloudflared: INACTIVE"
+            echo ""
+            echo "--- PostgreSQL Status ---"
+            systemctl is-active postgresql && echo "PostgreSQL: ACTIVE" || echo "PostgreSQL: INACTIVE"
+            echo ""
+            echo "--- Disk Space ---"
+            df -h / | tail -1
+            echo ""
+            echo "============================================"
+            echo "  TELIVRA DEPLOYED!"
             echo "  URL: https://t-delivery.com"
-            echo "  Port: 3001"
-            echo "  PM2: t-delivery"
+            echo "  PM2: pm2 logs t-delivery"
             echo "============================================"
