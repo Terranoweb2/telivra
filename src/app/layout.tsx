@@ -10,8 +10,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Terrano GPS",
-  description: "Plateforme de livraison et suivi GPS",
+  title: "Telivra — T-Delivery",
+  description: "Plateforme de livraison et suivi GPS en temps réel",
   manifest: "/manifest.json",
   other: {
     "mobile-web-app-capable": "yes",
