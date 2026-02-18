@@ -258,7 +258,7 @@ export default function StatistiquesPage() {
                 <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-orange-400" /> Recettes par jour
                 </h3>
-                <div className="h-56 overflow-x-auto"><div className="min-w-[500px] h-full">
+                <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                       <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -272,7 +272,7 @@ export default function StatistiquesPage() {
                       <Bar dataKey="revenue" fill="#ea580c" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </div></div>
+                </div>
               </CardContent>
             </Card>
           )}
