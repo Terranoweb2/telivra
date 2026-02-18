@@ -6,6 +6,8 @@ on:
       - 'claude/analyze-project-8IHsf'
     paths:
       - 'src/**'
+      - 'prisma/**'
+      - 'public/**'
       - '.github/workflows/deploy-vps.yml'
   workflow_dispatch:
 
@@ -124,21 +126,24 @@ jobs:
 
             cd "$APP_DIR"
 
-            # Generate NEXTAUTH_SECRET if .env doesn't exist
-            if [ ! -f .env ]; then
-              NEXTAUTH_SECRET=$(openssl rand -base64 32)
-              cat > .env << EOF
+            # Always ensure .env has correct auth variables (NextAuth v5)
+            AUTH_SECRET_VALUE=$(grep '^AUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+            NEXTAUTH_SECRET_VALUE=$(grep '^NEXTAUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+            SECRET="${AUTH_SECRET_VALUE:-${NEXTAUTH_SECRET_VALUE:-$(openssl rand -base64 32)}}"
+
+            cat > .env << ENVEOF
             DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
-            NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
+            AUTH_SECRET="${SECRET}"
+            AUTH_TRUST_HOST=true
+            AUTH_URL="https://t-delivery.com"
+            NEXTAUTH_SECRET="${SECRET}"
             NEXTAUTH_URL="https://t-delivery.com"
             NODE_ENV="production"
             PORT=3001
-            EOF
-              sed -i 's/^            //' .env
-              echo ".env created"
-            else
-              echo ".env already exists"
-            fi
+            ENVEOF
+            sed -i 's/^            //' .env
+            echo ".env updated with auth variables"
+            cat .env | grep -v SECRET | grep -v PASSWORD
 
             npm ci --production=false 2>/dev/null || npm install
             echo "=== Phase 2 Complete ==="
