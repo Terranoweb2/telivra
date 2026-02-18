@@ -2,6 +2,7 @@
 
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
   Loader2, Printer, Wallet, ShoppingBag, TrendingUp,
   BarChart3, CreditCard, Tag, Calendar, ArrowRight, Truck,
@@ -50,6 +51,8 @@ export default function StatistiquesPage() {
   };
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const { data: session } = useSession();
+  const managerName = (session?.user as any)?.name || "Gerant";
   const [restaurantName, setRestaurantName] = useState("Restaurant");
 
   useEffect(() => {
@@ -136,8 +139,9 @@ export default function StatistiquesPage() {
       <div className="print-only hidden">
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-bold">{restaurantName}</h1>
-          <h2 className="text-lg mt-1">Rapport Statistiques & Comptabilite</h2>
-          <p className="text-sm mt-2">Periode : {periodLabel}</p>
+          <p className="text-sm mt-1">Gerant : {managerName}</p>
+          <h2 className="text-base font-semibold mt-2">Rapport Statistiques & Comptabilite</h2>
+          <p className="text-sm mt-1">Periode : {periodLabel}</p>
           <p className="text-xs text-gray-500 mt-1">Genere le {new Date().toLocaleDateString("fr-FR")} a {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
         </div>
       </div>
