@@ -148,7 +148,7 @@ export default function StatistiquesPage() {
 
       {/* Filtres */}
       <div className="no-print sticky top-14 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-gray-900/95 backdrop-blur-sm">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {([
           { key: "today", label: "Aujourd'hui" },
           { key: "week", label: "Semaine" },
@@ -160,7 +160,7 @@ export default function StatistiquesPage() {
             key={f.key}
             onClick={() => setPeriod(f.key)}
             className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium transition-all",
+              "px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0",
               period === f.key
                 ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
                 : "bg-gray-800 text-gray-400 hover:bg-gray-700"
