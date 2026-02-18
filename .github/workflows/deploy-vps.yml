@@ -285,40 +285,77 @@ jobs:
 
             echo "=== Phase 5 Complete ==="
 
-      - name: Verify deployment
+      - name: Diagnose and fix app
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
           username: ${{ env.VPS_USER }}
           password: ${{ env.VPS_PASS }}
           port: ${{ steps.ssh.outputs.port }}
-          command_timeout: 2m
+          command_timeout: 5m
           script: |
-            echo ""
-            echo "============================================"
-            echo "  DEPLOYMENT VERIFICATION"
-            echo "============================================"
-            echo ""
+            echo "=== DIAGNOSTICS ==="
+
             echo "--- PM2 Status ---"
-            pm2 list
+            pm2 list || echo "PM2 not running"
+
             echo ""
-            echo "--- App Health Check ---"
-            curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:3001/ || echo "App not responding yet"
+            echo "--- PM2 Logs (last 50 lines) ---"
+            pm2 logs t-delivery --lines 50 --nostream 2>/dev/null || echo "No logs"
+
             echo ""
-            echo "--- Nginx Status ---"
+            echo "--- Checking .env ---"
+            cat /root/t-delivery/.env 2>/dev/null | sed 's/=.*/=***/' || echo "No .env"
+
+            echo ""
+            echo "--- Checking ecosystem.config.js ---"
+            cat /root/t-delivery/ecosystem.config.js 2>/dev/null || echo "No ecosystem config"
+
+            echo ""
+            echo "--- Checking .next directory ---"
+            ls -la /root/t-delivery/.next/ 2>/dev/null | head -10 || echo "No .next dir"
+
+            echo ""
+            echo "--- Nginx config test ---"
+            nginx -t 2>&1 || echo "Nginx config error"
+
+            echo ""
+            echo "--- Nginx error log (last 20 lines) ---"
+            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "No error log"
+
+            echo ""
+            echo "--- Checking ports ---"
+            ss -tlnp | grep -E ':(80|443|3001)' || echo "No relevant ports"
+
+            echo ""
+            echo "--- Services Status ---"
             systemctl is-active nginx && echo "Nginx: ACTIVE" || echo "Nginx: INACTIVE"
-            echo ""
-            echo "--- Cloudflared Status ---"
             systemctl is-active cloudflared && echo "Cloudflared: ACTIVE" || echo "Cloudflared: INACTIVE"
-            echo ""
-            echo "--- PostgreSQL Status ---"
             systemctl is-active postgresql && echo "PostgreSQL: ACTIVE" || echo "PostgreSQL: INACTIVE"
+
             echo ""
-            echo "--- Disk Space ---"
+            echo "--- Attempting to restart app ---"
+            cd /root/t-delivery
+            pm2 delete t-delivery 2>/dev/null || true
+
+            # Try starting with next start directly
+            PORT=3001 pm2 start node_modules/.bin/next --name "t-delivery" -- start -p 3001
+            sleep 8
+            pm2 list
+            pm2 logs t-delivery --lines 20 --nostream 2>/dev/null || true
+
+            echo ""
+            echo "--- Health check ---"
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3001/ || echo "App not responding"
+            curl -s http://localhost:3001/ 2>/dev/null | head -5 || echo "No response body"
+
+            echo ""
+            echo "--- Cloudflared tunnel info ---"
+            cloudflared tunnel info 2>/dev/null || true
+            systemctl status cloudflared --no-pager 2>/dev/null || true
+
+            echo ""
+            echo "--- Disk space ---"
             df -h / | tail -1
             echo ""
-            echo "============================================"
-            echo "  TELIVRA DEPLOYED!"
-            echo "  URL: https://t-delivery.com"
-            echo "  PM2: pm2 logs t-delivery"
-            echo "============================================"
+            echo "=== DIAGNOSTICS COMPLETE ==="
