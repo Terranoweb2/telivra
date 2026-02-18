@@ -23,6 +23,9 @@ export function middleware(request: NextRequest) {
   ];
   const isPublic =
     pathname === "/" ||
+    pathname === "/kitchen" ||
+    pathname === "/driver" ||
+    pathname === "/admin" ||
     publicPaths.some((p) => pathname.startsWith(p));
 
   // Toute page non-publique ou /login /register /forgot-password → rediriger vers /
