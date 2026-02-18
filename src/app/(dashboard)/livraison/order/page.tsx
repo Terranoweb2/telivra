@@ -94,6 +94,7 @@ export default function CommandesPage() {
   const [tab, setTabState] = useState<Tab>(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab") as Tab) || "pending"; } return "pending"; });
   const setTab = (t: Tab) => {
     setTabState(t);
+    setPageSize(20);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", t);
     window.history.replaceState({}, "", url.toString());
@@ -109,6 +110,7 @@ export default function CommandesPage() {
     }
   }, [sessionStatus, session]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [pageSize, setPageSize] = useState(20);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newAlert, setNewAlert] = useState(false);
@@ -351,7 +353,9 @@ export default function CommandesPage() {
           { key: "delivered", label: "Livrées", count: deliveredList.length },
         ];
 
-  const currentList = tab === "pending" ? pendingList : tab === "active" ? activeList : deliveredList;
+  const fullList = tab === "pending" ? pendingList : tab === "active" ? activeList : deliveredList;
+  const currentList = fullList.slice(0, pageSize);
+  const hasMore = fullList.length > pageSize;
 
   // Peut annuler?
   function canCancelOrder(order: any) {
@@ -402,7 +406,9 @@ export default function CommandesPage() {
       )}
 
       {/* Onglets */}
+      <div className="sticky top-14 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-gray-900/95 backdrop-blur-sm">
       <TabGroup tabs={tabItems} active={tab} onChange={(key) => setTab(key as Tab)} />
+      </div>
 
       {/* Liste */}
       {currentList.length === 0 ? (
@@ -560,6 +566,78 @@ export default function CommandesPage() {
               );
             }
 
+            // === ADMIN: onglet En attente — vue mixte ===
+            if (tab === "pending" && isAdmin) {
+              const isReady = order.status === "READY" && !order.delivery;
+              return (
+                <Card key={order.id}>
+                  <CardContent>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0",
+                          order.status === "PENDING" ? "bg-yellow-600/20" :
+                          order.status === "PREPARING" ? "bg-orange-600/20" : "bg-green-600/20"
+                        )}>
+                          {order.status === "PENDING" ? <Clock className="w-4 h-4 text-yellow-400" /> :
+                           order.status === "PREPARING" ? <ChefHat className="w-4 h-4 text-orange-400" /> :
+                           <CheckCircle className="w-4 h-4 text-green-400" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white">
+                            {order.client?.name || order.guestName || `#${(order.id as string).slice(-6)}`}
+                          </p>
+                          {order.guestPhone && <p className="text-xs text-gray-400">{order.guestPhone}</p>}
+                          {order.deliveryAddress && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <StatusBadge status={order.status} type="order" />
+                        <p className="text-sm font-bold text-orange-400 mt-1">{order.totalAmount?.toLocaleString()} FCFA</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {order.items?.map((i: any) => (
+                        <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
+                          {i.product?.image ? (
+                            <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                          ) : null}
+                          <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {isReady && (
+                      <div className="flex gap-2">
+                        <button onClick={() => acceptOrder(order.id)}
+                          className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+                          <Truck className="w-4 h-4" /> Accepter la livraison
+                        </button>
+                        {order.deliveryLat && order.deliveryLng && (
+                          <Link
+                            href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}`}
+                            className="py-2.5 px-3 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <Navigation className="w-4 h-4" />
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                    {!isReady && canCancelOrder(order) && (
+                      <button onClick={() => cancelOrder(order.id)}
+                        disabled={cancellingId === order.id}
+                        className="w-full py-2 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
+                        {cancellingId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                        Annuler
+                      </button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }
+
             // === DRIVER: onglet Prêtes — bouton accepter livraison ===
             if (tab === "pending" && isDriver) {
               return (
@@ -667,7 +745,7 @@ export default function CommandesPage() {
                   </Link>
 
                   {/* Bouton itinéraire pour livreur/admin */}
-                  {isDriver && order.deliveryLat && order.deliveryLng && (tab === "active" || tab === "delivered") && (
+                  {isDriver && order.deliveryLat && order.deliveryLng && (
                     <Link
                       href={`/navigate?lat=${order.deliveryLat}&lng=${order.deliveryLng}&address=${encodeURIComponent(order.deliveryAddress || "")}&client=${encodeURIComponent(order.client?.name || order.guestName || "Client")}&phone=${encodeURIComponent(order.guestPhone || "")}&amount=${order.totalAmount || 0}&orderId=${order.id}${order.delivery ? `&deliveryId=${order.delivery.id}&status=${order.delivery.status}` : ""}`}
                       className="mt-2 w-full py-2 bg-orange-600/10 border border-orange-500/20 hover:bg-orange-600/20 text-orange-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
@@ -749,6 +827,16 @@ export default function CommandesPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Voir plus */}
+      {hasMore && (
+        <button
+          onClick={() => setPageSize((s) => s + 20)}
+          className="w-full py-3 text-sm font-medium text-orange-400 hover:text-orange-300 bg-gray-800/50 hover:bg-gray-800 rounded-xl transition-colors"
+        >
+          Voir plus ({fullList.length - pageSize} restantes)
+        </button>
       )}
     </div>
   );
