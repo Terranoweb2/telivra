@@ -25,7 +25,7 @@ interface StatCardProps {
 export function StatCard({ icon: Icon, value, label, sublabel, color = "orange", className }: StatCardProps) {
   const c = accentColors[color];
   return (
-    <div className={cn("bg-gray-800/40 border border-gray-700/50 rounded-xl p-4",  className)}>
+    <div className={cn("bg-gray-800/50 border border-gray-700 rounded-xl p-4",  className)}>
       <Icon className={cn("w-5 h-5 mb-2", c.icon)} />
       <p className="text-2xl font-bold text-white">{value}</p>
       <p className={cn("text-xs text-gray-500")}>{label}</p>
@@ -45,7 +45,7 @@ interface StatCardBadgeProps {
 export function StatCardBadge({ icon: Icon, value, label, color = "orange", className }: StatCardBadgeProps) {
   const c = accentColors[color];
   return (
-    <div className={cn("bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 flex items-center gap-3", className)}>
+    <div className={cn("bg-gray-800/50 border border-gray-700 rounded-xl p-4 flex items-center gap-3", className)}>
       <div className={cn("p-2.5 rounded-xl", c.badge)}>
         <Icon className={cn("w-5 h-5", c.icon)} />
       </div>
@@ -68,7 +68,7 @@ interface StatCardCenteredProps {
 export function StatCardCentered({ icon: Icon, value, label, color = "orange", className }: StatCardCenteredProps) {
   const c = accentColors[color];
   return (
-    <div className={cn("bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 text-center", className)}>
+    <div className={cn("bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center", className)}>
       {Icon && <Icon className={cn("w-5 h-5 mx-auto mb-1", c.icon)} />}
       <p className="text-lg font-bold text-white">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
