@@ -101,7 +101,14 @@ export default function StatistiquesPage() {
 
   function executePrint() {
     setShowPrintModal(false);
-    setTimeout(() => window.print(), 200);
+    // Force light mode for print
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+    if (wasDark) html.classList.remove("dark");
+    setTimeout(() => {
+      window.print();
+      if (wasDark) html.classList.add("dark");
+    }, 250);
   }
 
   function togglePrintSection(key: string) {
