@@ -87,7 +87,7 @@ export default function StatistiquesPage() {
 
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printSections, setPrintSections] = useState({
-    summary: true,
+    summary: false,
     chart: true,
     topProducts: true,
     statusBreakdown: true,
