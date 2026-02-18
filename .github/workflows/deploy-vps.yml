@@ -159,9 +159,9 @@ jobs:
             npx prisma generate
             npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || echo "DB sync warning"
 
-            if [ ! -f ".seed_done" ]; then
-              npx tsx prisma/seed.ts 2>/dev/null && touch .seed_done && echo "Seed done" || echo "Seed skipped"
-            fi
+            # Always re-seed to ensure all accounts exist
+            rm -f .seed_done
+            npx tsx prisma/seed.ts && touch .seed_done && echo "Seed done" || echo "Seed warning"
 
             mkdir -p public/uploads
             chmod 755 public/uploads
