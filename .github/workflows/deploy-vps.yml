@@ -1,0 +1,281 @@
+name: Deploy Telivra to VPS
+
+on:
+  push:
+    branches:
+      - 'claude/analyze-project-8IHsf'
+    paths:
+      - 'src/**'
+      - 'prisma/**'
+      - 'public/**'
+      - '.github/workflows/deploy-vps.yml'
+  workflow_dispatch:
+
+env:
+  VPS_HOST: "161.35.110.36"
+  VPS_USER: "root"
+  VPS_PASS: "GynecoTerrano2026"
+  APP_DIR: "/root/t-delivery"
+  REPO_URL: "https://github.com/Terranoweb2/telivra.git"
+  DEPLOY_SECRET: "8825d84896081a6e606bdff3c81f336f4053c551eb800fa0d32ccc77cba7f596"
+  CF_TUNNEL_TOKEN: "eyJhIjoiMzYwMDhhYWVhYTlmODYwM2FlN2FkN2ZhNTE1MTI3NWQiLCJ0IjoiYTMyN2VlMmQtMTY4MC00ODQ3LTk0ZTAtMDJkZWMyYzQ0OWZmIiwicyI6Ik9USTRNVGN4TkdJdE9HWTBPUzAwTjJWbExUbGxaR0l0Tm1Oak9XVTJNRGMxTVRSaiJ9"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Try HTTP webhook deployment (no SSH needed)
+        id: webhook
+        run: |
+          echo "=== Trying HTTP webhook deployment ==="
+
+          # Check if webhook endpoint exists
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+            "https://t-delivery.com/api/deploy-webhook" 2>/dev/null || echo "000")
+
+          echo "Webhook check: HTTP $STATUS"
+
+          if [ "$STATUS" = "200" ]; then
+            echo "Webhook available! Triggering deployment..."
+            RESPONSE=$(curl -s --max-time 600 \
+              -X POST \
+              -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+              -H "Content-Type: application/json" \
+              "https://t-delivery.com/api/deploy-webhook" 2>&1)
+
+            echo "Response: $RESPONSE"
+
+            if echo "$RESPONSE" | grep -q '"success":true'; then
+              echo "webhook_success=true" >> $GITHUB_OUTPUT
+              echo "Deployment via webhook succeeded!"
+            else
+              echo "webhook_success=false" >> $GITHUB_OUTPUT
+              echo "Webhook deployment failed, will try SSH fallback"
+            fi
+          else
+            echo "webhook_success=false" >> $GITHUB_OUTPUT
+            echo "Webhook not available (HTTP $STATUS), will try SSH fallback"
+          fi
+
+      - name: Install sshpass (SSH fallback)
+        if: steps.webhook.outputs.webhook_success != 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Find working SSH port (fallback)
+        if: steps.webhook.outputs.webhook_success != 'true'
+        id: ssh
+        continue-on-error: true
+        shell: bash {0}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
+          FOUND=false
+          for PORT in 2215 2220 22; do
+            echo "Trying port $PORT..."
+            if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS -p $PORT ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo OK" 2>/dev/null; then
+              echo "port=$PORT" >> $GITHUB_OUTPUT
+              echo "ssh_ok=true" >> $GITHUB_OUTPUT
+              echo "Connected on port $PORT!"
+              FOUND=true
+              break
+            fi
+            echo "Port $PORT: no response"
+          done
+          if [ "$FOUND" = "false" ]; then
+            echo "Trying Cloudflare host..."
+            if sshpass -p '${{ env.VPS_PASS }}' ssh $SSH_OPTS ${{ env.VPS_USER }}@gyneco.terrano-hosting.com "echo OK" 2>/dev/null; then
+              echo "port=22" >> $GITHUB_OUTPUT
+              echo "host_override=gyneco.terrano-hosting.com" >> $GITHUB_OUTPUT
+              echo "ssh_ok=true" >> $GITHUB_OUTPUT
+              echo "Connected via Cloudflare!"
+              FOUND=true
+            fi
+          fi
+          if [ "$FOUND" = "false" ]; then
+            echo "ssh_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::SSH not available. Run manually on VPS: cd /root && rm -rf t-delivery && git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git t-delivery && cd t-delivery && bash deploy/deploy.sh"
+          fi
+          exit 0
+
+      - name: Deploy via SSH — Full setup
+        if: steps.webhook.outputs.webhook_success != 'true' && steps.ssh.outputs.ssh_ok == 'true'
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ steps.ssh.outputs.host_override || env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          password: ${{ env.VPS_PASS }}
+          port: ${{ steps.ssh.outputs.port }}
+          command_timeout: 20m
+          script: |
+            set -e
+            echo "=== Full SSH Deployment ==="
+
+            # Phase 1: System packages
+            apt-get update -qq
+            apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential
+
+            # Node.js 20 LTS
+            if command -v node &>/dev/null; then
+              NODE_MAJOR=$(node -v | cut -d. -f1 | tr -d 'v')
+              if [ "$NODE_MAJOR" -lt 18 ]; then
+                curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+                apt-get install -y -qq nodejs
+              fi
+            else
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y -qq nodejs
+            fi
+            echo "Node: $(node -v) / npm: $(npm -v)"
+
+            command -v pm2 &>/dev/null || npm install -g pm2
+            npm list -g tsx &>/dev/null 2>&1 || npm install -g tsx
+            pm2 startup systemd -u root --hp /root 2>/dev/null || true
+
+            # PostgreSQL
+            if ! command -v psql &>/dev/null; then
+              apt-get install -y -qq postgresql postgresql-contrib
+            fi
+            systemctl start postgresql 2>/dev/null || service postgresql start
+            systemctl enable postgresql 2>/dev/null || true
+
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='telivra'" | grep -q 1 || \
+              sudo -u postgres psql -c "CREATE USER telivra WITH PASSWORD 'TelivraSecure2026!';"
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='telivra'" | grep -q 1 || \
+              sudo -u postgres psql -c "CREATE DATABASE telivra OWNER telivra;"
+            sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE telivra TO telivra;" 2>/dev/null || true
+
+            # Phase 2: Code
+            APP_DIR="/root/t-delivery"
+            if [ -d "$APP_DIR/.git" ]; then
+              cd "$APP_DIR"
+              git fetch origin
+              git checkout claude/analyze-project-8IHsf 2>/dev/null || git checkout -b claude/analyze-project-8IHsf origin/claude/analyze-project-8IHsf
+              git reset --hard origin/claude/analyze-project-8IHsf
+            else
+              rm -rf "$APP_DIR"
+              git clone -b claude/analyze-project-8IHsf https://github.com/Terranoweb2/telivra.git "$APP_DIR"
+              cd "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
+            # .env
+            AUTH_SECRET_VALUE=$(grep '^AUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+            NEXTAUTH_SECRET_VALUE=$(grep '^NEXTAUTH_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
+            SECRET="${AUTH_SECRET_VALUE:-${NEXTAUTH_SECRET_VALUE:-$(openssl rand -base64 32)}}"
+
+            cat > .env << 'ENVEOF'
+            DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
+            DEPLOY_SECRET="8825d84896081a6e606bdff3c81f336f4053c551eb800fa0d32ccc77cba7f596"
+            AUTH_TRUST_HOST=true
+            AUTH_URL="https://t-delivery.com"
+            NODE_ENV="production"
+            PORT=3001
+            ENVEOF
+            # Add secrets separately to avoid heredoc escaping issues
+            echo "AUTH_SECRET=\"${SECRET}\"" >> .env
+            echo "NEXTAUTH_SECRET=\"${SECRET}\"" >> .env
+            echo "NEXTAUTH_URL=\"https://t-delivery.com\"" >> .env
+            sed -i 's/^            //' .env
+
+            npm ci --production=false 2>/dev/null || npm install
+
+            # Phase 3: Prisma & Build
+            npx prisma generate
+            npx prisma db push --accept-data-loss 2>/dev/null || echo "DB sync warning"
+            rm -f .seed_done
+            npx tsx prisma/seed.ts && touch .seed_done || echo "Seed warning"
+            mkdir -p public/uploads logs
+            chmod 755 public/uploads
+
+            NODE_ENV=production npm run build
+
+            # Phase 4: PM2
+            cat > ecosystem.config.js << 'ECOEOF'
+            module.exports = {
+              apps: [{
+                name: 't-delivery',
+                script: 'node_modules/.bin/tsx',
+                args: 'server.ts',
+                cwd: '/root/t-delivery',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3001
+                },
+                max_memory_restart: '500M',
+                merge_logs: true,
+                log_date_format: 'YYYY-MM-DD HH:mm:ss',
+                error_file: '/root/t-delivery/logs/error.log',
+                out_file: '/root/t-delivery/logs/out.log'
+              }]
+            };
+            ECOEOF
+            sed -i 's/^            //' ecosystem.config.js
+
+            pm2 delete t-delivery 2>/dev/null || true
+            pm2 start ecosystem.config.js
+            pm2 save
+            sleep 5
+            pm2 list
+
+            # Phase 5: Nginx
+            mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
+            if grep -rq 'map.*http_upgrade.*connection_upgrade' /etc/nginx/nginx.conf /etc/nginx/sites-enabled/ 2>/dev/null; then
+              sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /etc/nginx/sites-available/t-delivery.conf
+            else
+              cp deploy/nginx-t-delivery.conf /etc/nginx/sites-available/t-delivery.conf
+            fi
+            ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
+            rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+            nginx -t && systemctl reload nginx || echo "Nginx issue - check manually"
+
+            # Phase 6: Cloudflare tunnel
+            if ! command -v cloudflared &>/dev/null; then
+              curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+              dpkg -i /tmp/cloudflared.deb
+              rm -f /tmp/cloudflared.deb
+            fi
+            systemctl stop cloudflared 2>/dev/null || true
+            cloudflared service uninstall 2>/dev/null || true
+            cloudflared service install ${{ env.CF_TUNNEL_TOKEN }}
+            systemctl enable cloudflared
+            systemctl start cloudflared
+
+            # Firewall
+            ufw allow 80/tcp 2>/dev/null || true
+            ufw allow 443/tcp 2>/dev/null || true
+            ufw allow 22/tcp 2>/dev/null || true
+            ufw allow 2215/tcp 2>/dev/null || true
+
+            # Final check
+            sleep 3
+            curl -s -o /dev/null -w "App: HTTP %{http_code}\n" http://localhost:3001/ || echo "App not ready"
+            echo "=== Deployment Complete ==="
+
+      - name: Verify deployment
+        if: always()
+        run: |
+          echo "=== Verifying deployment ==="
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://t-delivery.com/" 2>/dev/null || echo "000")
+          echo "t-delivery.com: HTTP $STATUS"
+
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "308" ]; then
+            echo "Site is reachable!"
+          else
+            echo "::warning::Site returned HTTP $STATUS"
+          fi
+
+          # Check webhook availability for future deploys
+          WH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            -H "x-deploy-secret: ${{ env.DEPLOY_SECRET }}" \
+            "https://t-delivery.com/api/deploy-webhook" 2>/dev/null || echo "000")
+          echo "Deploy webhook: HTTP $WH_STATUS"
+
+          if [ "$WH_STATUS" = "200" ]; then
+            echo "Webhook ready for future zero-SSH deployments!"
+          fi

@@ -1,0 +1,159 @@
+name: VPS Diagnostics
+
+on:
+  push:
+    branches:
+      - 'claude/analyze-project-8IHsf'
+    paths:
+      - '.github/workflows/diagnose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Find SSH port
+        id: ssh
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20"
+          for PORT in 2215 2220 22; do
+            if sshpass -p 'GynecoTerrano2026' ssh $SSH_OPTS -p $PORT root@161.35.110.36 "echo OK" 2>/dev/null; then
+              echo "port=$PORT" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
+          exit 1
+
+      - name: Run diagnostics and fix auth
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          sshpass -p 'GynecoTerrano2026' ssh $SSH_OPTS -p ${{ steps.ssh.outputs.port }} root@161.35.110.36 bash << 'REMOTESCRIPT' > diagnostics-output.txt 2>&1
+          echo "========================================"
+          echo "  VPS AUTH FIX DIAGNOSTICS - $(date)"
+          echo "========================================"
+
+          echo ""
+          echo "=== 1. Current .env file ==="
+          cat /root/t-delivery/.env 2>/dev/null | sed 's/=.*/=***/' || echo "No .env found"
+
+          echo ""
+          echo "=== 2. PM2 Status ==="
+          pm2 list 2>/dev/null || echo "PM2 not running"
+
+          echo ""
+          echo "=== 3. PM2 Error Logs (last 60 lines) ==="
+          pm2 logs t-delivery --err --lines 60 --nostream 2>/dev/null || echo "No error logs"
+
+          echo ""
+          echo "=== 4. PM2 Output Logs (last 30 lines) ==="
+          pm2 logs t-delivery --out --lines 30 --nostream 2>/dev/null || echo "No output logs"
+
+          echo ""
+          echo "=== 5. Test auth endpoint directly ==="
+          echo "--- /api/auth/providers ---"
+          curl -s http://localhost:3001/api/auth/providers 2>/dev/null | head -c 500
+          echo ""
+          echo "--- /api/auth/csrf ---"
+          curl -s http://localhost:3001/api/auth/csrf 2>/dev/null | head -c 500
+          echo ""
+          echo "--- /api/auth/session ---"
+          curl -s http://localhost:3001/api/auth/session 2>/dev/null | head -c 500
+
+          echo ""
+          echo ""
+          echo "=== 6. Fix .env with AUTH_SECRET ==="
+          cd /root/t-delivery
+
+          # Get existing secret or generate new one
+          EXISTING_SECRET=$(grep 'SECRET=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' || echo "")
+          if [ -z "$EXISTING_SECRET" ]; then
+            EXISTING_SECRET=$(openssl rand -base64 32)
+            echo "Generated new secret"
+          else
+            echo "Using existing secret"
+          fi
+
+          # Recreate .env with all required variables
+          cat > .env << ENVEOF
+DATABASE_URL="postgresql://telivra:TelivraSecure2026!@localhost:5432/telivra"
+AUTH_SECRET="${EXISTING_SECRET}"
+AUTH_TRUST_HOST=true
+AUTH_URL="https://t-delivery.com"
+NEXTAUTH_SECRET="${EXISTING_SECRET}"
+NEXTAUTH_URL="https://t-delivery.com"
+NODE_ENV="production"
+PORT=3001
+ENVEOF
+
+          echo "New .env created:"
+          cat .env | sed 's/=.*/=***/'
+
+          echo ""
+          echo "=== 7. Restart PM2 ==="
+          pm2 restart t-delivery
+          sleep 5
+          pm2 list
+
+          echo ""
+          echo "=== 8. Test auth again after restart ==="
+          echo "--- /api/auth/csrf ---"
+          curl -s http://localhost:3001/api/auth/csrf 2>/dev/null | head -c 500
+          echo ""
+          echo "--- /api/auth/providers ---"
+          curl -s http://localhost:3001/api/auth/providers 2>/dev/null | head -c 500
+          echo ""
+          echo "--- / (homepage) ---"
+          curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:3001/ 2>/dev/null
+          echo ""
+
+          echo ""
+          echo "=== 9. PM2 logs after restart ==="
+          pm2 logs t-delivery --lines 20 --nostream 2>/dev/null || true
+
+          echo ""
+          echo "=== 10. Check Node/Next versions ==="
+          node -v
+          cat /root/t-delivery/package.json | grep -E '"next"|"next-auth"'
+
+          echo ""
+          echo "=== 11. Check if next build exists ==="
+          ls -la /root/t-delivery/.next/ 2>/dev/null | head -10
+          ls -la /root/t-delivery/.next/server/ 2>/dev/null | head -10
+
+          echo ""
+          echo "=== 12. PostgreSQL check ==="
+          sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname='telivra';" 2>/dev/null || echo "DB check failed"
+          sudo -u postgres psql -d telivra -c "SELECT email, role FROM \"User\" LIMIT 5;" 2>/dev/null || echo "Users table check failed"
+
+          echo ""
+          echo "========================================"
+          echo "  DIAGNOSTICS COMPLETE"
+          echo "========================================"
+          REMOTESCRIPT
+
+          echo "Diagnostics saved"
+          cat diagnostics-output.txt
+
+      - name: Post diagnostics as GitHub Issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Auth Fix Diagnostics - ${{ github.run_number }}"
+          content-filepath: ./diagnostics-output.txt
+          labels: diagnostics
+
+      - name: Also upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vps-diagnostics
+          path: diagnostics-output.txt

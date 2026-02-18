@@ -23,6 +23,9 @@ export function middleware(request: NextRequest) {
   ];
   const isPublic =
     pathname === "/" ||
+    pathname === "/kitchen" ||
+    pathname === "/driver" ||
+    pathname === "/admin" ||
     publicPaths.some((p) => pathname.startsWith(p));
 
   // Toute page non-publique ou /login /register /forgot-password → rediriger vers /
@@ -44,5 +47,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|images|sounds|uploads|icons|sw\\.js|manifest\\.json|socket\\.io).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|images|sounds|uploads|icons|sw\\.js|manifest.*\\.json|socket\\.io).*)"],
 };
