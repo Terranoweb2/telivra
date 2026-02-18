@@ -45,15 +45,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       className="flex min-h-screen bg-gray-900 brand-theme"
       style={{ "--brand": brandColor } as React.CSSProperties}
     >
-      <Sidebar open={open} onClose={close} />
+      <div className="no-print"><Sidebar open={open} onClose={close} /></div>
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar onMenuToggle={toggle} />
+        <div className="no-print"><TopBar onMenuToggle={toggle} /></div>
         <main className="flex-1 p-4 sm:p-6 pb-20 lg:pb-6">{children}</main>
       </div>
-      <MobileNav />
-      <PushRegistration />
-      <BirthdayConfetti />
-      {isAdmin && <BirthdayDialog />}
+      <div className="no-print"><MobileNav /></div>
+      <div className="no-print"><PushRegistration /></div>
+      <div className="no-print"><BirthdayConfetti /></div>
+      <div className="no-print">{isAdmin && <BirthdayDialog />}</div>
     </div>
   );
 }

@@ -487,104 +487,114 @@ html.dark .glass-bar {
 
 /* --- Print styles --- */
 @media print {
-  /* Force light mode */
+  /* Force light mode — nuclear override */
+  html {
+    color-scheme: light !important;
+  }
   html, body {
-    background: white !important;
-    color: black !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Hide UI elements */
-  .no-print, nav, aside,
-  [class*="mobile-nav"], [class*="sidebar"], [class*="topbar"],
-  [class*="bottom-nav"], footer { display: none !important; }
+  /* Hide all UI chrome */
+  .no-print,
+  header, nav, aside, footer,
+  [class*="mobile-nav"],
+  [class*="sidebar"],
+  [class*="bottom-"],
+  [class*="fixed"] {
+    display: none !important;
+  }
   .print-only { display: block !important; }
+  .print-hide { display: none !important; }
   .print-break { page-break-before: always; }
 
-  /* Reset layout */
-  main, [class*="space-y"], [class*="pb-"] { padding: 0 !important; }
+  /* Layout reset */
+  .flex.min-h-screen { display: block !important; background: #fff !important; }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .flex-1.flex.flex-col { display: block !important; }
 
-  /* Force white backgrounds */
-  *, *::before, *::after { box-shadow: none !important; }
-  div, section, article, main, header {
+  /* Kill ALL dark backgrounds */
+  * {
+    box-shadow: none !important;
+  }
+  div, section, article, main, span, p, h1, h2, h3, h4, h5, h6,
+  table, thead, tbody, tfoot, tr, td, th, label, button, a {
     background-color: transparent !important;
-  }
-  .bg-gray-900, .bg-gray-950, .bg-gray-800, .bg-gray-800\/50,
-  .bg-gray-800\/40, .bg-gray-800\/20, .bg-gray-900\/95,
-  [class*="bg-gray"], [class*="bg-black"] {
-    background-color: white !important;
+    border-color: #d1d5db !important;
   }
 
-  /* Force dark text */
-  .text-white, .text-gray-100, .text-gray-200, .text-gray-300,
-  [class*="text-white"] { color: #000 !important; }
-  .text-gray-400, .text-gray-500, .text-gray-600,
-  [class*="text-gray-4"], [class*="text-gray-5"] { color: #555 !important; }
-
-  /* Colored text stays visible */
-  .text-orange-400, [class*="text-orange"] { color: #c2410c !important; }
-  .text-green-400, [class*="text-green"] { color: #15803d !important; }
-  .text-red-400, [class*="text-red"] { color: #b91c1c !important; }
-  .text-purple-400, [class*="text-purple"] { color: #7e22ce !important; }
-  .text-cyan-400, [class*="text-cyan"] { color: #0e7490 !important; }
-  .text-yellow-400, [class*="text-yellow"] { color: #a16207 !important; }
-  .text-blue-400, [class*="text-blue"] { color: #1d4ed8 !important; }
-
-  /* Borders */
-  .border-gray-800, .border-gray-700, .border-gray-800\/50,
-  .border-gray-800\/30, [class*="border-gray"] {
-    border-color: #ddd !important;
+  /* Cards: light border, white bg */
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"],
+  [class*="CardContent"] {
+    background-color: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    break-inside: avoid;
   }
 
-  /* Cards */
-  [class*="rounded-xl"], [class*="rounded-2xl"] {
-    border: 1px solid #ddd !important;
-    background-color: white !important;
-    margin-bottom: 8px !important;
-  }
+  /* ALL text forced to readable colors */
+  [class*="text-white"],
+  [class*="text-gray-1"],
+  [class*="text-gray-2"],
+  [class*="text-gray-3"] { color: #111827 !important; }
+  [class*="text-gray-4"],
+  [class*="text-gray-5"],
+  [class*="text-gray-6"] { color: #6b7280 !important; }
 
-  /* Stat card icons — light colored backgrounds */
-  [class*="bg-green-500\/10"], [class*="bg-orange-500\/10"],
-  [class*="bg-purple-500\/10"], [class*="bg-red-500\/10"],
-  [class*="bg-cyan-500\/10"], [class*="bg-yellow-500\/10"],
+  /* Accent colors — darker for print */
+  [class*="text-orange"] { color: #c2410c !important; }
+  [class*="text-green"] { color: #15803d !important; }
+  [class*="text-red"] { color: #b91c1c !important; }
+  [class*="text-purple"] { color: #7e22ce !important; }
+  [class*="text-cyan"] { color: #0e7490 !important; }
+  [class*="text-yellow"] { color: #a16207 !important; }
+  [class*="text-blue"] { color: #1d4ed8 !important; }
+
+  /* Icon containers — soft gray bg */
+  [class*="bg-green-500\/10"],
+  [class*="bg-orange-500\/10"],
+  [class*="bg-purple-500\/10"],
+  [class*="bg-red-500\/10"],
+  [class*="bg-cyan-500\/10"],
+  [class*="bg-yellow-500\/10"],
   [class*="bg-blue-500\/10"] {
     background-color: #f3f4f6 !important;
   }
 
-  /* Status badges */
-  [class*="bg-green-600\/20"], [class*="bg-orange-600\/20"],
-  [class*="bg-yellow-600\/20"], [class*="bg-cyan-600\/20"],
-  [class*="bg-purple-600\/20"], [class*="bg-red-600\/20"],
-  [class*="bg-blue-600\/20"] {
-    background-color: #f3f4f6 !important;
-  }
-
-  /* Table */
-  table { border-collapse: collapse; width: 100%; page-break-inside: auto; }
-  tr { page-break-inside: avoid; }
-  th { background-color: #f3f4f6 !important; color: #374151 !important; font-weight: 600; }
+  /* Table styling */
+  table { border-collapse: collapse !important; width: 100% !important; }
   th, td { border: 1px solid #d1d5db !important; padding: 6px 10px !important; }
-  tfoot td { font-weight: bold; background-color: #f9fafb !important; }
+  th { background-color: #f3f4f6 !important; color: #374151 !important; font-weight: 600 !important; }
+  tfoot td { background-color: #f9fafb !important; font-weight: bold !important; }
+  tr { break-inside: avoid; }
 
-  /* Recharts SVG — force light */
-  .recharts-wrapper { background: white !important; }
-  .recharts-cartesian-grid-horizontal line,
-  .recharts-cartesian-grid-vertical line { stroke: #e5e7eb !important; }
+  /* Recharts */
+  .recharts-wrapper { background: #fff !important; }
   .recharts-text { fill: #374151 !important; }
+  .recharts-cartesian-grid line { stroke: #e5e7eb !important; }
 
-  /* Scrollable containers — show all content */
-  [class*="overflow-x-auto"], [class*="overflow-y-auto"],
+  /* Overflow: show all */
+  [class*="overflow-x-auto"],
+  [class*="overflow-y-auto"],
   [class*="scrollbar-hide"] {
     overflow: visible !important;
   }
-  [class*="flex gap-3 overflow"], [class*="flex gap-4 overflow"] {
+
+  /* Stat cards grid for print */
+  [data-print-section="summary"] {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     overflow: visible !important;
+    gap: 8px !important;
   }
 
-  /* Page settings */
+  /* Page */
   @page { margin: 10mm 15mm; }
 }
 
@@ -633,9 +643,3 @@ html:not(.dark) .chat-input::placeholder { color: #94a3b8 !important; }
 html:not(.dark) .text-gray-100 { color: #1e293b !important; }
 html:not(.dark) .text-gray-200 { color: #334155 !important; }
 
-/* Print section hide */
-@media print {
-  .print-hide {
-    display: none !important;
-  }
-}
