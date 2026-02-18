@@ -24,6 +24,7 @@ export default function CooksPage() {
   const [cooks, setCooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string>>({});
   const socketRef = useRef<Socket | null>(null);
 
   const fetchCooks = useCallback(() => {
@@ -58,6 +59,9 @@ export default function CooksPage() {
           else next.delete(userId);
           return next;
         });
+        if (!online) {
+          setLastSeenMap((prev) => ({ ...prev, [userId]: new Date().toISOString() }));
+        }
       }
     });
 
@@ -100,6 +104,7 @@ export default function CooksPage() {
       <div className="space-y-2">
         {cooks.map((cook) => {
           const online = onlineUsers.has(cook.id);
+          const lastSeen = lastSeenMap[cook.id] || cook.lastSeenAt;
           return (
             <Link key={cook.id} href={`/cooks/${cook.id}`}>
               <Card hover>
@@ -123,7 +128,7 @@ export default function CooksPage() {
                           </span>
                         ) : (
                           <span className="text-[9px] text-gray-500 shrink-0 flex items-center gap-0.5">
-                            <WifiOff className="w-2.5 h-2.5" /> {cook.lastSeenAt ? timeAgo(cook.lastSeenAt) : "Jamais connecté"}
+                            <WifiOff className="w-2.5 h-2.5" /> {lastSeen ? timeAgo(lastSeen) : "Jamais connecté"}
                           </span>
                         )}
                       </div>

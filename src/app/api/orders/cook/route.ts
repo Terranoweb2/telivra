@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
   const cookId = (session.user as any).id;
   const isAdmin = role === "ADMIN";
 
+  // Update lastSeenAt for online status tracking
+  if (role === "COOK") {
+    prisma.user.update({ where: { id: cookId }, data: { lastSeenAt: new Date() } }).catch(() => {});
+  }
+
   let where: any;
   if (isAdmin) {
     const sevenDaysAgo = new Date();

@@ -24,6 +24,7 @@ export default function DriversPage() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string>>({});
   const socketRef = useRef<Socket | null>(null);
 
   const fetchDrivers = useCallback(() => {
@@ -58,6 +59,9 @@ export default function DriversPage() {
           else next.delete(userId);
           return next;
         });
+        if (!online) {
+          setLastSeenMap((prev) => ({ ...prev, [userId]: new Date().toISOString() }));
+        }
       }
     });
 
@@ -98,6 +102,7 @@ export default function DriversPage() {
       <div className="space-y-2">
         {drivers.map((driver) => {
           const online = onlineUsers.has(driver.id);
+          const lastSeen = lastSeenMap[driver.id] || driver.lastSeenAt;
           return (
             <Link key={driver.id} href={`/drivers/${driver.id}`}>
               <Card hover>
@@ -126,7 +131,7 @@ export default function DriversPage() {
                           </span>
                         ) : (
                           <span className="text-[9px] text-gray-500 shrink-0 flex items-center gap-0.5">
-                            <WifiOff className="w-2.5 h-2.5" /> {driver.lastSeenAt ? timeAgo(driver.lastSeenAt) : "Jamais connecté"}
+                            <WifiOff className="w-2.5 h-2.5" /> {lastSeen ? timeAgo(lastSeen) : "Jamais connecté"}
                           </span>
                         )}
                       </div>

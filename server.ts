@@ -260,6 +260,13 @@ app.prepare().then(() => {
                   userId: presUserId, role: e.role, name: e.name, online: false,
                 });
                 console.log(`[Presence] ${e.name} (${e.role}) offline`);
+                // Persist lastSeenAt in DB
+                import("@prisma/client").then(({ PrismaClient }) => {
+                  const db = new PrismaClient();
+                  db.user.update({ where: { id: presUserId }, data: { lastSeenAt: new Date() } })
+                    .then(() => db.$disconnect())
+                    .catch(() => db.$disconnect());
+                });
               }
               disconnectTimeouts.delete(presUserId);
             }, 5000);
