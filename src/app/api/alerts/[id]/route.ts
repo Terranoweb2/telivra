@@ -6,9 +6,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const { id } = await params;
+  const userId = (session.user as any).id;
   const body = await request.json();
+
+  const existing = await prisma.alert.findFirst({ where: { id, userId } });
+  if (!existing) return NextResponse.json({ error: "Alerte introuvable" }, { status: 404 });
+
   const alert = await prisma.alert.update({
-    where: { id, userId: (session.user as any).id },
+    where: { id },
     data: { isRead: body.isRead ?? true },
   });
   return NextResponse.json(alert);
@@ -18,6 +23,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const { id } = await params;
-  await prisma.alert.delete({ where: { id, userId: (session.user as any).id } });
+  const userId = (session.user as any).id;
+
+  const existing = await prisma.alert.findFirst({ where: { id, userId } });
+  if (!existing) return NextResponse.json({ error: "Alerte introuvable" }, { status: 404 });
+
+  await prisma.alert.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

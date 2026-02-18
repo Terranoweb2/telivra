@@ -113,3 +113,40 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
+
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user || (session.user as any).role !== "ADMIN")
+      return NextResponse.json({ error: "Non autorise" }, { status: 401 });
+
+    const { id } = await request.json();
+
+    if (id === (session.user as any).id) {
+      return NextResponse.json({ error: "Vous ne pouvez pas supprimer votre propre compte" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { _count: { select: { clientOrders: true, driverDeliveries: true, cookOrders: true } } },
+    });
+
+    if (!user) return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+
+    const total = (user._count.clientOrders || 0) + (user._count.driverDeliveries || 0) + (user._count.cookOrders || 0);
+    if (total > 0) {
+      return NextResponse.json({ error: "Cet utilisateur a des commandes. Bloquez-le plutôt." }, { status: 400 });
+    }
+
+    // Delete related records first
+    await prisma.alert.deleteMany({ where: { userId: id } });
+    await prisma.device.deleteMany({ where: { userId: id } });
+    await prisma.pushSubscription.deleteMany({ where: { userId: id } });
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    console.error("[users] DELETE error:", e.message);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}

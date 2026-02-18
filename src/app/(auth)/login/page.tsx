@@ -25,8 +25,25 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError("Email ou mot de passe incorrect");
-      toast.error("Email ou mot de passe incorrect");
+      try {
+        const checkRes = await fetch("/api/auth/check-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.get("email") }),
+        });
+        const checkData = await checkRes.json();
+        if (checkData.blocked) {
+          const msg = "Votre compte a été désactivé. Vous ne faites plus partie du staff du restaurant.";
+          setError(msg);
+          toast.error(msg);
+        } else {
+          setError("Email ou mot de passe incorrect");
+          toast.error("Email ou mot de passe incorrect");
+        }
+      } catch {
+        setError("Email ou mot de passe incorrect");
+        toast.error("Email ou mot de passe incorrect");
+      }
       setLoading(false);
     } else {
       toast.success("Connexion réussie");
