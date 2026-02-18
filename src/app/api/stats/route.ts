@@ -64,5 +64,5 @@ export async function GET() {
     alerts: { total: totalAlerts, unread: unreadAlerts },
     geofences: { active: totalGeofences },
     positions: { total: totalPositions },
-  });
+  }, { headers: { "Cache-Control": "private, s-maxage=30, stale-while-revalidate=60" } });
 }

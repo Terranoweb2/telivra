@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDeliverySocket } from "@/hooks/use-delivery-socket";
+import { io as socketIO } from "socket.io-client";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TabGroup } from "@/components/ui/tabs";
@@ -35,6 +36,7 @@ export default function CuisinePage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
   const [newAlert, setNewAlert] = useState(false);
+  const [pickupDelivering, setPickupDelivering] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { setPage(1); }, [tab]);
@@ -53,8 +55,16 @@ export default function CuisinePage() {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
-    pollRef.current = setInterval(loadOrders, 8000);
+    pollRef.current = setInterval(loadOrders, 30000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadOrders]);
+
+  // Socket temps réel : recharge sur staff:refresh
+  useEffect(() => {
+    const s = socketIO({ path: "/api/socketio", transports: ["websocket"] });
+    s.on("connect", () => s.emit("subscribe:cook"));
+    s.on("staff:refresh", () => loadOrders());
+    return () => { s.disconnect(); };
   }, [loadOrders]);
 
   useDeliverySocket({
@@ -84,6 +94,7 @@ export default function CuisinePage() {
   }
 
   async function markPickupDelivered(orderId: string) {
+    setPickupDelivering(orderId);
     try {
       const res = await fetch("/api/orders/" + orderId + "/pickup-delivered", { method: "POST" });
       if (res.ok) {
@@ -93,7 +104,7 @@ export default function CuisinePage() {
         const err = await res.json().catch(() => null);
         toast.error(err?.error || "Erreur");
       }
-    } catch { toast.error("Erreur reseau"); }
+    } catch { toast.error("Erreur reseau"); } finally { setPickupDelivering(null); }
   }
 
   async function markReady(orderId: string) {
@@ -280,8 +291,9 @@ export default function CuisinePage() {
 
                     {tab === "ready" && order.deliveryMode === "PICKUP" && (
                       <button onClick={() => markPickupDelivered(order.id)}
-                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-[12px] font-medium transition-colors">
-                        <Check className="w-3.5 h-3.5" /> Remis au client
+                        disabled={pickupDelivering === order.id}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-[12px] font-medium transition-colors">
+                        {pickupDelivering === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Remis au client
                       </button>
                     )}
 

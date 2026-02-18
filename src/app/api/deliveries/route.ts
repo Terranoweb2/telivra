@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 
   const io = (global as any).io;
-  if (io) io.to("admins").emit("staff:refresh");
+  if (io) { io.to("admins").emit("staff:refresh"); io.to("cooks").emit("staff:refresh"); }
   if (io) {
     io.to(`order:${orderId}`).emit("delivery:accepted", {
       deliveryId: delivery.id,

@@ -1,6 +1,7 @@
 "use client";
 
 
+import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import {
   Loader2, Package, Plus, Trash2, Search,
@@ -500,9 +501,9 @@ export default function ProductsPage() {
                   <CardContent className="flex flex-col gap-2 p-2.5">
                     {/* Image + badge */}
                     <div className="relative">
-                      <div className="w-full aspect-square bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden">
+                      <div className="relative w-full aspect-square bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden">
                         {p.image ? (
-                          <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" />
+                          <Image src={p.image as string} alt={p.name} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover rounded-lg" />
                         ) : (
                           <CatIcon className="w-6 h-6 text-gray-600" />
                         )}
@@ -866,7 +867,7 @@ export default function ProductsPage() {
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {promoImages.map((img, i) => (
                   <div key={i} className="relative group">
-                    <img loading="lazy" decoding="async" src={img} alt="" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
+                    <Image src={img} alt="" width={800} height={450} sizes="100vw" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
                     <button type="button" onClick={() => setPromoImages(prev => prev.filter((_, j) => j !== i))}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
                       <X className="w-3 h-3" />

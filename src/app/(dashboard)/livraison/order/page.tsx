@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -444,7 +445,7 @@ export default function CommandesPage() {
                       {order.items?.map((item: any) => (
                         <div key={item.id || item.productId} className="flex items-center gap-2">
                           {item.product?.image ? (
-                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                            <Image src={item.product.image} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
                           )}
@@ -502,7 +503,7 @@ export default function CommandesPage() {
                       {order.items?.map((item: any) => (
                         <div key={item.id || item.productId} className="flex items-center gap-2">
                           {item.product?.image ? (
-                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                            <Image src={item.product.image} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
                           )}
@@ -550,7 +551,7 @@ export default function CommandesPage() {
                       {order.items?.map((item: any) => (
                         <div key={item.id || item.productId} className="flex items-center gap-2">
                           {item.product?.image ? (
-                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                            <Image src={item.product.image} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
                           )}
@@ -611,7 +612,7 @@ export default function CommandesPage() {
                         {order.items?.map((i: any) => (
                           <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
                             {i.product?.image ? (
-                              <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                              <Image src={i.product.image} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover shrink-0" />
                             ) : null}
                             <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
                           </div>
@@ -667,7 +668,7 @@ export default function CommandesPage() {
                       {order.items?.map((i: any) => (
                         <div key={i.id || i.productId} className="flex items-center gap-1.5 bg-gray-800/50 rounded-lg px-2 py-1">
                           {i.product?.image ? (
-                            <img src={i.product.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                            <Image src={i.product.image} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover shrink-0" />
                           ) : null}
                           <span className="text-xs text-gray-400">{i.quantity}x {i.product?.name || i.name}</span>
                         </div>
@@ -718,7 +719,7 @@ export default function CommandesPage() {
                       {order.items?.map((item: any) => (
                         <div key={item.id} className="flex items-center gap-2">
                           {item.product?.image ? (
-                            <img src={item.product.image} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                            <Image src={item.product.image} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-lg bg-gray-800 shrink-0" />
                           )}

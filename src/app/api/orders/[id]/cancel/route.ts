@@ -74,7 +74,7 @@ export async function POST(
 
   // Notifier via Socket.IO
   const io = (global as any).io;
-  if (io) io.to("admins").emit("staff:refresh");
+  if (io) { io.to("admins").emit("staff:refresh"); io.to("cooks").emit("staff:refresh"); }
   if (io) {
     io.to(`order:${id}`).emit("delivery:status", { orderId: id, status: "CANCELLED", reason });
     if (order.delivery) {

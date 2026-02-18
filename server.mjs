@@ -1,26 +1,66 @@
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/lib/prisma.ts
+var prisma_exports = {};
+__export(prisma_exports, {
+  prisma: () => prisma
+});
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+function createPrismaClient() {
+  const pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 2e4,
+    idleTimeoutMillis: 3e4,
+    max: 10
+  });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter });
+}
+var globalForPrisma, prisma;
+var init_prisma = __esm({
+  "src/lib/prisma.ts"() {
+    "use strict";
+    globalForPrisma = globalThis;
+    prisma = globalForPrisma.prisma ?? createPrismaClient();
+    globalForPrisma.prisma = prisma;
+  }
+});
+
+// server.ts
+import { createServer } from "node:http";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 import next from "next";
 import { Server } from "socket.io";
 import cron from "node-cron";
-
-const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const port = parseInt(process.env.PORT || "3000");
-
-const app = next({ dev, hostname, port });
-const handler = app.getRequestHandler();
-
+var dev = process.env.NODE_ENV !== "production";
+var hostname = "localhost";
+var port = parseInt(process.env.PORT || "3000");
+var app = next({ dev, hostname, port });
+var handler = app.getRequestHandler();
 app.prepare().then(() => {
-  const MIME: Record<string, string> = {
-    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-    ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
-    ".ico": "image/x-icon", ".mp3": "audio/mpeg", ".wav": "audio/wav",
+  const MIME = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav"
   };
-
-  const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
-    // Servir les fichiers uploadés directement (évite le 404 Next.js post-build)
+  const httpServer = createServer((req, res) => {
     if (req.url && req.url.startsWith("/uploads/")) {
       const safePath = req.url.split("?")[0].replace(/\.\.\//g, "");
       const filePath = join(process.cwd(), "public", safePath);
@@ -30,60 +70,46 @@ app.prepare().then(() => {
         res.writeHead(200, {
           "Content-Type": MIME[ext] || "application/octet-stream",
           "Content-Length": stat.size,
-          "Cache-Control": "public, max-age=31536000, immutable",
+          "Cache-Control": "public, max-age=31536000, immutable"
         });
         createReadStream(filePath).pipe(res);
         return;
       }
     }
-    // Ne pas passer les requetes socket.io a Next.js (sinon 308 redirect)
     if (req.url && req.url.startsWith("/socket.io")) return;
     handler(req, res);
   });
   const io = new Server(httpServer, {
     cors: { origin: "*" },
-    path: "/socket.io",
+    path: "/socket.io"
   });
-
-  (global as any).io = io;
-
-  // Chat presence tracking: orderId -> Set<socketId>
-  const chatPresence = new Map<string, Set<string>>();
-
-  function emitPresence(orderId: string) {
+  global.io = io;
+  const chatPresence = /* @__PURE__ */ new Map();
+  function emitPresence(orderId) {
     const members = chatPresence.get(orderId);
     const count = members ? members.size : 0;
     io.to(`chat:${orderId}`).emit("chat:presence", { orderId, count });
   }
-
-  // Presence tracking: userId -> { socketIds, role, name }
-  const presenceMap = new Map<string, { socketIds: Set<string>; role: string; name: string }>();
-  const disconnectTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
-
+  const presenceMap = /* @__PURE__ */ new Map();
+  const disconnectTimeouts = /* @__PURE__ */ new Map();
   io.on("connection", (socket) => {
     console.log("[Socket.IO] Client connected:", socket.id);
-
-    // Tracking GPS devices
-    socket.on("subscribe:device", (deviceId: string) => {
+    socket.on("subscribe:device", (deviceId) => {
       socket.join(`device:${deviceId}`);
     });
     socket.on("subscribe:all", () => {
       socket.join("all-devices");
     });
-    socket.on("unsubscribe:device", (deviceId: string) => {
+    socket.on("unsubscribe:device", (deviceId) => {
       socket.leave(`device:${deviceId}`);
     });
-
-    // Livraison: client suit sa commande
-    socket.on("subscribe:order", (orderId: string) => {
+    socket.on("subscribe:order", (orderId) => {
       socket.join(`order:${orderId}`);
       console.log(`[Socket.IO] ${socket.id} watching order:${orderId}`);
     });
-    socket.on("unsubscribe:order", (orderId: string) => {
+    socket.on("unsubscribe:order", (orderId) => {
       socket.leave(`order:${orderId}`);
     });
-
-    // Livraison: livreur ecoute les nouvelles commandes
     socket.on("subscribe:driver", () => {
       socket.join("drivers");
       console.log(`[Socket.IO] ${socket.id} joined drivers room`);
@@ -91,8 +117,6 @@ app.prepare().then(() => {
     socket.on("unsubscribe:driver", () => {
       socket.leave("drivers");
     });
-
-    // Cuisine: cuisinier ecoute les nouvelles commandes
     socket.on("subscribe:cook", () => {
       socket.join("cooks");
       console.log(`[Socket.IO] ${socket.id} joined cooks room`);
@@ -100,8 +124,6 @@ app.prepare().then(() => {
     socket.on("unsubscribe:cook", () => {
       socket.leave("cooks");
     });
-
-    // Admin: ecoute les notifications admin
     socket.on("subscribe:admin", () => {
       socket.join("admins");
       console.log(`[Socket.IO] ${socket.id} joined admins room`);
@@ -109,47 +131,43 @@ app.prepare().then(() => {
     socket.on("unsubscribe:admin", () => {
       socket.leave("admins");
     });
-
-    // === Presence system for cook/driver online detection ===
-    socket.on("presence:join", ({ userId, role, name }: { userId: string; role: string; name: string }) => {
-      (socket as any).presenceUserId = userId;
+    socket.on("presence:join", ({ userId, role, name }) => {
+      socket.presenceUserId = userId;
       if (disconnectTimeouts.has(userId)) {
-        clearTimeout(disconnectTimeouts.get(userId)!);
+        clearTimeout(disconnectTimeouts.get(userId));
         disconnectTimeouts.delete(userId);
       }
       if (!presenceMap.has(userId)) {
-        presenceMap.set(userId, { socketIds: new Set(), role, name });
+        presenceMap.set(userId, { socketIds: /* @__PURE__ */ new Set(), role, name });
       }
-      presenceMap.get(userId)!.socketIds.add(socket.id);
+      presenceMap.get(userId).socketIds.add(socket.id);
       io.to("admins").emit("presence:update", { userId, role, name, online: true });
       console.log(`[Presence] ${name} (${role}) online`);
     });
-
     socket.on("presence:list", () => {
       const list = Array.from(presenceMap.entries()).map(([userId, d]) => ({
-        userId, role: d.role, name: d.name, online: true,
+        userId,
+        role: d.role,
+        name: d.name,
+        online: true
       }));
       socket.emit("presence:list", list);
     });
-
-    // Livraison: client ecoute ses commandes
-    socket.on("subscribe:client", (clientId: string) => {
+    socket.on("subscribe:client", (clientId) => {
       socket.join(`client:${clientId}`);
       console.log(`[Socket.IO] ${socket.id} joined client:${clientId}`);
     });
-    socket.on("unsubscribe:client", (clientId: string) => {
+    socket.on("unsubscribe:client", (clientId) => {
       socket.leave(`client:${clientId}`);
     });
-
-    // Chat: rejoindre/quitter la room de discussion
-    socket.on("subscribe:chat", (orderId: string) => {
+    socket.on("subscribe:chat", (orderId) => {
       socket.join(`chat:${orderId}`);
-      if (!chatPresence.has(orderId)) chatPresence.set(orderId, new Set());
-      chatPresence.get(orderId)!.add(socket.id);
+      if (!chatPresence.has(orderId)) chatPresence.set(orderId, /* @__PURE__ */ new Set());
+      chatPresence.get(orderId).add(socket.id);
       emitPresence(orderId);
-      console.log(`[Socket.IO] ${socket.id} joined chat:${orderId} (${chatPresence.get(orderId)!.size} members)`);
+      console.log(`[Socket.IO] ${socket.id} joined chat:${orderId} (${chatPresence.get(orderId).size} members)`);
     });
-    socket.on("unsubscribe:chat", (orderId: string) => {
+    socket.on("unsubscribe:chat", (orderId) => {
       socket.leave(`chat:${orderId}`);
       const members = chatPresence.get(orderId);
       if (members) {
@@ -158,93 +176,77 @@ app.prepare().then(() => {
       }
       emitPresence(orderId);
     });
-
-    // Chat: indicateur de frappe
-    socket.on("chat:typing", (data: { orderId: string; sender: string; name: string }) => {
+    socket.on("chat:typing", (data) => {
       socket.to(`chat:${data.orderId}`).emit("chat:typing", {
         orderId: data.orderId,
         sender: data.sender,
-        name: data.name,
+        name: data.name
       });
     });
-    socket.on("chat:stop-typing", (data: { orderId: string }) => {
+    socket.on("chat:stop-typing", (data) => {
       socket.to(`chat:${data.orderId}`).emit("chat:stop-typing", {
-        orderId: data.orderId,
+        orderId: data.orderId
       });
     });
-
-    // Chat: relayer editions et suppressions de messages
-    socket.on("chat:message-edited", (data: { messageId: string; content: string; orderId: string }) => {
+    socket.on("chat:message-edited", (data) => {
       socket.to(`chat:${data.orderId}`).emit("chat:message-edited", data);
     });
-    socket.on("chat:message-deleted", (data: { messageId: string; orderId: string }) => {
+    socket.on("chat:message-deleted", (data) => {
       socket.to(`chat:${data.orderId}`).emit("chat:message-deleted", data);
     });
-
-
-    // ===== APPELS VoIP WebRTC =====
-    socket.on("call:initiate", (data: { orderId: string; callerName: string; callerRole: string }) => {
+    socket.on("call:initiate", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:incoming", {
         orderId: data.orderId,
         callerName: data.callerName,
-        callerRole: data.callerRole,
+        callerRole: data.callerRole
       });
       console.log(`[Call] ${data.callerName} calling on order ${data.orderId}`);
     });
-
-    socket.on("call:accept", (data: { orderId: string; accepterName?: string }) => {
+    socket.on("call:accept", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:accepted", { orderId: data.orderId, accepterName: data.accepterName });
     });
-
-    socket.on("call:offer", (data: { orderId: string; offer: any }) => {
+    socket.on("call:offer", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:offer", { orderId: data.orderId, offer: data.offer });
     });
-
-    socket.on("call:answer", (data: { orderId: string; answer: any }) => {
+    socket.on("call:answer", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:answer", { orderId: data.orderId, answer: data.answer });
     });
-
-    socket.on("call:ice-candidate", (data: { orderId: string; candidate: any }) => {
+    socket.on("call:ice-candidate", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:ice-candidate", { orderId: data.orderId, candidate: data.candidate });
     });
-
-    socket.on("call:end", (data: { orderId: string }) => {
+    socket.on("call:end", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:ended", { orderId: data.orderId });
     });
-
-    socket.on("call:missed", async (data: { orderId: string; callerName: string }) => {
+    socket.on("call:missed", async (data) => {
       try {
-        const { prisma: db } = await import("./src/lib/prisma");
+        const { prisma: db } = await Promise.resolve().then(() => (init_prisma(), prisma_exports));
         await db.message.create({
           data: {
             content: `Appel manque de ${data.callerName}`,
             sender: "SYSTEM",
-            orderId: data.orderId,
-          },
+            orderId: data.orderId
+          }
         });
         const msg = await db.message.findFirst({
           where: { orderId: data.orderId, sender: "SYSTEM" },
           orderBy: { createdAt: "desc" },
-          include: { user: { select: { id: true, name: true, role: true } } },
+          include: { user: { select: { id: true, name: true, role: true } } }
         });
         if (msg) {
           io.to(`chat:${data.orderId}`).emit("chat:message", {
             ...msg,
-            createdAt: msg.createdAt.toISOString(),
+            createdAt: msg.createdAt.toISOString()
           });
         }
       } catch (e) {
         console.error("[Call] Missed call error:", e);
       }
     });
-
-    socket.on("call:busy", (data: { orderId: string }) => {
+    socket.on("call:busy", (data) => {
       socket.to(`chat:${data.orderId}`).emit("call:busy", { orderId: data.orderId });
     });
-
     socket.on("disconnect", () => {
-      // Presence cleanup with 5s grace period (handles page refresh)
-      const presUserId = (socket as any).presenceUserId as string | undefined;
+      const presUserId = socket.presenceUserId;
       if (presUserId) {
         const entry = presenceMap.get(presUserId);
         if (entry) {
@@ -255,23 +257,22 @@ app.prepare().then(() => {
               if (e && e.socketIds.size === 0) {
                 presenceMap.delete(presUserId);
                 io.to("admins").emit("presence:update", {
-                  userId: presUserId, role: e.role, name: e.name, online: false,
+                  userId: presUserId,
+                  role: e.role,
+                  name: e.name,
+                  online: false
                 });
                 console.log(`[Presence] ${e.name} (${e.role}) offline`);
-                // Persist lastSeenAt in DB
-                import("./src/lib/prisma").then(({ prisma }) => {
-                  prisma.user.update({ where: { id: presUserId }, data: { lastSeenAt: new Date() } })
-                    .catch((err: any) => console.error("[Presence] lastSeenAt error:", err));
+                Promise.resolve().then(() => (init_prisma(), prisma_exports)).then(({ prisma: prisma2 }) => {
+                  prisma2.user.update({ where: { id: presUserId }, data: { lastSeenAt: /* @__PURE__ */ new Date() } }).catch((err) => console.error("[Presence] lastSeenAt error:", err));
                 });
               }
               disconnectTimeouts.delete(presUserId);
-            }, 5000);
+            }, 5e3);
             disconnectTimeouts.set(presUserId, t);
           }
         }
       }
-
-      // Clean up presence from all chat rooms
       for (const [orderId, members] of chatPresence.entries()) {
         if (members.has(socket.id)) {
           members.delete(socket.id);
@@ -282,12 +283,9 @@ app.prepare().then(() => {
       console.log("[Socket.IO] Client disconnected:", socket.id);
     });
   });
-
   httpServer.listen(port, () => {
     console.log(`> Terrano GPS ready on http://${hostname}:${port}`);
   });
-
-  // Cron quotidien à 8h — notifications promotions
   cron.schedule("0 8 * * *", async () => {
     console.log("[Cron] Envoi des notifications promotions...");
     try {
@@ -298,8 +296,6 @@ app.prepare().then(() => {
       console.error("[Cron] Erreur notifications promotions:", err);
     }
   });
-
-  // Cron quotidien à 7h — vérification anniversaires
   cron.schedule("0 7 * * *", async () => {
     console.log("[Cron] Verification des anniversaires...");
     try {
@@ -310,8 +306,6 @@ app.prepare().then(() => {
       console.error("[Cron] Erreur anniversaires:", err);
     }
   });
-
-  // Cron hebdomadaire lundi 9h — détection clients fidèles
   cron.schedule("0 9 * * 1", async () => {
     console.log("[Cron] Detection des clients fideles...");
     try {

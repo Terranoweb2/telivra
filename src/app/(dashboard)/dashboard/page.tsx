@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -637,7 +638,7 @@ export default function DashboardPage() {
                       {/* Photo du repas */}
                       {!isDriverRole && role !== "COOK" ? (
                         firstImage ? (
-                          <img src={firstImage} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-700/50" />
+                          <Image src={firstImage} alt="" width={48} height={48} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-700/50" />
                         ) : (
                           <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center shrink-0 border border-gray-700/50">
                             <UtensilsCrossed className="w-5 h-5 text-gray-600" />

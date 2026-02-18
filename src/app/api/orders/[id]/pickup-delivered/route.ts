@@ -31,7 +31,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
 
     const io = (global as any).io;
-  if (io) io.to("admins").emit("staff:refresh");
+  if (io) { io.to("admins").emit("staff:refresh"); io.to("cooks").emit("staff:refresh"); }
     if (io) {
       const eventData = { orderId: id, status: "DELIVERED", deliveryMode: "PICKUP" };
       io.to("order:" + id).emit("order:delivered", eventData);

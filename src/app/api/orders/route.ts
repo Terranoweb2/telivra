@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   const itemsSummary = order.items.map((i: any) => `${i.quantity}x ${i.product?.name}`).join(", ");
 
   const io = (global as any).io;
-  if (io) io.to("admins").emit("staff:refresh");
+  if (io) { io.to("admins").emit("staff:refresh"); io.to("cooks").emit("staff:refresh"); }
   if (io) {
     io.to("cooks").emit("order:new", {
       id: order.id,
@@ -153,7 +153,8 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Notifier cuisiniers + admins
+  // Notifier cuisiniers + admins (exclure l'expéditeur)
+  const senderId = (session.user as any).id;
   const modeLabel = isPickup ? "[À emporter] " : "";
   const msg = `${modeLabel}${clientName} — ${itemsSummary} (${Math.round(order.totalAmount)} XOF)`;
   const firstImage = order.items?.[0]?.product?.image || null;
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
     severity: "WARNING",
     data: { orderId: order.id },
     pushPayload: { title: "Nouvelle commande", body: msg, url: "/cuisine", tag: `order-${order.id}` },
-  });
+  }, senderId);
   notifyRole("ADMIN", {
     type: "ORDER_NOTIFICATION",
     title: "Nouvelle commande",
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest) {
     severity: "INFO",
     data: { orderId: order.id },
     pushPayload: { title: "Nouvelle commande", body: msg, url: "/alerts", tag: `order-${order.id}` },
-  });
+  }, senderId);
 
   return NextResponse.json(order, { status: 201 });
 }

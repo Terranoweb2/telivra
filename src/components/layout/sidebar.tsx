@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -168,7 +169,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             {brandLogo ? (
-              <img decoding="async" src={brandLogo} alt={restaurantName} className="w-9 h-9 object-contain rounded-xl" />
+              <Image src={brandLogo} alt={restaurantName} width={36} height={36} className="w-9 h-9 object-contain rounded-xl" />
             ) : (
               <div className="bg-orange-600 p-2 rounded-xl">
                 <UtensilsCrossed className="w-5 h-5 text-white" />

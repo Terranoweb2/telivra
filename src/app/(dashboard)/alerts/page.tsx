@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 // removed duplicate from "react";
 import { Bell, Check, CheckCheck, Trash2, Loader2, AlertTriangle, Info, ShieldAlert, UtensilsCrossed, WifiOff, MapPin, Zap, BatteryLow, Siren, Wrench, ChefHat, Percent, Truck, UserCheck, UserPlus, Star, Banknote, Heart, Cake } from "lucide-react";
@@ -254,7 +255,7 @@ export default function AlertsPage() {
                     </p>
                     {alert.data?.imageUrl && (
                       <div className="mt-2">
-                        <img src={alert.data.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                        <Image src={alert.data.imageUrl} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover" />
                       </div>
                     )}
                     {action && !alert.isRead && (
