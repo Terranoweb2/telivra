@@ -176,23 +176,71 @@ jobs:
           port: ${{ steps.ssh.outputs.port }}
           command_timeout: 5m
           script: |
-            set -e
             echo "=== Phase 4: PM2 & Nginx ==="
 
             cd /root/t-delivery
 
+            # Create PM2 ecosystem config
+            cat > ecosystem.config.js << 'ECOEOF'
+            module.exports = {
+              apps: [{
+                name: 't-delivery',
+                script: 'node_modules/.bin/next',
+                args: 'start',
+                cwd: '/root/t-delivery',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3001
+                },
+                max_memory_restart: '512M',
+                instances: 1,
+                autorestart: true
+              }]
+            };
+            ECOEOF
+            sed -i 's/^            //' ecosystem.config.js
+
             # PM2 — restart app
             pm2 delete t-delivery 2>/dev/null || true
-            PORT=3001 pm2 start npm --name "t-delivery" -- start
+            pm2 start ecosystem.config.js
             pm2 save
             sleep 5
             pm2 list
+            echo "PM2 started"
 
-            # Nginx config
-            cp deploy/nginx-t-delivery.conf /etc/nginx/sites-available/t-delivery.conf
+            # Nginx — remove map directive if already defined elsewhere
+            mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
+            # Check if map directive already exists in main nginx config
+            if grep -q 'map.*http_upgrade.*connection_upgrade' /etc/nginx/nginx.conf 2>/dev/null; then
+              echo "Map directive exists in nginx.conf, removing from our config"
+              sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /tmp/t-delivery-nginx.conf
+            else
+              # Check if another site defines it
+              if grep -rq 'map.*http_upgrade.*connection_upgrade' /etc/nginx/sites-enabled/ 2>/dev/null; then
+                echo "Map directive exists in another site, removing from our config"
+                sed '/^map \$http_upgrade/,/^}/d' deploy/nginx-t-delivery.conf > /tmp/t-delivery-nginx.conf
+              else
+                cp deploy/nginx-t-delivery.conf /tmp/t-delivery-nginx.conf
+              fi
+            fi
+
+            cp /tmp/t-delivery-nginx.conf /etc/nginx/sites-available/t-delivery.conf
             ln -sf /etc/nginx/sites-available/t-delivery.conf /etc/nginx/sites-enabled/t-delivery.conf
-            nginx -t && systemctl reload nginx
-            echo "Nginx configured"
+
+            # Remove default site if it conflicts
+            rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+            nginx -t
+            if [ $? -eq 0 ]; then
+              systemctl reload nginx || systemctl restart nginx
+              echo "Nginx configured"
+            else
+              echo "Nginx config test failed, trying without our config..."
+              rm -f /etc/nginx/sites-enabled/t-delivery.conf
+              nginx -t && systemctl reload nginx
+              echo "WARNING: Nginx reverted, manual config needed"
+            fi
 
             # Firewall
             ufw allow 80/tcp 2>/dev/null || true
