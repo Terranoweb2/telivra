@@ -10,7 +10,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const body = await request.json();
 
   const existing = await prisma.alert.findFirst({ where: { id, userId } });
-  if (!existing) return NextResponse.json({ error: "Alerte introuvable" }, { status: 404 });
+  if (!existing) return NextResponse.json({ success: true });
 
   const alert = await prisma.alert.update({
     where: { id },
@@ -26,7 +26,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const userId = (session.user as any).id;
 
   const existing = await prisma.alert.findFirst({ where: { id, userId } });
-  if (!existing) return NextResponse.json({ error: "Alerte introuvable" }, { status: 404 });
+  if (!existing) return NextResponse.json({ success: true });
 
   await prisma.alert.delete({ where: { id } });
   return NextResponse.json({ success: true });
