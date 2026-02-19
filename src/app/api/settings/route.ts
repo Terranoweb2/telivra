@@ -18,6 +18,9 @@ export async function GET() {
       heroSubtitle: null,
       chatEnabled: true,
       pickupEnabled: false,
+      birthdayDiscountEnabled: false,
+      birthdayDiscountType: "PERCENTAGE",
+      birthdayDiscountValue: 10,
     }, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
@@ -46,6 +49,9 @@ export async function PUT(request: NextRequest) {
     heroSubtitle,
     chatEnabled,
     pickupEnabled,
+    birthdayDiscountEnabled,
+    birthdayDiscountType,
+    birthdayDiscountValue,
   } = body;
 
   const data: Record<string, unknown> = {};
@@ -60,6 +66,9 @@ export async function PUT(request: NextRequest) {
   if (heroSubtitle !== undefined) data.heroSubtitle = heroSubtitle ? String(heroSubtitle).slice(0, 500) : null;
   if (chatEnabled !== undefined) data.chatEnabled = Boolean(chatEnabled);
   if (pickupEnabled !== undefined) data.pickupEnabled = Boolean(pickupEnabled);
+  if (birthdayDiscountEnabled !== undefined) data.birthdayDiscountEnabled = Boolean(birthdayDiscountEnabled);
+  if (birthdayDiscountType !== undefined && ["PERCENTAGE", "FIXED"].includes(birthdayDiscountType)) data.birthdayDiscountType = birthdayDiscountType;
+  if (birthdayDiscountValue !== undefined) { const v = parseFloat(birthdayDiscountValue); if (!isNaN(v) && v >= 0) data.birthdayDiscountValue = v; }
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "default" },

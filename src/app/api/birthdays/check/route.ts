@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { notifyUser, notifyRole } from "@/lib/notify";
 
 export async function POST(request: NextRequest) {
-  // Vérifie que l'appel vient du cron interne
   const host = request.headers.get("host") || "";
   if (!host.includes("localhost")) {
     return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
@@ -13,7 +12,6 @@ export async function POST(request: NextRequest) {
   const month = now.getMonth() + 1;
   const day = now.getDate();
 
-  // Trouver les clients dont c'est l'anniversaire aujourd'hui
   const birthdayUsers = await prisma.$queryRaw<
     { id: string; name: string; email: string; dateOfBirth: Date }[]
   >`
@@ -25,37 +23,46 @@ export async function POST(request: NextRequest) {
       AND "isActive" = true
   `;
 
+  // Charger les parametres de reduction anniversaire
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const discountEnabled = settings?.birthdayDiscountEnabled === true;
+  const discountType = settings?.birthdayDiscountType || "PERCENTAGE";
+  const discountValue = settings?.birthdayDiscountValue || 10;
+
   let notified = 0;
 
   for (const user of birthdayUsers) {
     const birthYear = new Date(user.dateOfBirth).getFullYear();
     const age = now.getFullYear() - birthYear;
 
-    // Compter les commandes du client
     const orderCount = await prisma.order.count({
       where: { clientId: user.id, status: "DELIVERED" },
     });
 
-    // Notifier le client
+    const discountMsg = discountEnabled
+      ? discountType === "PERCENTAGE"
+        ? ` Profitez de ${discountValue}% de reduction sur vos commandes aujourd\u0027hui !`
+        : ` Profitez de ${discountValue} FCFA de reduction sur vos commandes aujourd\u0027hui !`
+      : "";
+
     await notifyUser(user.id, {
       type: "BIRTHDAY",
       title: "Joyeux anniversaire !",
-      message: `Nous vous souhaitons un excellent anniversaire ! Un cadeau special vous attend.`,
+      message: `Nous vous souhaitons un excellent anniversaire !${discountMsg}`,
       severity: "INFO",
       data: { age, userId: user.id },
       pushPayload: {
         title: "Joyeux anniversaire !",
-        body: "Un cadeau special vous attend dans l'application !",
-        url: "/livraison",
+        body: `Nous vous souhaitons un excellent anniversaire !${discountMsg}`,
+        url: "/dashboard",
         tag: `birthday-${user.id}`,
       },
     });
 
-    // Notifier les admins
     await notifyRole("ADMIN", {
       type: "BIRTHDAY",
       title: "Anniversaire client",
-      message: `${user.name} fete ses ${age} ans aujourd'hui (${orderCount} commandes)`,
+      message: `${user.name} fete ses ${age} ans aujourd\u0027hui (${orderCount} commandes)`,
       severity: "INFO",
       data: { clientId: user.id, clientName: user.name, age, orderCount },
       pushPayload: {
@@ -63,23 +70,6 @@ export async function POST(request: NextRequest) {
         body: `${user.name} fete ses ${age} ans`,
         url: "/alerts",
         tag: `birthday-admin-${user.id}`,
-      },
-    });
-
-    // Créer une promotion anniversaire (-10% pendant 48h)
-    const endDate = new Date();
-    endDate.setHours(endDate.getHours() + 48);
-
-    await prisma.promotion.create({
-      data: {
-        name: `Anniversaire ${user.name}`,
-        description: `Reduction anniversaire pour ${user.name}`,
-        discountType: "PERCENTAGE",
-        discountValue: 10,
-        startDate: now,
-        endDate,
-        isActive: true,
-        appliesToAll: true,
       },
     });
 

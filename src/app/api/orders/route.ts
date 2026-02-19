@@ -107,6 +107,27 @@ export async function POST(request: NextRequest) {
     return { productId: i.productId, quantity: i.quantity, price: discountedTotal };
   });
 
+  // Reduction anniversaire
+  const birthdayUser = await prisma.user.findUnique({
+    where: { id: (session.user as any).id },
+    select: { dateOfBirth: true },
+  });
+  if (birthdayUser?.dateOfBirth) {
+    const dob = new Date(birthdayUser.dateOfBirth);
+    if (dob.getMonth() === now.getMonth() && dob.getDate() === now.getDate()) {
+      const bdSettings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+      if (bdSettings?.birthdayDiscountEnabled) {
+        const bdVal = bdSettings.birthdayDiscountValue || 10;
+        const bdType = bdSettings.birthdayDiscountType || "PERCENTAGE";
+        const bdDiscount = bdType === "PERCENTAGE"
+          ? totalAmount * (bdVal / 100)
+          : Math.min(bdVal, totalAmount);
+        totalAmount -= bdDiscount;
+        totalDiscount += bdDiscount;
+      }
+    }
+  }
+
   // Generate sequential numeric orderNumber
   const lastOrder = await prisma.$queryRaw<{ next: number }[]>`
     SELECT COALESCE(MAX(CAST("orderNumber" AS INTEGER)), 0) + 1 as next

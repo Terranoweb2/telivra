@@ -314,8 +314,11 @@ model SiteSettings {
   heroTitle            String?
   heroSubtitle         String?
   chatEnabled          Boolean       @default(true)
-  pickupEnabled        Boolean       @default(false)
-  updatedAt            DateTime      @updatedAt
+  pickupEnabled              Boolean       @default(false)
+  birthdayDiscountEnabled     Boolean       @default(false)
+  birthdayDiscountType        DiscountType  @default(PERCENTAGE)
+  birthdayDiscountValue       Float         @default(10)
+  updatedAt                   DateTime      @updatedAt
 
   @@map("site_settings")
 }

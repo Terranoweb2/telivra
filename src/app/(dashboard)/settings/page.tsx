@@ -64,6 +64,9 @@ export default function SettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [chatEnabled, setChatEnabled] = useState(true);
   const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [birthdayDiscountEnabled, setBirthdayDiscountEnabled] = useState(false);
+  const [birthdayDiscountType, setBirthdayDiscountType] = useState("PERCENTAGE");
+  const [birthdayDiscountValue, setBirthdayDiscountValue] = useState("10");
 
   useEffect(() => {
     if (isAdmin) {
@@ -80,6 +83,9 @@ export default function SettingsPage() {
         setHeroSubtitle(data.heroSubtitle || "");
         setChatEnabled(data.chatEnabled !== false);
         setPickupEnabled(data.pickupEnabled === true);
+        setBirthdayDiscountEnabled(data.birthdayDiscountEnabled === true);
+        setBirthdayDiscountType(data.birthdayDiscountType || "PERCENTAGE");
+        setBirthdayDiscountValue(String(data.birthdayDiscountValue || 10));
       }).catch(() => {});
     }
   }, [isAdmin]);
@@ -154,7 +160,7 @@ export default function SettingsPage() {
   async function saveSiteSettings() {
     setSaving(true);
     try {
-      const body: any = { chatEnabled, pickupEnabled, restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null };
+      const body: any = { chatEnabled, pickupEnabled, restaurantName, defaultPaymentMethod: defaultPayment, paymentPhoneNumber: paymentPhoneNumber || null, deliveryFee: parseFloat(deliveryFee) || 0, currency, logo: logo || null, buttonColor: buttonColor || null, heroTitle: heroTitle || null, heroSubtitle: heroSubtitle || null, birthdayDiscountEnabled, birthdayDiscountType, birthdayDiscountValue: parseFloat(birthdayDiscountValue) || 0 };
       const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
@@ -260,6 +266,48 @@ export default function SettingsPage() {
                   <button type="button" onClick={() => setPickupEnabled(!pickupEnabled)} className={cn("relative w-11 h-6 rounded-full transition-colors", pickupEnabled ? "bg-orange-600" : "bg-gray-700")}>
                     <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", pickupEnabled ? "left-[22px]" : "left-0.5")} />
                   </button>
+                </div>
+              </div>
+              <div className="border-t border-gray-800 pt-4">
+                <h3 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
+                  <Cake className="w-4 h-4 text-orange-400" /> Anniversaires
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[13px] text-gray-300">R\u00e9duction anniversaire</p>
+                      <p className="text-[11px] text-gray-600">Offrir une r\u00e9duction le jour de l&apos;anniversaire des clients</p>
+                    </div>
+                    <button type="button" onClick={() => setBirthdayDiscountEnabled(!birthdayDiscountEnabled)}
+                      className={cn("relative w-11 h-6 rounded-full transition-colors", birthdayDiscountEnabled ? "bg-orange-600" : "bg-gray-700")}>
+                      <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", birthdayDiscountEnabled ? "left-[22px]" : "left-0.5")} />
+                    </button>
+                  </div>
+                  {birthdayDiscountEnabled && (
+                    <div className="space-y-3 pl-1">
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="block text-[13px] text-gray-400 mb-1.5">Type</label>
+                          <select value={birthdayDiscountType} onChange={(e) => setBirthdayDiscountType(e.target.value)} className={selectClass}>
+                            <option value="PERCENTAGE">Pourcentage (%)</option>
+                            <option value="FIXED">Montant fixe (FCFA)</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[13px] text-gray-400 mb-1.5">Valeur</label>
+                          <input type="number" value={birthdayDiscountValue} onChange={(e) => setBirthdayDiscountValue(e.target.value)}
+                            min="0" max={birthdayDiscountType === "PERCENTAGE" ? "100" : "999999"}
+                            className={inputClass} />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-orange-400/80">
+                        {birthdayDiscountType === "PERCENTAGE"
+                          ? `Les clients b\u00e9n\u00e9ficieront de ${birthdayDiscountValue}% de r\u00e9duction`
+                          : `Les clients b\u00e9n\u00e9ficieront de ${birthdayDiscountValue} FCFA de r\u00e9duction`}
+                        {" "}le jour de leur anniversaire
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               <button onClick={saveSiteSettings} disabled={saving}

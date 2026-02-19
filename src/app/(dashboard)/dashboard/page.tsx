@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Loader2, ShoppingBag, TrendingUp, Truck, Clock,
   CheckCircle, Package, Users, MapPin, ArrowRight, XCircle, Calendar,
-  Wallet, BarChart3, UtensilsCrossed, ChefHat, CreditCard,
+  Wallet, BarChart3, UtensilsCrossed, ChefHat, CreditCard, Cake, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -38,6 +38,9 @@ export default function DashboardPage() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selectedBar, setSelectedBar] = useState<number | null>(null);
+  const [isBirthday, setIsBirthday] = useState(false);
+  const [birthdayDiscount, setBirthdayDiscount] = useState<{ type: string; value: number } | null>(null);
+  const [birthdayDismissed, setBirthdayDismissed] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -71,6 +74,27 @@ export default function DashboardPage() {
       setLoading(false);
     });
   }, [isAdmin, role, status]);
+
+  // Verifier anniversaire
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (sessionStorage.getItem("birthday-dismissed")) { setBirthdayDismissed(true); return; }
+    fetch("/api/settings/profile")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.dateOfBirth) return;
+        const dob = new Date(data.dateOfBirth);
+        const n = new Date();
+        if (dob.getMonth() === n.getMonth() && dob.getDate() === n.getDate()) {
+          setIsBirthday(true);
+          fetch("/api/settings").then((r) => r.json()).then((s) => {
+            if (s?.birthdayDiscountEnabled) setBirthdayDiscount({ type: s.birthdayDiscountType || "PERCENTAGE", value: s.birthdayDiscountValue || 10 });
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [status]);
+
 
   if (loading || status !== "authenticated") return (
     <div className="space-y-5 animate-pulse">
@@ -127,6 +151,31 @@ export default function DashboardPage() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const recentOrders = orders.slice(0, 5);
 
+  const birthdayCard = isBirthday && !birthdayDismissed ? (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600/20 via-yellow-500/20 to-pink-500/20 border border-orange-500/30 p-4">
+      <button onClick={() => { setBirthdayDismissed(true); sessionStorage.setItem("birthday-dismissed", "1"); }}
+        className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors">
+        <X className="w-4 h-4" />
+      </button>
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-2xl bg-gradient-to-br from-orange-500/20 to-yellow-500/20">
+          <Cake className="w-6 h-6 text-orange-400" />
+        </div>
+        <div>
+          <h3 className="text-white font-semibold text-sm">Joyeux anniversaire !</h3>
+          {birthdayDiscount ? (
+            <p className="text-[12px] text-gray-300 mt-0.5">
+              Profitez de {birthdayDiscount.type === "PERCENTAGE" ? `${birthdayDiscount.value}%` : `${birthdayDiscount.value} FCFA`} de r\u00e9duction sur vos commandes aujourd&apos;hui !
+            </p>
+          ) : (
+            <p className="text-[12px] text-gray-300 mt-0.5">Toute l&apos;\u00e9quipe vous souhaite un excellent anniversaire !</p>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  
   // Dashboard Admin
   if (isAdmin && revenue) {
     return (
@@ -426,6 +475,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      {birthdayCard}
       <PageHeader
         title={isDriverRole ? "Espace livreur" : role === "COOK" ? "Espace cuisinier" : "Mon espace"}
         subtitle={`Bonjour, ${session?.user?.name || "Utilisateur"}`}
