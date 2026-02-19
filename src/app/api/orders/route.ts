@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   // Charger les promotions actives
   const now = new Date();
   const activePromotions = await prisma.promotion.findMany({
-    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now }, NOT: { name: { startsWith: "Anniversaire " } } },
     include: { products: true },
   });
 

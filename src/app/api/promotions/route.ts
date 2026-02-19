@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const now = new Date();
   const promotions = await prisma.promotion.findMany({
-    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now }, NOT: { name: { startsWith: "Anniversaire " } } },
     include: { products: { include: { product: { select: { id: true, name: true, price: true, image: true } } } } },
     orderBy: { createdAt: "desc" },
   });
