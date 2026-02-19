@@ -152,23 +152,31 @@ export default function DashboardPage() {
   const recentOrders = orders.slice(0, 5);
 
   const birthdayCard = isBirthday && !birthdayDismissed ? (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600/20 via-yellow-500/20 to-pink-500/20 border border-orange-500/30 p-4">
+    <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-600/10 via-amber-500/10 to-rose-500/10" />
+      <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 bg-[radial-gradient(circle,#f97316,transparent)]" style={{ transform: "translate(30%, -40%)" }} />
       <button onClick={() => { setBirthdayDismissed(true); sessionStorage.setItem("birthday-dismissed", "1"); }}
-        className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors">
-        <X className="w-4 h-4" />
+        className="absolute top-2.5 right-2.5 p-1 text-gray-500 hover:text-white rounded-full hover:bg-white/10 transition-colors z-10">
+        <X className="w-3.5 h-3.5" />
       </button>
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-2xl bg-gradient-to-br from-orange-500/20 to-yellow-500/20">
-          <Cake className="w-6 h-6 text-orange-400" />
+      <div className="relative flex items-center gap-3.5">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-400/10 border border-orange-500/20 shadow-lg shadow-orange-500/5">
+          <Cake className="w-7 h-7 text-orange-400" />
         </div>
-        <div>
-          <h3 className="text-white font-semibold text-sm">Joyeux anniversaire !</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white font-bold text-[15px]">Joyeux anniversaire !</h3>
           {birthdayDiscount ? (
-            <p className="text-[12px] text-gray-300 mt-0.5">
-              Profitez de {birthdayDiscount.type === "PERCENTAGE" ? `${birthdayDiscount.value}%` : `${birthdayDiscount.value} FCFA`} de r\u00e9duction sur vos commandes aujourd&apos;hui !
+            <p className="text-[12px] text-gray-300 mt-1 leading-relaxed">
+              {"Profitez de "}
+              <span className="text-orange-400 font-semibold">
+                {birthdayDiscount.type === "PERCENTAGE" ? `${birthdayDiscount.value}%` : `${birthdayDiscount.value} FCFA`}
+              </span>
+              {" de réduction sur vos commandes aujourd’hui !"}
             </p>
           ) : (
-            <p className="text-[12px] text-gray-300 mt-0.5">Toute l&apos;\u00e9quipe vous souhaite un excellent anniversaire !</p>
+            <p className="text-[12px] text-gray-400 mt-1 leading-relaxed">
+              {"Toute l’équipe vous souhaite un excellent anniversaire !"}
+            </p>
           )}
         </div>
       </div>

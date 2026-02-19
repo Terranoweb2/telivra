@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
 
     const discountMsg = discountEnabled
       ? discountType === "PERCENTAGE"
-        ? ` Profitez de ${discountValue}% de reduction sur vos commandes aujourd\u0027hui !`
-        : ` Profitez de ${discountValue} FCFA de reduction sur vos commandes aujourd\u0027hui !`
+        ? ` Profitez de ${discountValue}% de reduction sur vos commandes aujourd'hui !`
+        : ` Profitez de ${discountValue} FCFA de reduction sur vos commandes aujourd'hui !`
       : "";
 
     await notifyUser(user.id, {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     await notifyRole("ADMIN", {
       type: "BIRTHDAY",
       title: "Anniversaire client",
-      message: `${user.name} fete ses ${age} ans aujourd\u0027hui (${orderCount} commandes)`,
+      message: `${user.name} fete ses ${age} ans aujourd'hui (${orderCount} commandes)`,
       severity: "INFO",
       data: { clientId: user.id, clientName: user.name, age, orderCount },
       pushPayload: {

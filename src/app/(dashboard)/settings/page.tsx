@@ -275,8 +275,8 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[13px] text-gray-300">R\u00e9duction anniversaire</p>
-                      <p className="text-[11px] text-gray-600">Offrir une r\u00e9duction le jour de l&apos;anniversaire des clients</p>
+                      <p className="text-[13px] text-gray-300">Réduction anniversaire</p>
+                      <p className="text-[11px] text-gray-600">Offrir une réduction le jour de l&apos;anniversaire des clients</p>
                     </div>
                     <button type="button" onClick={() => setBirthdayDiscountEnabled(!birthdayDiscountEnabled)}
                       className={cn("relative w-11 h-6 rounded-full transition-colors", birthdayDiscountEnabled ? "bg-orange-600" : "bg-gray-700")}>
@@ -302,8 +302,8 @@ export default function SettingsPage() {
                       </div>
                       <p className="text-[11px] text-orange-400/80">
                         {birthdayDiscountType === "PERCENTAGE"
-                          ? `Les clients b\u00e9n\u00e9ficieront de ${birthdayDiscountValue}% de r\u00e9duction`
-                          : `Les clients b\u00e9n\u00e9ficieront de ${birthdayDiscountValue} FCFA de r\u00e9duction`}
+                          ? `Les clients bénéficieront de ${birthdayDiscountValue}% de réduction`
+                          : `Les clients bénéficieront de ${birthdayDiscountValue} FCFA de réduction`}
                         {" "}le jour de leur anniversaire
                       </p>
                     </div>
