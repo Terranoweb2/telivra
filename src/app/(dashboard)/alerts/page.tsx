@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 // removed duplicate from "react";
 import { Bell, Check, CheckCheck, Trash2, Loader2, AlertTriangle, Info, ShieldAlert, UtensilsCrossed, WifiOff, MapPin, Zap, BatteryLow, Siren, Wrench, ChefHat, Percent, Truck, UserCheck, UserPlus, Star, Banknote, Heart, Cake } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,9 @@ function notifyBadgeUpdate() {
 }
 
 export default function AlertsPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const isStaff = userRole === "ADMIN" || userRole === "MANAGER";
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilterState] = useState(() => { if (typeof window !== "undefined") { const p = new URLSearchParams(window.location.search); return (p.get("tab")) || "all"; } return "all"; });
@@ -125,14 +129,14 @@ export default function AlertsPage() {
 
   function getActionLink(alert: Alert) {
     switch (alert.type) {
-      case "ORDER_NOTIFICATION": return { href: "/cuisine", icon: ChefHat, label: "Voir en cuisine" };
+      case "ORDER_NOTIFICATION": return isStaff ? { href: "/cuisine", icon: ChefHat, label: "Voir en cuisine" } : null;
       case "ORDER_READY": return alert.data?.status === "DELIVERED" ? null : { href: "/navigate", icon: Truck, label: "Livrer la commande" };
       case "PROMOTION": return { href: "/livraison", icon: Percent, label: "Voir les promotions" };
-      case "NEW_CLIENT": return { href: "/users", icon: UserPlus, label: "Voir le client" };
-      case "RATING": return { href: "/statistiques", icon: Star, label: "Voir les stats" };
-      case "ENCAISSEMENT": return { href: "/encaissement", icon: Banknote, label: "Voir l'encaissement" };
-      case "LOYALTY": return { href: "/users", icon: Heart, label: "Voir le client" };
-      case "BIRTHDAY": return { href: "/users", icon: Cake, label: "Voir le client" };
+      case "NEW_CLIENT": return isStaff ? { href: "/users", icon: UserPlus, label: "Voir le client" } : null;
+      case "RATING": return isStaff ? { href: "/statistiques", icon: Star, label: "Voir les stats" } : null;
+      case "ENCAISSEMENT": return isStaff ? { href: "/encaissement", icon: Banknote, label: "Voir l\u0027encaissement" } : null;
+      case "LOYALTY": return isStaff ? { href: "/users", icon: Heart, label: "Voir le client" } : null;
+      case "BIRTHDAY": return isStaff ? { href: "/users", icon: Cake, label: "Voir le client" } : null;
       default: return null;
     }
   }
