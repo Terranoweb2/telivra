@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
 
+
 const statusLabels: Record<string, { label: string; color: string }> = {
   PENDING: { label: "En attente", color: "bg-yellow-500/20 text-yellow-400" },
   ACCEPTED: { label: "Acceptée", color: "bg-orange-500/20 text-orange-400" },
@@ -189,6 +190,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-5">
         <PageHeader title="Dashboard" subtitle="Vue d'ensemble de votre activité" />
+
 
         {/* Recettes */}
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
@@ -742,7 +744,7 @@ export default function DashboardPage() {
                 <Link key={order.id} href={href} className="block">
                   <Card hover className="p-3">
                     <div className="flex items-center gap-3">
-                      {/* Photo du repas */}
+                      {/* Photo du plat */}
                       {!isDriverRole && role !== "COOK" ? (
                         firstImage ? (
                           <img loading="lazy" decoding="async" src={firstImage} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-700/50" />

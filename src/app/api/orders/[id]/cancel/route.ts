@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -83,4 +86,4 @@ export async function POST(
   }
 
   return NextResponse.json({ ok: true, status: "CANCELLED", reason });
-}
+});

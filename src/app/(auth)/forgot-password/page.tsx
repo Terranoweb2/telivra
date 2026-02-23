@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { UtensilsCrossed, Loader2, Mail, KeyRound, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getCachedSettings } from "@/lib/settings-cache";
 
 type Step = "email" | "code" | "done";
 
@@ -15,6 +17,17 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [brand, setBrand] = useState({ name: "Restaurant", color: "#ea580c", logo: null as string | null });
+
+  useEffect(() => {
+    getCachedSettings().then((s) => {
+      setBrand({
+        name: s.restaurantName || "Restaurant",
+        color: s.buttonColor || "#ea580c",
+        logo: s.logo,
+      });
+    });
+  }, []);
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +43,7 @@ export default function ForgotPasswordPage() {
 
       if (res.ok) {
         setStep("code");
-        toast.success("Code envoyé par email");
+        toast.success("Code envoye par email");
       } else {
         const data = await res.json();
         const msg = data.error || "Erreur lors de l'envoi";
@@ -38,8 +51,8 @@ export default function ForgotPasswordPage() {
         toast.error(msg);
       }
     } catch {
-      setError("Erreur réseau");
-      toast.error("Erreur réseau");
+      setError("Erreur reseau");
+      toast.error("Erreur reseau");
     }
     setLoading(false);
   }
@@ -66,30 +79,36 @@ export default function ForgotPasswordPage() {
 
       if (res.ok) {
         setStep("done");
-        toast.success("Mot de passe réinitialisé !");
+        toast.success("Mot de passe reinitialise !");
       } else {
-        const msg = data.error || "Erreur lors de la réinitialisation";
+        const msg = data.error || "Erreur lors de la reinitialisation";
         setError(msg);
         toast.error(msg);
       }
     } catch {
-      setError("Erreur réseau");
-      toast.error("Erreur réseau");
+      setError("Erreur reseau");
+      toast.error("Erreur reseau");
     }
     setLoading(false);
   }
 
+  const c = brand.color;
+
   return (
     <div className="bg-gray-950 sm:rounded-2xl p-6 sm:p-8 border-y sm:border border-gray-800 shadow-2xl shadow-black/40 w-full">
       <div className="flex flex-col items-center mb-6">
-        <div className="bg-orange-600 p-3 rounded-2xl mb-3">
-          <UtensilsCrossed className="w-7 h-7 text-white" />
-        </div>
-        <h1 className="text-xl font-bold text-white">Terrano</h1>
+        {brand.logo ? (
+          <Image src={brand.logo} alt={brand.name} width={56} height={56} className="rounded-2xl mb-3 object-cover" />
+        ) : (
+          <div className="p-3 rounded-2xl mb-3" style={{ backgroundColor: c }}>
+            <UtensilsCrossed className="w-7 h-7 text-white" />
+          </div>
+        )}
+        <h1 className="text-xl font-bold text-white">{brand.name}</h1>
         <p className="text-[13px] text-gray-500 mt-1">
-          {step === "email" && "Réinitialiser votre mot de passe"}
-          {step === "code" && "Entrez le code reçu"}
-          {step === "done" && "Mot de passe réinitialisé !"}
+          {step === "email" && "Reinitialiser votre mot de passe"}
+          {step === "code" && "Entrez le code recu"}
+          {step === "done" && "Mot de passe reinitialise !"}
         </p>
       </div>
 
@@ -99,7 +118,6 @@ export default function ForgotPasswordPage() {
         </div>
       )}
 
-      {/* Etape 1 : Saisie email */}
       {step === "email" && (
         <form onSubmit={handleSendCode} className="space-y-4">
           <div>
@@ -111,37 +129,38 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+                className="w-full pl-10 pr-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:ring-1 transition-colors"
+                style={{ "--tw-ring-color": `${c}80` } as React.CSSProperties}
                 placeholder="votre@email.com"
               />
             </div>
           </div>
 
           <p className="text-[12px] text-gray-600">
-            Un code de vérification sera envoyé à cette adresse.
+            Un code de verification sera envoye a cette adresse.
           </p>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-2"
+            className="w-full py-2.5 disabled:opacity-50 text-white font-semibold rounded-xl transition-all text-[14px] flex items-center justify-center gap-2 hover:brightness-110"
+            style={{ backgroundColor: c }}
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Envoi...</> : "Envoyer le code"}
           </button>
         </form>
       )}
 
-      {/* Etape 2 : Code + nouveau mot de passe */}
       {step === "code" && (
         <form onSubmit={handleResetPassword} className="space-y-4">
-          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 mb-2">
-            <p className="text-[13px] text-orange-400">
-              Un code à 6 chiffres a été envoyé à <span className="font-semibold">{email}</span>
+          <div className="rounded-xl px-4 py-3 mb-2" style={{ backgroundColor: `${c}1a`, borderWidth: 1, borderColor: `${c}33` }}>
+            <p className="text-[13px]" style={{ color: c }}>
+              Un code a 6 chiffres a ete envoye a <span className="font-semibold">{email}</span>
             </p>
           </div>
 
           <div>
-            <label className="block text-[13px] text-gray-400 mb-1.5">Code de vérification</label>
+            <label className="block text-[13px] text-gray-400 mb-1.5">Code de verification</label>
             <div className="relative">
               <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
@@ -150,7 +169,8 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 required
                 maxLength={6}
-                className="w-full pl-10 pr-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] text-center tracking-[0.5em] font-mono placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+                className="w-full pl-10 pr-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] text-center tracking-[0.5em] font-mono placeholder-gray-600 focus:outline-none focus:ring-1 transition-colors"
+                style={{ "--tw-ring-color": `${c}80` } as React.CSSProperties}
                 placeholder="000000"
               />
             </div>
@@ -164,8 +184,9 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
-              placeholder="6 caractères minimum"
+              className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:ring-1 transition-colors"
+              style={{ "--tw-ring-color": `${c}80` } as React.CSSProperties}
+              placeholder="6 caracteres minimum"
             />
           </div>
 
@@ -177,7 +198,8 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+              className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white text-[14px] placeholder-gray-600 focus:outline-none focus:ring-1 transition-colors"
+              style={{ "--tw-ring-color": `${c}80` } as React.CSSProperties}
               placeholder="••••••••"
             />
           </div>
@@ -185,9 +207,10 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-2"
+            className="w-full py-2.5 disabled:opacity-50 text-white font-semibold rounded-xl transition-all text-[14px] flex items-center justify-center gap-2 hover:brightness-110"
+            style={{ backgroundColor: c }}
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Vérification...</> : "Réinitialiser le mot de passe"}
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verification...</> : "Reinitialiser le mot de passe"}
           </button>
 
           <button
@@ -200,7 +223,6 @@ export default function ForgotPasswordPage() {
         </form>
       )}
 
-      {/* Etape 3 : Succes */}
       {step === "done" && (
         <div className="text-center space-y-4">
           <div className="flex justify-center">
@@ -209,11 +231,12 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
           <p className="text-[14px] text-gray-300">
-            Votre mot de passe a été réinitialisé avec succès.
+            Votre mot de passe a ete reinitialise avec succes.
           </p>
           <Link
             href="/login"
-            className="block w-full py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-xl transition-colors text-[14px] text-center"
+            className="block w-full py-2.5 text-white font-semibold rounded-xl transition-all text-[14px] text-center hover:brightness-110"
+            style={{ backgroundColor: c }}
           >
             Se connecter
           </Link>
@@ -222,8 +245,8 @@ export default function ForgotPasswordPage() {
 
       {step !== "done" && (
         <p className="text-center text-gray-600 text-[13px] mt-6">
-          <Link href="/login" className="text-orange-400 hover:text-orange-300">
-            Retour à la connexion
+          <Link href="/login" className="hover:brightness-125 transition-all" style={{ color: c }}>
+            Retour a la connexion
           </Link>
         </p>
       )}

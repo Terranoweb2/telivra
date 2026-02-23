@@ -48,7 +48,7 @@ interface Promotion {
   endDate: string;
   isActive: boolean;
   appliesToAll: boolean;
-  products?: { product?: { id: string; image: string | null } }[];
+  products?: { product?: { id: string; name: string; price: number; image: string | null } }[];
 }
 
 interface CartItem {
@@ -413,7 +413,7 @@ export default function LandingPage() {
           )}
         </h1>
         <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
-          {settings ? (settings.heroSubtitle || "Découvrez notre menu et commandez vos repas préférés. Livraison rapide, paiement flexible.") : (
+          {settings ? (settings.heroSubtitle || "Découvrez notre menu et commandez vos plats préférés. Livraison rapide, paiement flexible.") : (
             <span className="inline-block h-5 w-80 sm:w-[28rem] bg-gray-800/40 rounded-xl animate-pulse" />
           )}
         </p>
@@ -466,7 +466,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Grille repas */}
+        {/* Grille plats */}
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
@@ -487,6 +487,9 @@ export default function LandingPage() {
                       <img loading="lazy" decoding="async" src={p.image!} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
                       <UtensilsCrossed className="w-12 h-12 text-gray-600" />
+                    )}
+                    {p.hasDiscount && (
+                      <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-orange-600 text-white text-[9px] font-bold rounded-md">{"En Promo"}</span>
                     )}
                     <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-md backdrop-blur-sm">
                       <Timer className="w-3 h-3 text-gray-400" />
@@ -915,7 +918,10 @@ export default function LandingPage() {
                       className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1.5 block">Mot de passe</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs text-gray-500">Mot de passe</label>
+                      <Link href="/forgot-password" onClick={() => setShowAuth(false)} className="text-[11px] text-orange-400 hover:text-orange-300 transition-colors">Mot de passe oublié ?</Link>
+                    </div>
                     <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required placeholder="••••••••"
                       className="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
                   </div>
@@ -1054,7 +1060,7 @@ export default function LandingPage() {
                       className="w-full py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
-                      Ajouter un autre repas
+                      Ajouter un autre plat
                     </button>
                   </div>
                 )}
@@ -1097,23 +1103,24 @@ export default function LandingPage() {
       {showPromoDialog && promotions.length > 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg max-h-[85vh] overflow-hidden rounded-3xl bg-gray-900 border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
               className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
               <X className="w-4 h-4" />
             </button>
 
-            <div className="space-y-0">
+            <div className="overflow-y-auto max-h-[calc(85vh-72px)]">
               {promotions.map((promo: any, idx: number) => {
                 const promoImgs = (() => { if (!promo.image) return []; try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })();
-              const fallbackImg = !promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null;
-              const allImgs = promoImgs.length > 0 ? promoImgs : fallbackImg ? [fallbackImg] : [];
-              const currentImg = allImgs.length > 0 ? allImgs[imgCounter % allImgs.length] : null;
+                const fallbackImg = !promo.appliesToAll && promo.products?.length === 1 ? promo.products[0]?.product?.image : null;
+                const allImgs = promoImgs.length > 0 ? promoImgs : fallbackImg ? [fallbackImg] : [];
+                const currentImg = allImgs.length > 0 ? allImgs[imgCounter % allImgs.length] : null;
+                const specificProducts = !promo.appliesToAll && promo.products?.length > 0 ? promo.products.filter((pp: any) => pp.product) : [];
                 return (
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
                     {currentImg && (
                       <div className="relative">
-                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
+                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} referrerPolicy="no-referrer" className="w-full aspect-[16/9] object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
                         {allImgs.length > 1 && (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
@@ -1124,22 +1131,70 @@ export default function LandingPage() {
                         )}
                       </div>
                     )}
-                    <div className={cn("px-5 pb-5", currentImg ? "-mt-8 relative z-10" : "pt-5")}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-bold">
+                    <div className={cn("px-5 pb-4", currentImg ? "-mt-8 relative z-10" : "pt-5")}>
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <span className="px-2.5 py-1 bg-orange-500/15 text-orange-400 rounded-full text-xs font-bold border border-orange-500/20">
                           -{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : " FCFA"}
                         </span>
                         <span className="text-[10px] text-gray-500">
-                          Jusqu&apos;au {new Date(promo.endDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                          {"Jusqu’au "}{new Date(promo.endDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
                         </span>
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-1">{promo.name}</h3>
+                      <h3 className="text-lg font-bold text-white mb-0.5">{promo.name}</h3>
                       {promo.description && (
-                        <div className="text-sm text-gray-400 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
+                        <div className="text-[13px] text-gray-400 leading-relaxed [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
                       )}
-                      <p className="text-xs text-gray-500 mt-2">
-                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} repas`}
-                      </p>
+                      {promo.appliesToAll ? (
+                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-green-500" />
+                          {"Sur tous les plats et extras"}
+                        </p>
+                      ) : specificProducts.length > 0 ? (
+                        <div className="mt-3 -mx-5 px-5">
+                          <div className="flex items-center justify-between mb-2.5">
+                            <p className="text-[13px] text-white font-semibold">
+                              {"Plats en promotion"}
+                            </p>
+                            <span className="text-[11px] text-orange-400 font-medium">
+                              {specificProducts.length}{" plat"}{specificProducts.length > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide snap-x snap-mandatory">
+                            {specificProducts.map((pp: any) => {
+                              const prod = pp.product;
+                              const discounted = promo.discountType === "PERCENTAGE"
+                                ? Math.round(prod.price * (1 - promo.discountValue / 100))
+                                : Math.max(0, prod.price - promo.discountValue);
+                              return (
+                                <div key={prod.id} className="shrink-0 snap-start w-[140px] rounded-2xl bg-gray-800/60 border border-gray-700/50 overflow-hidden">
+                                  {prod.image ? (
+                                    <div className="relative">
+                                      <img loading="lazy" decoding="async" src={prod.image} alt={prod.name} referrerPolicy="no-referrer" className="w-full h-[100px] object-cover" />
+                                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-md">
+                                        {"-"}{promo.discountValue}{promo.discountType === "PERCENTAGE" ? "%" : ""}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full h-[100px] bg-gray-800 flex items-center justify-center">
+                                      <span className="text-3xl">{"🍽️"}</span>
+                                    </div>
+                                  )}
+                                  <div className="p-2.5">
+                                    <p className="text-[12px] text-white font-medium leading-tight line-clamp-2 min-h-[32px]">{prod.name}</p>
+                                    <div className="flex items-baseline gap-1.5 mt-1.5">
+                                      <span className="text-[14px] text-orange-400 font-bold">{discounted}</span>
+                                      <span className="text-[11px] text-gray-600 line-through">{prod.price}</span>
+                                      <span className="text-[10px] text-gray-500">{"FCFA"}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-2">{"Sur certains plats"}</p>
+                      )}
                     </div>
                   </div>
                 );
@@ -1149,7 +1204,7 @@ export default function LandingPage() {
             <div className="p-4 border-t border-gray-800">
               <button onClick={() => { setShowPromoDialog(false); try { sessionStorage.setItem("promo-dialog-dismissed", "1"); } catch {} }}
                 className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors">
-                Commander maintenant
+                {"Commander maintenant"}
               </button>
             </div>
           </div>

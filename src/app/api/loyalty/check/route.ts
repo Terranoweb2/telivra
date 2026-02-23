@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyRole } from "@/lib/notify";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const host = request.headers.get("host") || "";
   if (!host.includes("localhost")) {
     return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
@@ -56,4 +59,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ notified });
-}
+});

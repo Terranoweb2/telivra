@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user || (session.user as any).role !== "ADMIN")
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
@@ -91,4 +94,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     clients: Array.from(clientMap.values()).sort((a, b) => b.count - a.count),
     cooks: Array.from(cookMap.values()).sort((a, b) => b.count - a.count),
   });
-}
+});

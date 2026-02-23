@@ -100,7 +100,7 @@ export default function DriverDetailPage() {
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>{d.order?.orderNumber || "#" + d.order?.id?.slice(-6)}</span>
                     <span>-</span>
-                    <span>{d.order?.items?.length || 0} repas</span>
+                    <span>{d.order?.items?.length || 0} plats</span>
                     <span>-</span>
                     <span>{new Date(d.endTime || d.order?.createdAt).toLocaleDateString("fr-FR")}</span>
                   </div>
@@ -188,7 +188,7 @@ export default function DriverDetailPage() {
                       <Star key={s} className={cn("w-3 h-3", s <= (d.order.rating.mealRating || 0) ? "text-orange-400 fill-orange-400" : "text-gray-700")} />
                     ))}
                   </div>
-                  <span className="text-[10px] text-gray-500">Repas</span>
+                  <span className="text-[10px] text-gray-500">Plat</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white">{d.order?.client?.name || d.order?.guestName || "Client"}</p>

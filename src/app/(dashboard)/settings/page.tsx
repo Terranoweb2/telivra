@@ -377,7 +377,7 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-[13px] text-gray-400 mb-1.5">Sous-titre du héro</label>
                 <textarea value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)}
-                  placeholder="Ex: Découvrez notre menu et commandez vos repas préférés..."
+                  placeholder="Ex: Découvrez notre menu et commandez vos plats préférés..."
                   rows={3} className={inputClass + " resize-none"} />
               </div>
 

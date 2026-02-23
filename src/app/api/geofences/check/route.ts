@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isPointInGeofence } from "@/lib/geofence-utils";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -18,4 +21,4 @@ export async function POST(request: NextRequest) {
   }));
 
   return NextResponse.json(results);
-}
+});

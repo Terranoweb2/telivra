@@ -405,7 +405,7 @@ export default function CommandesPage() {
       )}
 
       {/* Onglets */}
-      <div className="sticky top-14 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-gray-900/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-gray-900">
       <TabGroup tabs={tabItems} active={tab} onChange={(key) => setTab(key as Tab)} />
       </div>
 

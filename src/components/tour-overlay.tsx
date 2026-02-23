@@ -37,7 +37,7 @@ export function TourOverlay({ chatEnabled, pickupEnabled, hasPromotions }: TourO
     s.push({
       icon: <HandMetal className="w-7 h-7 text-orange-400" />,
       title: "Bienvenue !",
-      desc: "Découvrez comment commander vos repas en quelques étapes simples.",
+      desc: "Découvrez comment commander vos plats en quelques étapes simples.",
     });
 
     s.push({

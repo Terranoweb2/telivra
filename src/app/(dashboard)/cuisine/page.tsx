@@ -314,7 +314,7 @@ export default function CuisinePage() {
                       <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 space-y-1">
                         <div className="flex items-center gap-2">
                           <div className="text-center">
-                            <p className="text-[9px] text-gray-500">Repas</p>
+                            <p className="text-[9px] text-gray-500">Plat</p>
                             <StarRating value={order.rating.mealRating} size="sm" />
                           </div>
                           <div className="text-center">

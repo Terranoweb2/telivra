@@ -16,6 +16,7 @@ model User {
   hashedPassword String
   role           UserRole  @default(VIEWER)
   isActive       Boolean   @default(true)
+  emailVerified  Boolean   @default(false) @map("email_verified")
   dateOfBirth    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -31,6 +32,7 @@ model User {
   phone          String?
   sentMessages   Message[]  @relation("SentMessages")
   pushSubscriptions PushSubscription[]
+  auditLogs         AuditLog[]
 
   @@map("users")
 }
@@ -576,4 +578,43 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+
+// ========== AUDIT LOG ==========
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entity      String
+  entityId    String?
+  entityName  String?
+  reason      String?
+  details     String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ========== NEWSLETTERS ==========
+
+model Newsletter {
+  id              String    @id @default(cuid())
+  subject         String
+  htmlContent     String
+  status          String    @default("draft")
+  sentAt          DateTime?
+  sentCount       Int       @default(0)
+  scheduledFor    DateTime? @map("scheduled_for")
+  recipientType   String    @default("all") @map("recipient_type")
+  recipientEmails String[]  @default([]) @map("recipient_emails")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("newsletters")
 }

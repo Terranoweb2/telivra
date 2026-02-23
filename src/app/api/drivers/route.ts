@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET() {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET() {
   try {
     const session = await auth();
     if (!session?.user || (session.user as any).role !== "ADMIN")
@@ -60,4 +63,4 @@ export async function GET() {
     console.error("[drivers] GET error:", e.message);
     return NextResponse.json([], { status: 200 });
   }
-}
+});

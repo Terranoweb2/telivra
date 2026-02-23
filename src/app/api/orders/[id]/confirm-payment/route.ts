@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { notifyRole } from "@/lib/notify";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {  const { id } = await params;
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
@@ -83,4 +85,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
 
   return NextResponse.json(updated);
-}
+});

@@ -21,7 +21,10 @@ import {
   UtensilsCrossed,
   Percent,
   BarChart3,
-  Banknote } from "lucide-react";
+  Banknote,
+  Shield,
+  Mail,
+} from "lucide-react";
 
 function useBranding() {
   const [brand, setBrand] = useState({ name: "Terrano", logo: null as string | null });
@@ -41,11 +44,12 @@ const navItems = [
 ];
 
 const adminItems = [
-  { label: "Repas", href: "/products", icon: Package },
+  { label: "Plats", href: "/products", icon: Package },
   { label: "Marketing", href: "/products?tab=promotions", icon: Percent },
   { label: "Utilisateurs", href: "/users", icon: Users },
   { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
   { label: "Livreurs", href: "/drivers", icon: Truck },
+  { label: "Newsletter", href: "/newsletters", icon: Mail },
 ];
 
 function playNotificationSound() {
@@ -220,7 +224,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <div className="pt-5 pb-2 px-3">
                 <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Administration</p>
               </div>
-              {adminItems.map((item) => {
+              {[...adminItems, ...(role === "ADMIN" ? [{ label: "Journal d'audit", href: "/audit", icon: Shield }] : [])].map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
                   <Link key={item.href} href={item.href} onClick={onClose}
@@ -238,7 +242,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </>
           )}
 
-          {!isManager && <div className="pt-4">
+          {true && <div className="pt-4">
             <Link href="/settings" onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",

@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { positionSchema } from "@/lib/validators";
 import { isPointInGeofence } from "@/lib/geofence-utils";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const body = await request.json();
   const parsed = positionSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true, positionId: position.id });
-}
+});
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;

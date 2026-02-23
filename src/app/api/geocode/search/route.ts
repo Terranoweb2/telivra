@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(req: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q");
 
@@ -28,4 +31,4 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json([]);
   }
-}
+});

@@ -23,6 +23,7 @@ export function middleware(request: NextRequest) {
     "/api/birthdays/check",
     "/api/loyalty/check",
     "/track",
+    "/forgot-password",
   ];
   const isPublic =
     pathname === "/" ||
@@ -30,7 +31,7 @@ export function middleware(request: NextRequest) {
 
   // Toute page non-publique ou /login /register /forgot-password → rediriger vers /
   if (!sessionCookie) {
-    if (pathname === "/login" || pathname === "/register" || pathname === "/forgot-password") {
+    if (pathname === "/login" || pathname === "/register") {
       return NextResponse.redirect(new URL("/", request.url));
     }
     if (!isPublic) {
@@ -43,7 +44,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // Multi-tenant: injecter le slug du tenant dans les headers
+  const host = request.headers.get("host") || "";
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "";
+  if (baseDomain) {
+    const hostname = host.split(":")[0];
+    if (hostname.endsWith("." + baseDomain)) {
+      const slug = hostname.replace("." + baseDomain, "");
+      if (slug && !slug.includes(".")) {
+        response.headers.set("x-tenant-slug", slug);
+      }
+    }
+  }
+
+  return response;
 }
 
 export const config = {

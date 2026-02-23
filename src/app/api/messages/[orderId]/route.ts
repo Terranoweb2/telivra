@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
+export const dynamic = "force-dynamic";
+
 // Resolve potentially truncated orderId (from old navigate URLs)
 async function resolveOrderId(rawId: string) {
   // Try exact match first
@@ -27,7 +30,7 @@ async function resolveOrderId(rawId: string) {
 }
 
 
-export async function GET(
+export const GET = withTenant(async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
@@ -98,9 +101,9 @@ export async function GET(
     console.error("Erreur lecture messages:", error);
     return NextResponse.json({ messages: [], hasMore: false, nextCursor: null });
   }
-}
+});
 
-export async function POST(
+export const POST = withTenant(async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
@@ -181,4 +184,4 @@ export async function POST(
     console.error("Erreur envoi message:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

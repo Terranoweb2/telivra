@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const callerRole = (session?.user as any)?.role;
@@ -93,9 +96,9 @@ export async function GET(request: NextRequest) {
     console.error("[users] GET error:", e.message);
     return NextResponse.json([], { status: 200 });
   }
-}
+});
 
-export async function PUT(request: NextRequest) {
+export const PUT = withTenant(async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     const callerRole = (session?.user as any)?.role;
@@ -131,10 +134,10 @@ export async function PUT(request: NextRequest) {
     console.error("[users] PUT error:", e.message);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});
 
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withTenant(async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     const callerRole = (session?.user as any)?.role;
@@ -178,4 +181,4 @@ export async function DELETE(request: NextRequest) {
     console.error("[users] DELETE error:", e.message);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

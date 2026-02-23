@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { latitude, longitude, speed } = await request.json();
 
@@ -27,4 +30,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   return NextResponse.json({ success: true });
-}
+});

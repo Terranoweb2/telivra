@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { updateDeviceSchema } from "@/lib/validators";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -20,9 +23,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   if (!device) return NextResponse.json({ error: "Appareil non trouvé" }, { status: 404 });
   return NextResponse.json(device);
-}
+});
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PUT = withTenant(async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -38,13 +41,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   });
 
   return NextResponse.json(device);
-}
+});
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = withTenant(async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
   const { id } = await params;
   await prisma.device.delete({ where: { id, userId: (session.user as any).id } });
   return NextResponse.json({ success: true });
-}
+});

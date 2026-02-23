@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -39,4 +42,4 @@ export async function GET(
   } catch {
     return NextResponse.json({ averageRating: 0, count: 0, ratings: [] });
   }
-}
+});

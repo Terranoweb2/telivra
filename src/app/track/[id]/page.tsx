@@ -120,8 +120,8 @@ function CookingCountdown({ cookAcceptedAt, cookingTimeMin }: { cookAcceptedAt: 
         </div>
         <p className="text-xs text-gray-400">
           {isOverdue
-            ? "Votre repas devrait être prêt d'un instant à l'autre"
-            : `Votre repas est en préparation — ${Math.round(progress)}%`
+            ? "Votre plat devrait être prêt d'un instant à l'autre"
+            : `Votre plat est en préparation — ${Math.round(progress)}%`
           }
         </p>
       </div>
@@ -311,7 +311,7 @@ export default function TrackDetailPage() {
   async function submitRating() {
     const isPickupOrder = order?.deliveryMode === "PICKUP";
     if (!order || mealRating === 0 || (!isPickupOrder && driverRating === 0)) {
-      toast.error(isPickupOrder ? "Veuillez noter le repas" : "Veuillez noter le livreur et le repas");
+      toast.error(isPickupOrder ? "Veuillez noter le plat" : "Veuillez noter le livreur et le plat");
       return;
     }
     setSubmittingRating(true);
@@ -372,8 +372,8 @@ export default function TrackDetailPage() {
   // Texte résumé pour le sheet réduit
   function getStatusText() {
     const isPickup = order.deliveryMode === "PICKUP";
-    if (isCooking) return "Votre repas est en préparation...";
-    if (isReady) return isPickup ? "Votre commande est prête ! Venez la récupérer." : "Votre repas est prêt !";
+    if (isCooking) return "Votre plat est en préparation...";
+    if (isReady) return isPickup ? "Votre commande est prête ! Venez la récupérer." : "Votre plat est prêt !";
     if (order.status === "DELIVERING" && driverName) return `${driverName} est en route`;
     if (order.status === "PENDING") return isPickup ? "Commande reçue, en attente du cuisinier..." : "En attente du cuisinier...";
     if (order.status === "DELIVERED") return isPickup ? "Commande récupérée. Merci et bon appétit !" : "Commande livrée !";
@@ -454,7 +454,7 @@ export default function TrackDetailPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <ChefHat className="w-4 h-4 text-orange-400" />
-                  <span className="text-sm font-medium text-gray-300">Le repas</span>
+                  <span className="text-sm font-medium text-gray-300">Le plat</span>
                 </div>
                 <div className="flex justify-center">
                   <StarRating value={mealRating} onChange={setMealRating} size="lg" />
@@ -462,7 +462,7 @@ export default function TrackDetailPage() {
                 <textarea
                   value={mealComment}
                   onChange={(e) => setMealComment(e.target.value)}
-                  placeholder="Un commentaire sur le repas ? (optionnel)"
+                  placeholder="Un commentaire sur le plat ? (optionnel)"
                   rows={2}
                   maxLength={500}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-orange-500"
@@ -487,7 +487,7 @@ export default function TrackDetailPage() {
               {order.rating && (
                 <div className="flex justify-center">
                   <div className="text-center">
-                    <p className="text-[10px] text-gray-500 mb-1">Repas</p>
+                    <p className="text-[10px] text-gray-500 mb-1">Plat</p>
                     <StarRating value={order.rating.mealRating} size="sm" />
                   </div>
                 </div>
@@ -617,7 +617,7 @@ export default function TrackDetailPage() {
               <div className="px-4 pb-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>{order.items?.length || 0} repas</span>
+                  <span>{order.items?.length || 0} plats</span>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-orange-600">{((order.totalAmount || 0) + (order.deliveryMode === "PICKUP" ? 0 : deliveryFee)).toLocaleString()} FCFA</p>
@@ -655,7 +655,7 @@ export default function TrackDetailPage() {
                   <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                     <CheckCircle className="w-5 h-5 text-emerald-500" />
                     <div>
-                      <p className="text-sm font-semibold text-emerald-700">Votre repas est prêt !</p>
+                      <p className="text-sm font-semibold text-emerald-700">Votre plat est prêt !</p>
                       <p className="text-xs text-emerald-600/70">{order.deliveryMode === "PICKUP" ? "Venez le récupérer au restaurant" : "En attente d\u0027un livreur"}</p>
                     </div>
                   </div>
@@ -759,11 +759,11 @@ export default function TrackDetailPage() {
                       </div>
                     )}
 
-                    {/* Note repas */}
+                    {/* Note plat */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <ChefHat className="w-4 h-4 text-orange-500" />
-                        <span className="text-sm font-medium text-gray-700">Le repas</span>
+                        <span className="text-sm font-medium text-gray-700">Le plat</span>
                       </div>
                       <div className="flex justify-center">
                         <StarRating value={mealRating} onChange={setMealRating} size="lg" />
@@ -771,7 +771,7 @@ export default function TrackDetailPage() {
                       <textarea
                         value={mealComment}
                         onChange={(e) => setMealComment(e.target.value)}
-                        placeholder="Un commentaire sur le repas ? (optionnel)"
+                        placeholder="Un commentaire sur le plat ? (optionnel)"
                         rows={2}
                         maxLength={500}
                         className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-400 resize-none focus:outline-none focus:border-orange-400"
@@ -803,7 +803,7 @@ export default function TrackDetailPage() {
                           </div>
                         )}
                         <div className="text-center">
-                          <p className="text-[10px] text-gray-500 mb-1">Repas</p>
+                          <p className="text-[10px] text-gray-500 mb-1">Plat</p>
                           <StarRating value={order.rating.mealRating} size="sm" />
                         </div>
                       </div>

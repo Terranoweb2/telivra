@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET() {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ count: 0 });
@@ -35,4 +38,4 @@ export async function GET() {
   } catch {
     return NextResponse.json({ count: 0 });
   }
-}
+});

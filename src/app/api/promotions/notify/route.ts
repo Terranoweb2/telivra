@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const now = new Date();
   const activePromos = await prisma.promotion.findMany({
     where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
@@ -59,4 +62,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ sent: alertCount });
-}
+});

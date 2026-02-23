@@ -321,15 +321,15 @@ export default function EncaissementPage() {
         return (
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-white">Repas vendus</h2>
-              <span className="text-xs text-gray-500">{allProducts.length} repas</span>
+              <h2 className="text-base font-semibold text-white">Plats vendus</h2>
+              <span className="text-xs text-gray-500">{allProducts.length} plats</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-gray-500 text-left border-b border-gray-800">
                     <th className="pb-3 font-medium">#</th>
-                    <th className="pb-3 font-medium">Repas</th>
+                    <th className="pb-3 font-medium">Plat</th>
                     <th className="pb-3 font-medium text-center">Commandes</th>
                     <th className="pb-3 font-medium text-right">Revenu</th>
                   </tr>

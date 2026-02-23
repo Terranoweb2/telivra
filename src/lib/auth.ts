@@ -8,6 +8,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
+  cookies: {
+    sessionToken: {
+      name: "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   providers: [
     Credentials({
       name: "credentials",
@@ -31,6 +42,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isValid) return null;
 
+        // Vérifier si l'email est vérifié
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -47,20 +63,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
       }
 
-      // Rafraichir le role depuis la DB a chaque requete
-      // pour detecter les changements de role en temps reel
       if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: { role: true, isActive: true, name: true },
           });
-          if (dbUser) {
-            token.role = dbUser.role;
-            token.name = dbUser.name;
+          if (!dbUser) {
+            return {} as any;
           }
-          // Si le compte est desactive, invalider le token
-          if (dbUser && !dbUser.isActive) {
+          token.role = dbUser.role;
+          token.name = dbUser.name;
+          if (!dbUser.isActive) {
             return {} as any;
           }
         } catch {

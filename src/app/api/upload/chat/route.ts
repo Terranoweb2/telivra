@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_AUDIO_TYPES = [
   "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
@@ -16,7 +19,7 @@ const ALLOWED_VIDEO_TYPES = [
 const MAX_AUDIO_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
@@ -89,4 +92,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Erreur upload" }, { status: 500 });
   }
-}
+});

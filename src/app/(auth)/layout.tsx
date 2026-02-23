@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { LogIn, UserPlus, ShoppingBag, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { getCachedSettings } from "@/lib/settings-cache";
 
 const authTabs = [
   { label: "Connexion", href: "/login", icon: LogIn },
@@ -15,6 +17,13 @@ const authTabs = [
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const [brandColor, setBrandColor] = useState("#ea580c");
+
+  useEffect(() => {
+    getCachedSettings().then((s) => {
+      if (s.buttonColor) setBrandColor(s.buttonColor);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-950">
@@ -44,14 +53,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               return (
                 <Link key={tab.href} href={tab.href}
                   className="flex flex-col items-center justify-center flex-1 gap-[3px]">
-                  <Icon className={cn(
-                    "w-[24px] h-[24px] transition-colors",
-                    isActive ? "text-orange-500" : "text-gray-500"
-                  )} strokeWidth={isActive ? 2.1 : 1.5} />
-                  <span className={cn(
-                    "text-[10px] leading-none",
-                    isActive ? "text-orange-500 font-semibold" : "text-gray-500 font-medium"
-                  )}>{tab.label}</span>
+                  <Icon
+                    className={cn("w-[24px] h-[24px] transition-colors", !isActive && "text-gray-500")}
+                    style={isActive ? { color: brandColor } : undefined}
+                    strokeWidth={isActive ? 2.1 : 1.5}
+                  />
+                  <span
+                    className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "text-gray-500 font-medium")}
+                    style={isActive ? { color: brandColor } : undefined}
+                  >
+                    {tab.label}
+                  </span>
                 </Link>
               );
             })}

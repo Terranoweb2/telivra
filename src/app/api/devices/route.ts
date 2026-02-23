@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { createDeviceSchema } from "@/lib/validators";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -22,9 +25,9 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(devices);
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -48,4 +51,4 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json(device, { status: 201 });
-}
+});

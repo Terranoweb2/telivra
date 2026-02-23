@@ -456,7 +456,7 @@ export default function DriverDeliveryDetail() {
                         <StarRating value={order.rating.driverRating} size="sm" showValue />
                       </div>
                       <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">Repas</p>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Plat</p>
                         <StarRating value={order.rating.mealRating} size="sm" showValue />
                       </div>
                     </div>

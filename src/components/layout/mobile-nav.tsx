@@ -17,7 +17,7 @@ import {
   ChefHat,
   Percent,
   BarChart3,
-  Banknote } from "lucide-react";
+  Banknote, Mail, Shield } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const mobileItems: Record<string, { label: string; href: string; icon: any }[]> = {
@@ -38,11 +38,23 @@ const mobileItems: Record<string, { label: string; href: string; icon: any }[]> 
   DEFAULT: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Commandes", href: "/livraison/order", icon: ClipboardList },
-    { label: "Repas", href: "/products", icon: Package },
+    { label: "Plats", href: "/products", icon: Package },
   ],
 };
 
 const dropdownItems: Record<string, { label: string; href: string; icon: any }[]> = {
+  ADMIN: [
+    { label: "Encaissement", href: "/encaissement", icon: Banknote },
+    { label: "Cuisine", href: "/cuisine", icon: ChefHat },
+    { label: "Marketing", href: "/products?tab=promotions", icon: Percent },
+    { label: "Cuisiniers", href: "/cooks", icon: ChefHat },
+    { label: "Livreurs", href: "/drivers", icon: Truck },
+    { label: "Alertes", href: "/alerts", icon: Bell },
+    { label: "Utilisateurs", href: "/users", icon: Users },
+    { label: "Newsletter", href: "/newsletters", icon: Mail },
+    { label: "Journal d'audit", href: "/audit", icon: Shield },
+    { label: "Paramètres", href: "/settings", icon: Settings },
+  ],
   CLIENT: [
     { label: "Paramètres", href: "/settings", icon: Settings },
   ],
@@ -62,6 +74,7 @@ const dropdownItems: Record<string, { label: string; href: string; icon: any }[]
     { label: "Livreurs", href: "/drivers", icon: Truck },
     { label: "Alertes", href: "/alerts", icon: Bell },
     { label: "Utilisateurs", href: "/users", icon: Users },
+    { label: "Newsletter", href: "/newsletters", icon: Mail },
     { label: "Paramètres", href: "/settings", icon: Settings },
   ],
 };

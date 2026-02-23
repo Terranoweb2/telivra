@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const userId = (session.user as any).id;
@@ -27,9 +30,9 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ ok: true });
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withTenant(async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
 
@@ -38,4 +41,4 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.pushSubscription.deleteMany({ where: { endpoint } });
   return NextResponse.json({ ok: true });
-}
+});

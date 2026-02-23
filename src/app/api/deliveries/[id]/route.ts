@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -28,4 +31,4 @@ export async function GET(
     console.error("Erreur deliveries API:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

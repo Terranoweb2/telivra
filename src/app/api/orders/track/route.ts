@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const ref = searchParams.get("ref");
   const phone = searchParams.get("phone");
@@ -31,4 +34,4 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(orders);
-}
+});

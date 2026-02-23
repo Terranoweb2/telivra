@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   try {
     const { email, code, newPassword } = await request.json();
 
@@ -46,4 +49,4 @@ export async function POST(request: NextRequest) {
     console.error("Erreur reset-password:", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

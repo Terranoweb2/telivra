@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET() {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET() {
   const session = await auth();
   if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -86,4 +89,4 @@ export async function GET() {
       online: { revenue: Math.round(onlineAgg._sum.totalAmount || 0), count: onlineAgg._count },
     },
   });
-}
+});

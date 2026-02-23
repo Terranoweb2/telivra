@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 async function resolveOrderId(rawId: string) {
   let order = await prisma.order.findUnique({
     where: { id: rawId },
@@ -18,7 +21,7 @@ async function resolveOrderId(rawId: string) {
 }
 
 // PATCH — Edit message content
-export async function PATCH(
+export const PATCH = withTenant(async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string; messageId: string }> }
 ) {
@@ -81,10 +84,10 @@ export async function PATCH(
     console.error("Erreur edition message:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});
 
 // DELETE — Delete message
-export async function DELETE(
+export const DELETE = withTenant(async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string; messageId: string }> }
 ) {
@@ -136,4 +139,4 @@ export async function DELETE(
     console.error("Erreur suppression message:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

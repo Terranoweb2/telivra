@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyRole } from "@/lib/notify";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -73,4 +76,4 @@ export async function POST(
     console.error("Erreur notation:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+});

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 // Resolve potentially truncated orderId
 async function resolveOrderId(rawId: string) {
   let order = await prisma.order.findUnique({
@@ -18,7 +21,7 @@ async function resolveOrderId(rawId: string) {
   return order;
 }
 
-export async function POST(
+export const POST = withTenant(async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
@@ -68,4 +71,4 @@ export async function POST(
     console.error("Erreur mark read:", error);
     return NextResponse.json({ success: false }, { status: 500 });
   }
-}
+});

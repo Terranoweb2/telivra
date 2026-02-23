@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { calculateEffectivePrice } from "@/lib/pricing";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function GET(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const GET = withTenant(async function GET(request: NextRequest) {
   try {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
@@ -77,9 +80,9 @@ export async function GET(request: NextRequest) {
     console.error("Products API error:", err);
     return NextResponse.json([], { status: 200 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role))
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
@@ -106,4 +109,4 @@ export async function POST(request: NextRequest) {
     },
   });
   return NextResponse.json(product, { status: 201 });
-}
+});

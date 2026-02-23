@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { compare, hash } from "bcryptjs";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 // PUT /api/users/profile — Modifier son propre profil
-export async function PUT(request: NextRequest) {
+export const PUT = withTenant(async function PUT(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
@@ -54,4 +57,4 @@ export async function PUT(request: NextRequest) {
   }
 
   return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });
-}
+});

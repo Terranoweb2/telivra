@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 const ALLOWED_FIELDS = [
   "name", "description", "price", "category", "shopName",
   "image", "isAvailable", "cookingTimeMin", "isExtra", "paymentMethod",
@@ -11,7 +14,7 @@ const ALLOWED_FIELDS = [
 const VALID_CATEGORIES = ["RESTAURANT", "GROCERY", "PHARMACY", "ELECTRONICS", "OTHER"];
 const VALID_PAYMENT_METHODS = ["CASH", "ONLINE", "BOTH"];
 
-export async function PUT(
+export const PUT = withTenant(async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -71,9 +74,9 @@ export async function PUT(
   } catch {
     return NextResponse.json({ error: "Produit introuvable" }, { status: 404 });
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withTenant(async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -92,4 +95,4 @@ export async function DELETE(
   } catch {
     return NextResponse.json({ error: "Erreur lors de la suppression" }, { status: 500 });
   }
-}
+});

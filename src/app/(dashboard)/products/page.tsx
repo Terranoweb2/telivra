@@ -273,12 +273,14 @@ export default function ProductsPage() {
         category: form.category,
         shopName: "Restaurant",
         isAvailable: true,
+        discountPercent: form.discountPercent ? parseFloat(form.discountPercent) : null,
+        discountAmount: form.discountAmount ? parseFloat(form.discountAmount) : null,
       }),
     });
     if (res.ok) {
       resetForm();
       setShowDialog(false);
-      toast.success("Repas ajouté");
+      toast.success("Plat ajouté");
       refreshProducts();
     } else {
       toast.error("Erreur lors de l'ajout");
@@ -301,12 +303,14 @@ export default function ProductsPage() {
         isExtra: form.isExtra,
         paymentMethod: form.paymentMethod,
         category: form.category,
+        discountPercent: form.discountPercent ? parseFloat(form.discountPercent) : null,
+        discountAmount: form.discountAmount ? parseFloat(form.discountAmount) : null,
       }),
     });
     if (res.ok) {
       resetForm();
       setShowDialog(false);
-      toast.success("Repas modifié");
+      toast.success("Plat modifié");
       refreshProducts();
     } else {
       toast.error("Erreur lors de la modification");
@@ -326,7 +330,7 @@ export default function ProductsPage() {
     const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
     if (res.ok) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Repas supprimé");
+      toast.success("Plat supprimé");
     } else {
       toast.error("Erreur lors de la suppression");
     }
@@ -442,7 +446,7 @@ export default function ProductsPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
   const tabItems: { key: Tab; label: string }[] = [
-    { key: "products", label: "Repas" },
+    { key: "products", label: "Plats" },
     { key: "promotions", label: "Promotions" },
     ...(isPageAdmin ? [{ key: "deleted" as Tab, label: "Corbeille" }] : []),
   ];
@@ -467,7 +471,7 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Repas" subtitle="Gérez vos repas, commandes et recettes">
+      <PageHeader title="Plats" subtitle="Gérez vos plats, commandes et recettes">
         {tab === "products" && (
           <button onClick={openAddDialog}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-xl text-sm font-medium text-white transition-colors">
@@ -492,7 +496,7 @@ export default function ProductsPage() {
       {/* === REPAS === */}
       {tab === "products" && (
         <div className="space-y-4">
-          {/* Filtre Repas / Extras / Tous */}
+          {/* Filtre Plats / Extras / Tous */}
           <div className="flex gap-2">
             <button onClick={() => setProductFilter("all")}
               className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
@@ -502,7 +506,7 @@ export default function ProductsPage() {
             <button onClick={() => setProductFilter("meals")}
               className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
                 productFilter === "meals" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400")}>
-              <UtensilsCrossed className="w-3 h-3" /> Repas ({mealsCount})
+              <UtensilsCrossed className="w-3 h-3" /> Plats ({mealsCount})
             </button>
             <button onClick={() => setProductFilter("extras")}
               className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
@@ -511,11 +515,11 @@ export default function ProductsPage() {
             </button>
           </div>
 
-          {/* Recherche repas */}
+          {/* Recherche plats */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input type="text" value={productSearch} onChange={(e) => setProductSearch(e.target.value)}
-              placeholder="Rechercher un repas ou extra..."
+              placeholder="Rechercher un plat ou extra..."
               className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500" />
           </div>
 
@@ -580,7 +584,7 @@ export default function ProductsPage() {
             })}
           </div>
           {filteredProducts.length === 0 && (
-            <EmptyState icon={UtensilsCrossed} message="Aucun repas" />
+            <EmptyState icon={UtensilsCrossed} message="Aucun plat" />
           )}
 
           {/* Pagination produits */}
@@ -594,7 +598,7 @@ export default function ProductsPage() {
                 Précédent
               </button>
               <span className="text-xs text-gray-500">
-                Page {productPage} / {totalProductPages} ({filteredProducts.length} repas)
+                Page {productPage} / {totalProductPages} ({filteredProducts.length} plats)
               </span>
               <button
                 onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
@@ -628,7 +632,7 @@ export default function ProductsPage() {
                 return (
                   <Card key={promo.id}>
                     <CardContent className="p-3 space-y-2">
-                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img loading="lazy" decoding="async" src={imgs[0]} alt={promo.name} className="w-full aspect-[16/9] object-cover rounded-lg" /> : null; })()}
+                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img loading="lazy" decoding="async" src={imgs[0]} alt={promo.name} referrerPolicy="no-referrer" className="w-full aspect-[16/9] object-cover rounded-lg" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /> : null; })()}
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-semibold text-white">{promo.name}</p>
@@ -640,7 +644,7 @@ export default function ProductsPage() {
                       </div>
                       {promo.description && <div className="text-[10px] text-gray-500 line-clamp-2 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />}
                       <p className="text-[10px] text-gray-500">{new Date(promo.startDate).toLocaleDateString("fr-FR")} → {new Date(promo.endDate).toLocaleDateString("fr-FR")}</p>
-                      <p className="text-[10px] text-gray-500">{promo.appliesToAll ? "Tous les repas et extras" : `${promo.products?.length || 0} repas/extra(s)`}</p>
+                      <p className="text-[10px] text-gray-500">{promo.appliesToAll ? "Tous les plats et extras" : `${promo.products?.length || 0} plats/extra(s)`}</p>
                       <div className="flex items-center gap-1 pt-1.5 border-t border-gray-800">
                         <button onClick={() => openEditPromo(promo)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded transition-colors"><Edit2 className="w-3 h-3" /></button>
                         <button onClick={() => confirmDeletePromo(promo.id, promo.name)} className="flex-1 flex items-center justify-center py-1 text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
@@ -687,9 +691,9 @@ export default function ProductsPage() {
       )}
 
       {/* ============================================ */}
-      {/* Dialog Ajout / Edition de repas              */}
+      {/* Dialog Ajout / Edition de plat              */}
       {/* ============================================ */}
-      <Dialog open={showDialog} onClose={() => { setShowDialog(false); resetForm(); }} title={dialogMode === "edit" ? "Modifier le repas" : "Nouveau repas"}>
+      <Dialog open={showDialog} onClose={() => { setShowDialog(false); resetForm(); }} title={dialogMode === "edit" ? "Modifier le plat" : "Nouveau plat"}>
         <div className="space-y-4">
           {/* Nom et Prix */}
           <div className="grid grid-cols-2 gap-3">
@@ -825,7 +829,7 @@ export default function ProductsPage() {
           <button onClick={handleDialogSubmit} disabled={saving || !form.name || !form.price}
             className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : dialogMode === "edit" ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {dialogMode === "edit" ? "Enregistrer les modifications" : "Ajouter le repas"}
+            {dialogMode === "edit" ? "Enregistrer les modifications" : "Ajouter le plat"}
           </button>
         </div>
       </Dialog>
@@ -873,13 +877,13 @@ export default function ProductsPage() {
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={promoForm.appliesToAll} onChange={(e) => setPromoForm({ ...promoForm, appliesToAll: e.target.checked })} className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-orange-500 focus:ring-orange-500" />
-            <span className="text-sm text-gray-300">Appliquer à tous les repas et extras</span>
+            <span className="text-sm text-gray-300">Appliquer à tous les plats et extras</span>
           </label>
           {!promoForm.appliesToAll && (
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Repas et extras concernés</label>
+              <label className="text-xs text-gray-400 mb-1 block">Plats et extras concernés</label>
               <div className="max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 p-2 space-y-1">
-                <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider px-2 pt-1">Repas</p>
+                <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider px-2 pt-1">Plats</p>
                 {products.filter((pr: any) => !pr.isExtra).map((pr: any) => (
                   <label key={pr.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded hover:bg-gray-700">
                     <input type="checkbox" checked={promoForm.productIds.includes(pr.id)} onChange={(e) => setPromoForm((prev) => ({ ...prev, productIds: e.target.checked ? [...prev.productIds, pr.id] : prev.productIds.filter((id) => id !== pr.id) }))} className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-orange-500" />
@@ -926,10 +930,14 @@ export default function ProductsPage() {
             {promoImages.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {promoImages.map((img, i) => (
-                  <div key={i} className="relative group">
-                    <img loading="lazy" decoding="async" src={img} alt="" className="w-full aspect-[16/9] object-cover rounded-lg border border-gray-700" />
+                  <div key={i} className="relative group aspect-[16/9] rounded-lg border border-gray-700 overflow-hidden bg-gray-800">
+                    <img decoding="async" src={img} alt="" className="w-full h-full object-cover absolute inset-0 z-[1]" onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} style={{ opacity: 0 }} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center p-2">
+                      <ImageIcon className="w-5 h-5 text-gray-500" />
+                      <span className="text-[9px] text-gray-500 leading-tight break-all line-clamp-2">{img.replace(/https?:\/\//, "").slice(0, 40)}</span>
+                    </div>
                     <button type="button" onClick={() => setPromoImages(prev => prev.filter((_, j) => j !== i))}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 z-10">
                       <X className="w-3 h-3" />
                     </button>
                   </div>

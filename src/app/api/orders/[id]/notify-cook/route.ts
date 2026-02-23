@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   if ((session.user as any).role !== "ADMIN") return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
@@ -52,4 +55,4 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json({ success: true, notified: cooks.length });
-}
+});

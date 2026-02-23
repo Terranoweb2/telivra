@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateEffectivePrice, findBestPromotion } from "@/lib/pricing";
 import { notifyRole } from "@/lib/notify";
+import { withTenant } from "@/lib/with-tenant";
 
-export async function POST(request: NextRequest) {
+
+export const dynamic = "force-dynamic";
+export const POST = withTenant(async function POST(request: NextRequest) {
   const body = await request.json();
   const { items, deliveryAddress, deliveryLat, deliveryLng, note, guestName, guestPhone, paymentMethod, deliveryMode } = body;
 
@@ -125,4 +128,4 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json(order, { status: 201 });
-}
+});

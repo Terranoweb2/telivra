@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import {
   Loader2, ShoppingBag, UtensilsCrossed,
   Plus, Minus, Search, X, Timer, Droplets, CreditCard, ChefHat,
-  ChevronLeft, ChevronRight, MapPin, Truck, Trash2,
+  ChevronLeft, ChevronRight, MapPin, Truck, Trash2, Cake,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,6 +76,13 @@ export default function CommanderPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [imgCounter, setImgCounter] = useState(0);
   const [showPromoDialog, setShowPromoDialog] = useState(false);
+  const [birthdayDiscount, setBirthdayDiscount] = useState<{ type: string; value: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/birthday-discount").then(r => r.json()).then(d => {
+      if (d.eligible) setBirthdayDiscount({ type: d.type, value: d.value });
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -139,7 +146,12 @@ export default function CommanderPage() {
   const pickupEnabled = settings?.pickupEnabled === true;
   const effectiveDeliveryFee = deliveryMode === "PICKUP" ? 0 : deliveryFee;
   const subtotal = cart.reduce((s, i) => s + (i.product.effectivePrice ?? i.product.price) * i.quantity, 0);
-  const total = subtotal + effectiveDeliveryFee;
+  const bdAmount = birthdayDiscount
+    ? birthdayDiscount.type === "PERCENTAGE"
+      ? Math.round(subtotal * birthdayDiscount.value / 100)
+      : Math.min(birthdayDiscount.value, subtotal)
+    : 0;
+  const total = subtotal + effectiveDeliveryFee - bdAmount;
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
   const adminMethod = settings?.defaultPaymentMethod || "CASH";
 
@@ -220,7 +232,7 @@ export default function CommanderPage() {
 
   return (
     <div className="space-y-4 pb-24 brand-theme" style={{ "--brand": settings?.buttonColor || "#ea580c" } as React.CSSProperties}>
-      <div className="sticky top-14 z-20 bg-gray-950 pb-3 pt-1 -mx-4 px-4 sm:-mx-6 sm:px-6">
+      <div className="sticky top-0 z-20 bg-gray-950 pb-3 pt-1 -mx-4 px-4 sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center">
@@ -243,7 +255,7 @@ export default function CommanderPage() {
         </div>
       </div>
 
-      {/* Grille repas */}
+      {/* Grille plats */}
       {filteredMeals.length === 0 ? (
         <EmptyState icon={UtensilsCrossed} message="Aucun plat trouvé" />
       ) : (
@@ -257,6 +269,9 @@ export default function CommanderPage() {
                     <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
                     <UtensilsCrossed className="w-12 h-12 opacity-40 text-orange-400" />
+                  )}
+                  {p.hasDiscount && (
+                    <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-orange-600 text-white text-[9px] font-bold rounded-md">{"En Promo"}</span>
                   )}
                   <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-md">
                     <Timer className="w-3 h-3 text-orange-300" />
@@ -514,19 +529,41 @@ export default function CommanderPage() {
                     </div>
                   )}
 
+                  {birthdayDiscount && (
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                      <Cake className="w-5 h-5 text-orange-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-white font-medium">{"Joyeux anniversaire !"}</p>
+                        <p className="text-[11px] text-orange-400">
+                          {birthdayDiscount.type === "PERCENTAGE"
+                            ? `${birthdayDiscount.value}% de réduction appliquée`
+                            : `${birthdayDiscount.value} FCFA de réduction appliquée`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="border-t border-gray-800 pt-3 space-y-1.5">
                     <div className="flex justify-between text-sm text-gray-400">
-                      <span>Sous-total</span>
+                      <span>{"Sous-total"}</span>
                       <span>{subtotal.toLocaleString()} F</span>
                     </div>
                     {effectiveDeliveryFee > 0 && (
                       <div className="flex justify-between text-sm text-gray-400">
-                        <span>Livraison</span>
+                        <span>{"Livraison"}</span>
                         <span>{effectiveDeliveryFee.toLocaleString()} F</span>
                       </div>
                     )}
+                    {bdAmount > 0 && (
+                      <div className="flex justify-between text-sm text-orange-400">
+                        <span className="flex items-center gap-1">
+                          <Cake className="w-3 h-3" />
+                          {"Réduction anniversaire"}
+                        </span>
+                        <span>-{bdAmount.toLocaleString()} F</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-base font-bold text-white pt-1">
-                      <span>Total</span>
+                      <span>{"Total"}</span>
                       <span>{total.toLocaleString()} FCFA</span>
                     </div>
                   </div>
@@ -622,7 +659,7 @@ export default function CommanderPage() {
                   <div key={promo.id} className={cn(idx > 0 && "border-t border-gray-800")}>
                     {currentImg && (
                       <div className="relative">
-                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} className="w-full aspect-[16/9] object-cover" />
+                        <img loading="lazy" decoding="async" src={currentImg} alt={promo.name} referrerPolicy="no-referrer" className="w-full aspect-[16/9] object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
                         {allImgs.length > 1 && (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
@@ -647,7 +684,7 @@ export default function CommanderPage() {
                         <div className="text-sm text-gray-400 [&_*]:!m-0 [&_*]:!p-0" dangerouslySetInnerHTML={{ __html: promo.description }} />
                       )}
                       <p className="text-xs text-gray-500 mt-2">
-                        {promo.appliesToAll ? "Sur tous les repas et extras" : `Sur ${promo.products?.length || 0} repas`}
+                        {promo.appliesToAll ? "Sur tous les plats et extras" : `Sur ${promo.products?.length || 0} plats`}
                       </p>
                     </div>
                   </div>

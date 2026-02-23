@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth";
+import { withTenant } from "@/lib/with-tenant";
 
+
+export const dynamic = "force-dynamic";
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user || !["ADMIN", "MANAGER"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Non autorise" }, { status: 401 });
@@ -70,4 +73,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Erreur lors de l'upload" }, { status: 500 });
   }
-}
+});
