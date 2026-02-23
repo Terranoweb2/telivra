@@ -632,7 +632,7 @@ export default function ProductsPage() {
                 return (
                   <Card key={promo.id}>
                     <CardContent className="p-3 space-y-2">
-                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img loading="lazy" decoding="async" src={imgs[0]} alt={promo.name} referrerPolicy="no-referrer" className="w-full aspect-[16/9] object-cover rounded-lg" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /> : null; })()}
+                      {(() => { const imgs = promo.image ? (() => { try { const p = JSON.parse(promo.image); return Array.isArray(p) ? p : [promo.image]; } catch { return [promo.image]; } })() : []; return imgs.length > 0 ? <img loading="lazy" decoding="async" src={imgs[0]} alt={promo.name} className="w-full aspect-[16/9] object-cover rounded-lg" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /> : null; })()}
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-semibold text-white">{promo.name}</p>
@@ -931,8 +931,9 @@ export default function ProductsPage() {
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {promoImages.map((img, i) => (
                   <div key={i} className="relative group aspect-[16/9] rounded-lg border border-gray-700 overflow-hidden bg-gray-800">
-                    <img decoding="async" src={img} alt="" className="w-full h-full object-cover absolute inset-0 z-[1]" onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} style={{ opacity: 0 }} />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                    <div className="hidden absolute inset-0 flex flex-col items-center justify-center gap-1 text-center p-2">
                       <ImageIcon className="w-5 h-5 text-gray-500" />
                       <span className="text-[9px] text-gray-500 leading-tight break-all line-clamp-2">{img.replace(/https?:\/\//, "").slice(0, 40)}</span>
                     </div>
